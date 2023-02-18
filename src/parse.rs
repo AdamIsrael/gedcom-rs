@@ -59,8 +59,12 @@ pub fn peek_level(input: &str) -> IResult<&str, u8> {
     parser(input)
 }
 
+type Line<'a> = (u8, &'a str, Option<&'a str>, &'a str, &'a str, &'a str, &'a str);
+
 /// Parse a single line
-pub fn line(input: &str) -> IResult<&str, (u8, &str, Option<&str>, &str, &str, &str, &str)> {
+pub fn line(input: &str) -> IResult<&str, Line> {
+
+// pub fn line(input: &str) -> IResult<&str, (u8, &str, Option<&str>, &str, &str, &str, &str)> {
     // println!("Input: '{input}'");
     // 2 TIME 16:56:08
 
