@@ -59,12 +59,19 @@ pub fn peek_level(input: &str) -> IResult<&str, u8> {
     parser(input)
 }
 
-type Line<'a> = (u8, &'a str, Option<&'a str>, &'a str, &'a str, &'a str, &'a str);
+type Line<'a> = (
+    u8,
+    &'a str,
+    Option<&'a str>,
+    &'a str,
+    &'a str,
+    &'a str,
+    &'a str,
+);
 
 /// Parse a single line
 pub fn line(input: &str) -> IResult<&str, Line> {
-
-// pub fn line(input: &str) -> IResult<&str, (u8, &str, Option<&str>, &str, &str, &str, &str)> {
+    // pub fn line(input: &str) -> IResult<&str, (u8, &str, Option<&str>, &str, &str, &str, &str)> {
     // println!("Input: '{input}'");
     // 2 TIME 16:56:08
 
@@ -121,12 +128,12 @@ pub fn line(input: &str) -> IResult<&str, Line> {
 ///
 /// So far, I've only seen this with one GEDCOM, as the starting byte.
 pub fn zero_with_no_break_space(input: &str) -> IResult<&str, &str> {
-    if input.starts_with("\u{FEFF}") {
+    if input.starts_with('\u{FEFF}') {
         let parser = nom::bytes::complete::tag("\u{FEFF}");
 
         parser(input)
     } else {
-        return Ok((input, ""));
+        Ok((input, ""))
     }
 }
 
@@ -156,7 +163,7 @@ pub fn xref(input: &str) -> IResult<&str, &str> {
         );
         parser(input)
     } else {
-        return Ok((input, ""));
+        Ok((input, ""))
     }
 }
 

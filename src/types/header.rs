@@ -1,8 +1,8 @@
 use crate::parse;
 use crate::types::{
-    Address, 
-    // Line, 
-    Source
+    Address,
+    // Line,
+    Source,
 };
 
 /*
@@ -120,13 +120,13 @@ impl Header {
                     header.date = Some(value.to_string());
 
                     // Now we need to get the next line
-                    let (_, lvl) = parse::peek_level(&buffer).unwrap();
+                    let (_, lvl) = parse::peek_level(buffer).unwrap();
                     if lvl == (level + 1) {
                         // TODO: Store date and time separately? Parse the date properly
                         // to make it easier to search on? Lots of potentially invalid dates, though.
                         // about, between, circa, etc.
                         // parse the next line and get the value
-                        let (_str, tpl) = parse::line(&buffer).unwrap();
+                        let (_str, tpl) = parse::line(buffer).unwrap();
                         // This could be cleaner than accessing tpl.5. Probably:
                         // (_, _, _, _, value, _)
 
@@ -158,15 +158,14 @@ impl Header {
             www: None,
         };
 
-        let (_, mut lvl) = parse::peek_level(&buffer).unwrap();
+        let (_, mut lvl) = parse::peek_level(buffer).unwrap();
         // println!("Level: {lvl}");
         while lvl >= 2 {
-            let (mut str, tpl) = parse::line(&buffer).unwrap();
+            let (mut str, tpl) = parse::line(buffer).unwrap();
             // println!("Value: level: {}, tag {} = '{}'", tpl.1, tpl.3, tpl.5);
             match tpl.3 {
                 "ADDR" => {
-                    (str, source.address) = Self::parse_address(&buffer);
-
+                    (str, source.address) = Self::parse_address(buffer);
                 }
                 "NAME" => {
                     source.name = Some(tpl.5.to_string());
@@ -190,7 +189,7 @@ impl Header {
             buffer = str;
 
             // Peek at the next level
-            (_, lvl) = parse::peek_level(&str).unwrap();
+            (_, lvl) = parse::peek_level(str).unwrap();
         }
 
         (buffer, Some(source))
@@ -238,11 +237,11 @@ impl Header {
         // (buffer, _) = parse::line(&buffer).unwrap();
         println!("Parsing address: '{buffer}'");
 
-        let (_, mut lvl) = parse::peek_level(&buffer).unwrap();
+        let (_, mut lvl) = parse::peek_level(buffer).unwrap();
 
         // Only iterate through the ADDR records
         while lvl >= 3 {
-            let (str, tpl) = parse::line(&buffer).unwrap();
+            let (str, tpl) = parse::line(buffer).unwrap();
             println!("Value: level: {}, tag {} = '{}'", tpl.1, tpl.3, tpl.5);
             match tpl.3 {
                 "ADR1" => {
@@ -274,7 +273,7 @@ impl Header {
             buffer = str;
 
             // Peek at the next level
-            (_, lvl) = parse::peek_level(&str).unwrap();
+            (_, lvl) = parse::peek_level(str).unwrap();
         }
         (buffer, Some(address))
     }

@@ -100,12 +100,12 @@ fn main() {
                             // gedcom.header = parse_header(record);
                             gedcom.header = Header::parse(tmp.to_string());
                         }
-                        "INDI" => {},
-                        "SOUR" => {},
-                        "REPO" => {},
-                        "OBJE" => {},
-                        "FAM" => {},
-                        "SUBM" => {},
+                        "INDI" => {}
+                        "SOUR" => {}
+                        "REPO" => {}
+                        "OBJE" => {}
+                        "FAM" => {}
+                        "SUBM" => {}
                         _ => {}
                     };
 
