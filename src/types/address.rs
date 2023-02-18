@@ -1,4 +1,3 @@
-
 #[derive(Debug, Default)]
 pub struct Address {
     pub addr1: Option<String>,

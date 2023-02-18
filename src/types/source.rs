@@ -1,6 +1,4 @@
-use crate::types::{
-    Address,
-};
+use crate::types::Address;
 
 // 1 SOUR Ancestry.com Family Trees
 // 2 NAME Ancestry.com Member Trees
