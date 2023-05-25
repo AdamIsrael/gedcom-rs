@@ -28,9 +28,10 @@ use nom::character::complete::{
     // alpha1,
     // one_of,
     line_ending,
-    multispace0,
-    multispace1,
+    // multispace0,
+    // multispace1,
     not_line_ending,
+    space0,
 };
 use nom::combinator::{
     // all_consuming,
@@ -48,10 +49,23 @@ use nom::sequence::{
     preceded,
     // separated_pair,
     // terminated,
-    tuple,
+    // tuple,
 };
 // use nom::ParseTo;
-// use nom::sequence::Tuple;
+
+/// A line of GEDCOM data
+type Line<'a> = (
+    u8,              // level
+    Option<&'a str>, // xref
+    Option<&'a str>, // tag
+    Option<&'a str>, // value
+);
+
+/// Peek at the next character to see if it's a newline
+pub fn peek_eol(input: &str) -> IResult<&str, bool> {
+    let (input, is_eol) = eol(input).unwrap_or((input, ""));
+    Ok((input, !is_eol.is_empty()))
+}
 
 /// Peek the level of the next line
 pub fn peek_level(input: &str) -> IResult<&str, u8> {
@@ -59,53 +73,54 @@ pub fn peek_level(input: &str) -> IResult<&str, u8> {
     parser(input)
 }
 
-type Line<'a> = (
-    u8,
-    &'a str,
-    Option<&'a str>,
-    &'a str,
-    &'a str,
-    &'a str,
-    &'a str,
-);
+/// Peek at the tag in the next line.
+///
+/// This allows us to check what the next tag is so we can determine if we need
+/// to keep processing, i.e., a CONT.
+pub fn peek_tag(input: &str) -> IResult<&str, &str> {
+    let (_, l) = line(input).unwrap();
 
-/// Parse a single line
+    Ok((input, l.2.unwrap_or("")))
+}
+
+/// Parse a single line of GEDCOM data
 pub fn line(input: &str) -> IResult<&str, Line> {
-    // pub fn line(input: &str) -> IResult<&str, (u8, &str, Option<&str>, &str, &str, &str, &str)> {
-    // println!("Input: '{input}'");
-    // 2 TIME 16:56:08
+    /*
+    New strategy: let the wookie win.
 
-    let mut parser = tuple((
-        // level
-        map_res(digit1, u8::from_str),
-        // delim
-        multispace1,
-        // xref
-        opt(delimited(
-            nom::bytes::complete::tag("@"),
-            is_not("@"),
-            nom::bytes::complete::tag("@"),
-        )),
-        // tag
-        verify(
-            recognize(preceded(opt(nom::bytes::complete::tag("_")), alphanumeric1)),
-            |o: &str| o.len() <= 31,
-        ),
-        // todo: this is either going to be a space followed by a value,
-        // or a newline, and the way it's written now it's going to consume the newline
-        // and treat the next line as this line's value.
-        // Need to peek the next character; if it's a newline, we're done. Otherwise,
-        // continue to parse the line as we have it below.
+    Parse the whole line out of the input first. Then parse the individual elements
+    out into variables, present or not.
 
-        // delim
-        multispace0,
-        // value
-        not_line_ending,
-        // eol
-        line_ending,
-    ));
+    Lastly, return the input minus our line, and a tuple representing level, xref, tag, value
 
-    parser(input)
+    */
+
+    let mut _level: u8 = 0;
+    let mut _xref: &str = "";
+    let mut _tag: &str = "";
+    let mut _value: &str = "";
+    let is_eol: bool;
+    let mut tmp: &str = "";
+    let mut _value: &str = "";
+
+    if !input.is_empty() {
+        (tmp, _level) = level(input).unwrap();
+        (tmp, _) = delim(tmp).unwrap();
+        (tmp, _xref) = xref(tmp).unwrap();
+        (tmp, _tag) = tag(tmp.trim_start()).unwrap();
+        (tmp, _) = delim(tmp).unwrap();
+        (tmp, is_eol) = peek_eol(tmp).unwrap();
+
+        if !is_eol {
+            (tmp, _) = delim(tmp).unwrap();
+
+            (tmp, _value) = value(tmp).unwrap();
+        }
+
+        tmp = eol(tmp).unwrap_or((tmp, "")).0;
+    }
+
+    Ok((tmp, (_level, Some(_xref), Some(_tag), Some(_value))))
 }
 
 // fn source(input: &str) -> IResult<&str, Source> {
@@ -137,18 +152,96 @@ pub fn zero_with_no_break_space(input: &str) -> IResult<&str, &str> {
     }
 }
 
+/// What did I mean to do with this? gg
+/// I think it takes the input and returns a tuple containing the tag and it's
+/// optional value? I lost the thread, though, and need to retrace my steps.
+// fn get_tag_value(input: &str) -> IResult<&str, (&str, &str)> {
+
+//     Ok((input, ("", "")))
+// }
+
+/// Parse the buffer if the CONT tag is found and return the resulting string.
+pub fn cont(input: &str) -> IResult<&str, &str> {
+    // clone the buffer; if no CONT tags are found, we'll return the original input
+    // let buffer = input.clone();
+    // let buffer = &(*input);
+
+    // I think this is just creating a copy of the reference, which is pointless.
+    let buffer = input;
+
+    let (tmp, _level) = level(buffer).unwrap();
+    println!("Level: {_level}");
+    let (tmp, _) = delim(tmp).unwrap();
+
+    let (tmp, _xref) = xref(tmp).unwrap();
+    println!("xref: {_xref}");
+
+    let (tmp, _tag) = tag(tmp.trim_start()).unwrap();
+    println!("tag: {_tag}; {} bytes remaining", tmp.len());
+    let (tmp, _) = delim(tmp).unwrap();
+    // let (mut tmp, is_eol) = peek_eol(tmp).unwrap();
+
+    let (tmp, _) = delim(tmp).unwrap();
+    let (tmp, _value) = value(tmp).unwrap();
+
+    println!("Got tag '{_tag}', value: '{_value}'");
+
+    let (tmp, _) = eol(tmp).unwrap_or((tmp, ""));
+
+    // let mut _value: &str = "";
+
+    // // println!("tmp starts with '{:?}'", tmp.chars().next());
+    // if !is_eol {
+    //     let mut _buffer: &str = "";
+    //     (_buffer, _) = delim(tmp).unwrap();
+    //     (_buffer, _value) = value(tmp).unwrap();
+    //     tmp = _buffer;
+    // }
+
+    if _tag == "CONT" {
+        println!("New buffer: {buffer}");
+        Ok((tmp, _value))
+    } else {
+        println!("Tag is: {_tag}");
+
+        Ok((input, ""))
+    }
+    // // Peek at the beginning of the line
+    // let mut parser = tuple(
+    //     (
+    //         // level
+    //         map_res(digit1, u8::from_str),
+    //         // delim
+    //         multispace1,
+    //         // xref
+    //         opt(
+    //             delimited(
+    //             nom::bytes::complete::tag("@"),
+    //             is_not("@"),
+    //             nom::bytes::complete::tag("@"),
+    //             )
+    //         ),
+    //         // tag
+    //         verify(
+    //             recognize(preceded(opt(nom::bytes::complete::tag("_")), alphanumeric1)),
+    //             |o: &str| o.len() <= 31,
+    //         ),
+    //         multispace1,
+    //     )
+    // );
+
+    // let (buffer, tpl) = parser(input).unwrap();
+}
+
 /// Parse a number from the string, but return it as an actual Rust number, not a string.
 pub fn level(input: &str) -> IResult<&str, u8> {
-    // pub fn level(input: &str) -> IResult<&str, u8> {
-    // let (input, _) = all_consuming(tag("\u{FEFF}"))(input)?;
-    // println!("Input: {input}");
     let mut parser = map_res(digit1, u8::from_str);
     parser(input)
 }
 
 /// Parse the delimiter
 pub fn delim(input: &str) -> IResult<&str, &str> {
-    multispace0(input)
+    space0(input)
 }
 
 /// Parse the xref, if present

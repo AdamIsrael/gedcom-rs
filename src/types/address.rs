@@ -7,4 +7,8 @@ pub struct Address {
     pub state: Option<String>,
     pub postal_code: Option<String>,
     pub country: Option<String>,
+    pub phone: Vec<String>,
+    pub email: Vec<String>,
+    pub fax: Vec<String>,
+    pub www: Vec<String>,
 }
