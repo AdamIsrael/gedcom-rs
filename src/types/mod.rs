@@ -2,13 +2,14 @@
 
 // top-level record types
 mod address;
+mod corporation;
 mod header;
 mod line;
 mod source;
 
 // use std::collections::binary_heap::Iter;
 
-pub use address::Address;
+pub use address::*;
 pub use header::*;
 pub use line::Line;
 pub use source::Source;

@@ -1,4 +1,15 @@
-use crate::types::Address;
+use crate::types::corporation::Corporation;
+
+
+// +1 SOUR <APPROVED_SYSTEM_ID>
+//     +2 VERS <VERSION_NUMBER>
+//     +2 NAME <NAME_OF_PRODUCT>
+//     +2 CORP <NAME_OF_BUSINESS>
+//         +3 <<ADDRESS_STRUCTURE>>
+//     +2 DATA <NAME_OF_SOURCE_DATA>
+//         +3 DATE <PUBLICATION_DATE>
+//         +3 COPR <COPYRIGHT_SOURCE_DATA>
+//         +4 [CONT|CONC]<COPYRIGHT_SOURCE_DATA>
 
 // 1 SOUR Ancestry.com Family Trees
 // 2 NAME Ancestry.com Member Trees
@@ -15,13 +26,9 @@ use crate::types::Address;
 
 #[derive(Debug, Default)]
 pub struct Source {
-    pub corporation: Option<String>,
-    pub phone: Option<Vec<String>>,
-    pub email: Option<Vec<String>>,
-    pub fax: Option<Vec<String>>,
-    pub www: Option<Vec<String>>,
-    pub source: String,
+    /// A corporation tag contains the name of the corporation and its address.
+    pub corporation: Option<Corporation>,
     pub name: Option<String>,
+    pub source: String,
     pub version: Option<String>,
-    pub address: Option<Address>,
 }

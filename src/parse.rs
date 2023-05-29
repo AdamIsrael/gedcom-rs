@@ -188,16 +188,6 @@ pub fn cont(input: &str) -> IResult<&str, &str> {
 
     let (tmp, _) = eol(tmp).unwrap_or((tmp, ""));
 
-    // let mut _value: &str = "";
-
-    // // println!("tmp starts with '{:?}'", tmp.chars().next());
-    // if !is_eol {
-    //     let mut _buffer: &str = "";
-    //     (_buffer, _) = delim(tmp).unwrap();
-    //     (_buffer, _value) = value(tmp).unwrap();
-    //     tmp = _buffer;
-    // }
-
     if _tag == "CONT" {
         println!("New buffer: {buffer}");
         Ok((tmp, _value))
@@ -206,31 +196,6 @@ pub fn cont(input: &str) -> IResult<&str, &str> {
 
         Ok((input, ""))
     }
-    // // Peek at the beginning of the line
-    // let mut parser = tuple(
-    //     (
-    //         // level
-    //         map_res(digit1, u8::from_str),
-    //         // delim
-    //         multispace1,
-    //         // xref
-    //         opt(
-    //             delimited(
-    //             nom::bytes::complete::tag("@"),
-    //             is_not("@"),
-    //             nom::bytes::complete::tag("@"),
-    //             )
-    //         ),
-    //         // tag
-    //         verify(
-    //             recognize(preceded(opt(nom::bytes::complete::tag("_")), alphanumeric1)),
-    //             |o: &str| o.len() <= 31,
-    //         ),
-    //         multispace1,
-    //     )
-    // );
-
-    // let (buffer, tpl) = parser(input).unwrap();
 }
 
 /// Parse a number from the string, but return it as an actual Rust number, not a string.

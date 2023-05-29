@@ -1,6 +1,6 @@
 use crate::parse;
 use crate::types::{
-    Address,
+    // Address,
     // Line,
     Source,
 };
@@ -86,28 +86,15 @@ impl Header {
 
         // do parser stuff here
         while !record.is_empty() {
-            // let (mut tmp, level) = parse::level(&record).unwrap();
-            // let (mut tmp, _) = parse::delim(&tmp).unwrap();
-            // let (mut tmp, xref) = parse::xref(&tmp).unwrap();
-            // let (mut tmp, tag) = parse::tag(&tmp.trim_start()).unwrap();
-            // let (mut tmp, _) = parse::delim(&tmp).unwrap();
-            // let (mut tmp, value) = parse::value(&tmp).unwrap();
-            // let (mut tmp, _) = parse::eol(&tmp).unwrap();
-
-            // (u8, &str, Option<&str>, &str, &str, &str, &str)
             let level: u8;
             let xref: Option<&str>;
             let tag: Option<&str>;
             let value: Option<&str>;
             let mut buffer: &str;
 
-            // (buffer, (level, _, xref, tag, _, value, _)) = parse::line(&record).unwrap();
             (buffer, (level, xref, tag, value)) = parse::line(&record).unwrap();
 
-            // let (mut tmp, (level, _, xref, tag, _, value, _)) = parse::line(&record).unwrap();
             let _xref = xref.unwrap_or("");
-
-            // println!("[header] Level: {level}, xref: '{_xref}', tag: '{tag:?}', value: '{value:?}'");
 
             match tag.unwrap() {
                 "CHAR" => {
@@ -152,191 +139,70 @@ impl Header {
 
     fn parse_source(mut buffer: &str) -> (&str, Option<Source>) {
         let mut source = Source {
-            address: None,
             corporation: None,
-            email: None,
-            fax: None,
             name: None,
-            phone: None,
             source: "".to_string(),
             version: None,
-            www: None,
         };
 
-        let (_, mut lvl) = parse::peek_level(buffer).unwrap();
-        // println!("Level: {lvl}");
-        while lvl >= 2 {
-            let (mut str, tpl) = parse::line(buffer).unwrap();
-            // let (buffer, (level, xref, tag, value)) = parse::line(&record).unwrap();
+        let (_, lvl) = parse::peek_level(buffer).unwrap();
+        let (_, tag) = parse::peek_tag(buffer).unwrap();
 
-            // println!("Value: level: {}, tag {} = '{}'", tpl.1, tpl.3, tpl.5);
-            match tpl.2.unwrap() {
-                "ADDR" => {
-                    println!("[debug] parsing address: {buffer}");
-                    (str, source.address) = Self::parse_address(buffer);
-                }
-                "NAME" => {
-                    source.name = Some(tpl.3.unwrap_or("").to_string());
-                }
-                "VERS" => {
-                    source.version = Some(tpl.3.unwrap_or("").to_string());
-                }
-                // An ancestry-speecific tag
-                "_TREE" => {}
-                "CORP" => {
-                    // println!("Got CORP: ({}) {:?}", tpl.1, tpl.5);
-                    // println!("{:?}", tpl);
-                    source.corporation = Some(tpl.3.unwrap_or("").to_string());
-
-                    // TODO: Make this its own function
-                }
-                _ => {}
-            }
-            // Update the buffer with the remainder of data
-            // TODO: Clean this up. It's hella fugly.
+        // Verify we have a SOUR record
+        if lvl == 1 && tag == "SOUR" {
+            let (str, tpl) = parse::line(buffer).unwrap();
             buffer = str;
+            source.source = tpl.3.unwrap_or("").to_string();
 
-            // Peek at the next level
-            (_, lvl) = parse::peek_level(str).unwrap();
+            let (_, mut lvl) = parse::peek_level(buffer).unwrap();
+
+            // println!("Level: {lvl}");
+            while lvl >= 2 {
+                let (mut str, tpl) = parse::line(buffer).unwrap();
+                // let (buffer, (level, xref, tag, value)) = parse::line(&record).unwrap();
+
+                // println!("Value: level: {:?}, tag {:?} = '{:?}'", tpl.1, tpl.3, tpl.5);
+                // println!("tpl: {:?}", tpl);
+                match tpl.2.unwrap() {
+                    // An ancestry-speecific tag
+                    "_TREE" => {
+                        // The value of tree contains the tree name, which is useful,
+                        // but not a part of the GEDCOM spec.
+                        // The next level (3) may contain RIN, some sort of internal id
+                        // but is probably not useful for anything
+                    }
+                    // "ADDR" => {
+                    //     println!("[debug] parsing address: {buffer}");
+                    //     (str, source.address) = Self::parse_address(buffer);
+                    // }
+                    "CORP" => {
+                        (str, source.corporation) = crate::types::corporation::parse_corporation(buffer);
+                        // source.corporation = Some(tpl.3.unwrap_or("").to_string());
+
+                        // What remains in the buffer may include an address
+                    }
+                    "NAME" => {
+                        source.name = Some(tpl.3.unwrap_or("").to_string());
+                    }
+                    "VERS" => {
+                        source.version = Some(tpl.3.unwrap_or("").to_string());
+                    }
+                    _ => {}
+                }
+
+                // Update the buffer with the remainder of data
+                // TODO: Clean this up. It's hella fugly.
+                buffer = str;
+
+                // Peek at the next level
+                if buffer.is_empty() {
+                    break;
+                }
+                (_, lvl) = parse::peek_level(str).unwrap();
+            }
         }
 
         (buffer, Some(source))
-    }
-
-    /// Parse the Address entity
-    ///
-    /// This could be formatted one of two (valid) ways:
-    ///
-    /// ```
-    /// /*
-    /// 3 ADDR 1300 West Traverse Parkway   
-    /// 4 CONT Lehi, UT  84043   
-    /// 4 CONT USA   
-    /// */
-    /// ```
-    ///
-    /// or:
-    ///
-    /// ```
-    /// /*
-    /// 3 ADDR
-    /// 4 ADR1 RSAC Software
-    /// 4 ADR2 7108 South Pine Cone Street
-    /// 4 ADR3 Ste 1
-    /// 4 CITY Salt Lake City
-    /// 4 STAE UT
-    /// 4 POST 84121
-    /// 4 CTRY USA
-    /// */
-    /// ```
-    ///
-    fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
-        let mut address = Address {
-            addr1: None,
-            addr2: None,
-            addr3: None,
-            city: None,
-            state: None,
-            postal_code: None,
-            country: None,
-            phone: vec![],
-            email: vec![],
-            fax: vec![],
-            www: vec![],
-        };
-
-        // Eat the ADDR record
-        // (buffer, _) = parse::line(&buffer).unwrap();
-        println!("[DEBUG] Parsing address: '{buffer}'");
-
-        let (_, mut lvl) = parse::peek_level(buffer).unwrap();
-
-        // Only iterate through the ADDR records
-        while lvl >= 3 {
-            // println!("Buffer: '{buffer}'");
-            let (mut str, tpl) = parse::line(buffer).unwrap();
-            // println!("Tuple: {tpl:?}");
-
-            // println!("Value: level: {}, tag '{}' = '{}'", tpl.0, tpl.1.unwrap_or(""), tpl.3.unwrap_or(""));
-            match tpl.2.unwrap() {
-                "ADDR" => {
-                    // TODO: Should we attempt to parse this? Or stuff it all
-                    // into addr1? It's not like it's a searchable field.
-                    let mut addr: String = String::from("");
-
-                    addr += tpl.3.unwrap_or("");
-
-                    // address.addr1 = Some(tpl.3.unwrap_or("").to_string());
-
-                    // handle CONT/CONC; but what's the best way to append that data?
-                    // CONT implies that we're continuing the data, i.e., adding a
-                    // newline to preserve the formatting
-                    // CONC implies that we're concatenating the line
-
-                    let mut tag;
-                    // TODO: Need to check the result and bail from this block if
-                    // it returns an error
-                    (_, tag) = parse::peek_tag(str).unwrap_or(("", ""));
-                    println!("\nNEXT: {tag}");
-
-                    while tag == "CONT" {
-                        let (asdf, cont) = parse::cont(str).unwrap();
-                        println!("[parse_address] CONT: {cont}");
-                        addr += "\n";
-                        addr += cont;
-
-                        str = asdf;
-
-                        (_, tag) = parse::peek_tag(str).unwrap();
-                    }
-
-                    address.addr1 = Some(addr);
-                }
-                "ADR1" => {
-                    address.addr1 = Some(tpl.3.unwrap_or("").to_string());
-                }
-                "ADR2" => {
-                    address.addr2 = Some(tpl.3.unwrap_or("").to_string());
-                }
-                "ADR3" => {
-                    address.addr3 = Some(tpl.3.unwrap_or("").to_string());
-                }
-                "CITY" => {
-                    address.city = Some(tpl.3.unwrap_or("").to_string());
-                }
-                "STAE" => {
-                    address.state = Some(tpl.3.unwrap_or("").to_string());
-                }
-                "POST" => {
-                    address.postal_code = Some(tpl.3.unwrap_or("").to_string());
-                }
-                "CTRY" => {
-                    address.country = Some(tpl.3.unwrap_or("").to_string());
-                }
-                "PHON" => {
-                    address.phone.push(tpl.3.unwrap_or("").to_string());
-                }
-                "EMAIL" => {
-                    address.email.push(tpl.3.unwrap_or("").to_string());
-                }
-                "FAX" => {
-                    address.fax.push(tpl.3.unwrap_or("").to_string());
-                }
-                "WWW" => {
-                    address.www.push(tpl.3.unwrap_or("").to_string());
-                }
-                _ => {}
-            }
-            // Update the buffer with the remainder of data
-            // TODO: Clean this up. It's hella fugly.
-            buffer = str;
-
-            // Peek at the next level
-            // println!("{address:?}");
-            // Grab the next level, if there is one, or short-circuit the loop
-            (_, lvl) = parse::peek_level(str).unwrap_or(("", 0));
-        }
-        (buffer, Some(address))
     }
 
     // fn parse_value(value: Option<String>) -> String {
@@ -381,7 +247,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_full_address1() {
+    fn parse_full_address() {
         let data = vec![
             "3 ADDR",
             "4 ADR1 RSAC Software",
@@ -405,7 +271,7 @@ mod tests {
             "3 WWW https://www.example.net",
         ];
 
-        let (data, address) = super::Header::parse_address(data.join("\n").as_str());
+        let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
         let addr = address.unwrap();
 
         println!("addr1: {:?}", addr.addr1);
@@ -432,23 +298,40 @@ mod tests {
 
     #[test]
     /// Test the address block as used by Ancestry
-    fn parse_full_address2() {
+    fn parse_addr_continue() {
         let data = vec![
             "3 ADDR 1300 West Traverse Parkway",
             "4 CONT Lehi, UT  84043",
             "4 CONT USA",
         ];
 
-        let (data, address) = super::Header::parse_address(data.join("\n").as_str());
+        let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
         let addr = address.unwrap();
 
-        println!("Actual addr: '{:?}'", addr);
         assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043\nUSA".to_string()));
-        // assert!(addr.addr2 == Some("7108 South Pine Cone Street".to_string()));
-        // assert!(addr.addr3 == Some("Ste 1".to_string()));
-        // assert!(addr.city == Some("Salt Lake City".to_string()));
-        // assert!(addr.state == Some("UT".to_string()));
-        // assert!(addr.postal_code == Some("84121".to_string()));
-        // assert!(addr.country == Some("USA".to_string()));
+    }
+
+    #[test]
+    fn parse_source() {
+        let data = vec![
+            "1 SOUR Ancestry.com Family Trees",
+            "2 NAME Ancestry.com Member Trees",
+            "2 VERS 2021.07",
+            "2 _TREE Ambrose Bierce Family Tree",
+            "3 RIN 116823582",
+            "3 _ENV prd",
+            "2 CORP Ancestry.com",
+            "3 PHON 801-705-7000",
+            "3 WWW www.ancestry.com",
+            "3 ADDR 1300 West Traverse Parkway",
+            "4 CONT Lehi, UT  84043",
+            "4 CONT USA",
+        ];
+
+        let (_data, source) = super::Header::parse_source(&data.join("\n"));
+        let sour = source.unwrap();
+        println!("source: {:?}", sour);
+
+        assert!(sour.name == Some("Ancestry.com Member Trees".to_string()));
     }
 }
