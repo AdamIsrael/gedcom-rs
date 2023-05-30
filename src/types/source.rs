@@ -1,6 +1,5 @@
 use crate::types::corporation::Corporation;
 
-
 // +1 SOUR <APPROVED_SYSTEM_ID>
 //     +2 VERS <VERSION_NUMBER>
 //     +2 NAME <NAME_OF_PRODUCT>

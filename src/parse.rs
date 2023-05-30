@@ -161,40 +161,16 @@ pub fn zero_with_no_break_space(input: &str) -> IResult<&str, &str> {
 // }
 
 /// Parse the buffer if the CONT tag is found and return the resulting string.
+/// TODO: Refactor this. It should handle CONT and CONC.
 pub fn cont(input: &str) -> IResult<&str, &str> {
-    // clone the buffer; if no CONT tags are found, we'll return the original input
-    // let buffer = input.clone();
-    // let buffer = &(*input);
+    // let line: (u8, Option<&str>, Option<&str>, Option<&str>);
+    // let buffer: &str;
+    let (buffer, line) = super::parse::line(input).unwrap();
 
-    // I think this is just creating a copy of the reference, which is pointless.
-    let buffer = input;
-
-    let (tmp, _level) = level(buffer).unwrap();
-    println!("Level: {_level}");
-    let (tmp, _) = delim(tmp).unwrap();
-
-    let (tmp, _xref) = xref(tmp).unwrap();
-    println!("xref: {_xref}");
-
-    let (tmp, _tag) = tag(tmp.trim_start()).unwrap();
-    println!("tag: {_tag}; {} bytes remaining", tmp.len());
-    let (tmp, _) = delim(tmp).unwrap();
-    // let (mut tmp, is_eol) = peek_eol(tmp).unwrap();
-
-    let (tmp, _) = delim(tmp).unwrap();
-    let (tmp, _value) = value(tmp).unwrap();
-
-    println!("Got tag '{_tag}', value: '{_value}'");
-
-    let (tmp, _) = eol(tmp).unwrap_or((tmp, ""));
-
-    if _tag == "CONT" {
-        println!("New buffer: {buffer}");
-        Ok((tmp, _value))
+    if line.2 == Some("CONT") {
+        Ok((buffer, line.3.unwrap()))
     } else {
-        println!("Tag is: {_tag}");
-
-        Ok((input, ""))
+        Ok((buffer, ""))
     }
 }
 

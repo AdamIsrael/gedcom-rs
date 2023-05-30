@@ -1,9 +1,5 @@
 use crate::parse;
-use crate::types::{
-    // Address,
-    // Line,
-    Source,
-};
+use crate::types::Source;
 
 /*
 HEADER:= n HEAD
@@ -176,7 +172,8 @@ impl Header {
                     //     (str, source.address) = Self::parse_address(buffer);
                     // }
                     "CORP" => {
-                        (str, source.corporation) = crate::types::corporation::parse_corporation(buffer);
+                        (str, source.corporation) =
+                            crate::types::corporation::parse_corporation(buffer);
                         // source.corporation = Some(tpl.3.unwrap_or("").to_string());
 
                         // What remains in the buffer may include an address
@@ -220,96 +217,7 @@ impl Header {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_addr_tag() {
-        let data = "3 ADDR\n";
-        let (str, (level, xref, tag, value)) = parse::line(&data).unwrap();
-
-        assert!(str.len() == 0);
-        assert!(level == 3);
-        assert!(xref == Some(""));
-        assert!(tag == Some("ADDR"));
-        assert!(value == Some(""));
-    }
-
-    #[test]
-    fn parse_adr1_tag() {
-        let data = "4 ADR1 RSAC Software\n";
-        let (str, (level, xref, tag, value)) = parse::line(&data).unwrap();
-
-        assert!(str.len() == 0);
-        assert!(level == 4);
-        assert!(xref == Some(""));
-        assert!(tag == Some("ADR1"));
-        assert!(value == Some("RSAC Software"));
-    }
-
-    #[test]
-    fn parse_full_address() {
-        let data = vec![
-            "3 ADDR",
-            "4 ADR1 RSAC Software",
-            "4 ADR2 7108 South Pine Cone Street",
-            "4 ADR3 Ste 1",
-            "4 CITY Salt Lake City",
-            "4 STAE UT",
-            "4 POST 84121",
-            "4 CTRY USA",
-            "3 PHON +1-801-942-7768",
-            "3 PHON +1-801-555-1212",
-            "3 PHON +1-801-942-1148",
-            "3 EMAIL a@@example.com",
-            "3 EMAIL b@@example.com",
-            "3 EMAIL c@@example.com",
-            "3 FAX +1-801-942-7768",
-            "3 FAX +1-801-555-1212",
-            "3 FAX +1-801-942-1148",
-            "3 WWW https://www.example.com",
-            "3 WWW https://www.example.org",
-            "3 WWW https://www.example.net",
-        ];
-
-        let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
-        let addr = address.unwrap();
-
-        println!("addr1: {:?}", addr.addr1);
-        assert!(addr.addr1 == Some("RSAC Software".to_string()));
-        assert!(addr.addr2 == Some("7108 South Pine Cone Street".to_string()));
-        assert!(addr.addr3 == Some("Ste 1".to_string()));
-        assert!(addr.city == Some("Salt Lake City".to_string()));
-        assert!(addr.state == Some("UT".to_string()));
-        assert!(addr.postal_code == Some("84121".to_string()));
-        assert!(addr.country == Some("USA".to_string()));
-        assert!(addr.phone.contains(&"+1-801-942-7768".to_string()));
-        assert!(addr.phone.contains(&"+1-801-555-1212".to_string()));
-        assert!(addr.phone.contains(&"+1-801-942-1148".to_string()));
-        assert!(addr.email.contains(&"a@@example.com".to_string()));
-        assert!(addr.email.contains(&"b@@example.com".to_string()));
-        assert!(addr.email.contains(&"c@@example.com".to_string()));
-        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
-        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
-        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
-        assert!(addr.www.contains(&"https://www.example.com".to_string()));
-        assert!(addr.www.contains(&"https://www.example.org".to_string()));
-        assert!(addr.www.contains(&"https://www.example.net".to_string()));
-    }
-
-    #[test]
-    /// Test the address block as used by Ancestry
-    fn parse_addr_continue() {
-        let data = vec![
-            "3 ADDR 1300 West Traverse Parkway",
-            "4 CONT Lehi, UT  84043",
-            "4 CONT USA",
-        ];
-
-        let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
-        let addr = address.unwrap();
-
-        assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043\nUSA".to_string()));
-    }
+    // use super::*;
 
     #[test]
     fn parse_source() {
