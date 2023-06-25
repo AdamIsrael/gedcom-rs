@@ -4,6 +4,7 @@
 mod address;
 mod corporation;
 mod header;
+mod individual;
 mod line;
 mod source;
 
@@ -11,6 +12,7 @@ mod source;
 
 pub use address::*;
 pub use header::*;
+pub use individual::*;
 pub use line::Line;
 pub use source::Source;
 
@@ -19,6 +21,7 @@ pub struct Gedcom {
     // It would be nice to drop the Option<> but need to figure out how
     // to do it with the parser setup
     pub header: Header,
+    pub individuals: Vec<Individual>,
 }
 
 /// Parse a GEDCOM file into a Gedcom struct

@@ -53,13 +53,21 @@ use nom::sequence::{
 };
 // use nom::ParseTo;
 
-/// A line of GEDCOM data
+// /// A line of GEDCOM data
 type Line<'a> = (
     u8,              // level
     Option<&'a str>, // xref
     Option<&'a str>, // tag
     Option<&'a str>, // value
 );
+
+// #[derive(Debug, Eq, PartialEq)]
+// pub struct Line<'a> {
+//     level: u8,
+//     xref: Option<&'a str>,
+//     tag: &'a str,
+//     value: Option<Value<'a>>,
+// }
 
 /// Peek at the next character to see if it's a newline
 pub fn peek_eol(input: &str) -> IResult<&str, bool> {
@@ -159,6 +167,17 @@ pub fn zero_with_no_break_space(input: &str) -> IResult<&str, &str> {
 
 //     Ok((input, ("", "")))
 // }
+
+/// Parse the buffer if the CONC tag is found and return the resulting string.
+pub fn conc(input: &str) -> IResult<&str, &str> {
+    let (buffer, line) = super::parse::line(input).unwrap();
+
+    if line.2 == Some("CONC") {
+        Ok((buffer, line.3.unwrap()))
+    } else {
+        Ok((buffer, ""))
+    }
+}
 
 /// Parse the buffer if the CONT tag is found and return the resulting string.
 /// TODO: Refactor this. It should handle CONT and CONC.

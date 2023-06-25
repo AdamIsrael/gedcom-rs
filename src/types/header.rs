@@ -98,7 +98,7 @@ impl Header {
                 }
                 "COPR" => {
                     // header.copyright = Some(Value);
-                    println!("Found copyright!");
+                    println!("TODO: parse copyright!");
                 }
                 "DATE" => {
                     header.date = Some(value.unwrap_or("").to_string());
@@ -122,14 +122,13 @@ impl Header {
                     (buffer, header.source) = Self::parse_source(buffer);
                 }
                 "SUBM" => {
-                    println!("SUBM: xref: '{_xref}', value: '{value:?}', buffer: {buffer}");
+                    println!("TODO: Parse SUBM");
                 }
                 _ => {}
             };
 
             record = buffer.to_string();
         }
-
         header
     }
 
@@ -238,7 +237,7 @@ mod tests {
 
         let (_data, source) = super::Header::parse_source(&data.join("\n"));
         let sour = source.unwrap();
-        println!("source: {:?}", sour);
+        // println!("source: {:?}", sour);
 
         assert!(sour.name == Some("Ancestry.com Member Trees".to_string()));
     }

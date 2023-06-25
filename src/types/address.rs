@@ -17,13 +17,23 @@ pub struct Address {
 
 /// Parse the Address entity
 ///
-/// This could be formatted one of two (valid) ways:
+/// This could be formatted one of three (valid) ways:
 ///
 /// ```
 /// /*
 /// 3 ADDR 1300 West Traverse Parkway   
 /// 4 CONT Lehi, UT  84043   
 /// 4 CONT USA   
+/// */
+/// ```
+///
+/// or:
+/// 
+/// ```
+/// /*
+/// 3 ADDR 1300 West Traverse Parkway   
+/// 4 CONT Lehi, UT  84043   
+/// 4 CONC USA   
 /// */
 /// ```
 ///
@@ -84,13 +94,22 @@ pub fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
                 (_, tag) = parse::peek_tag(buffer).unwrap_or(("", ""));
 
                 while tag == "CONT" || tag == "CONC" {
-                    let (asdf, cont) = parse::cont(buffer).unwrap();
+                    if tag == "CONT" {
+                        let (asdf, cont) = parse::cont(buffer).unwrap();
 
-                    addr += "\n";
-
-                    addr += cont;
-
-                    buffer = asdf;
+                        addr += "\n";
+    
+                        addr += cont;
+    
+                        buffer = asdf;
+    
+                    } else if tag == "CONC" {
+                        let (asdf, cont) = parse::conc(buffer).unwrap();
+                        addr += " ";
+                        addr += cont;
+                        buffer = asdf;
+                            
+                    }
 
                     (_, tag) = parse::peek_tag(buffer).unwrap();
                 }
@@ -198,7 +217,7 @@ mod tests {
         let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
         let addr = address.unwrap();
 
-        println!("addr1: {:?}", addr.addr1);
+        // println!("addr1: {:?}", addr.addr1);
         assert!(addr.addr1 == Some("RSAC Software".to_string()));
         assert!(addr.addr2 == Some("7108 South Pine Cone Street".to_string()));
         assert!(addr.addr3 == Some("Ste 1".to_string()));
@@ -222,7 +241,7 @@ mod tests {
 
     #[test]
     /// Test the address block as used by Ancestry
-    fn parse_addr_continue() {
+    fn parse_addr_cont() {
         let data = vec![
             "3 ADDR 1300 West Traverse Parkway",
             "4 CONT Lehi, UT  84043",
@@ -234,4 +253,20 @@ mod tests {
 
         assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043\nUSA".to_string()));
     }
+
+    #[test]
+    /// Test the address block as used by Ancestry
+    fn parse_addr_conc() {
+        let data = vec![
+            "3 ADDR 1300 West Traverse Parkway",
+            "4 CONT Lehi, UT  84043",
+            "4 CONC USA",
+        ];
+
+        let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
+        let addr = address.unwrap();
+
+        assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043 USA".to_string()));
+    }
+
 }

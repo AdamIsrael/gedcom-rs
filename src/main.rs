@@ -1,3 +1,5 @@
+extern crate gedcom_test;
+
 use gedcom_test::parse;
 use gedcom_test::types::*;
 
@@ -6,26 +8,6 @@ use std::fs::File;
 
 use std::io::{self, BufRead};
 use std::path::Path;
-
-// impl Line {
-//     /// Parse a single row of GEDCOM data into a Line
-//     fn parse(input: &str) -> IResult<&str, Self> {
-//         let level_parser = separated_pair(digit1, char(' '), alpha1);
-//         // Defines a new parser which wraps the `two_words_parser`, then
-//         // passes the resulting pair into a closure.
-//         let mut person_parser = map(
-//             level_parser,
-//             |(level, xref)| Self {
-//                 level: level,
-//                 xref: xref,
-//                 // tag: "".to_string(),
-//                 // value: Some("".to_string())
-//             },
-//         );
-//         // Use the parser
-//         person_parser(input)
-//     }
-// }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -57,12 +39,11 @@ fn main() {
             submitter: None,
             submission: None,
         },
+        individuals: vec![],
     };
 
     if let Ok(lines) = read_lines(filename) {
         // Consumes the iterator, returns an (Optional) String
-
-        // let mut records: Vec<Line> = Vec::new();
 
         // Read through the lines and build a buffer of <records>, each starting
         // with a zero and ending with the last line before the next. Then feed that
@@ -81,28 +62,22 @@ fn main() {
                 if ch == '0' && !record.is_empty() {
                     // We found a new record, beginning with buffer, so
                     // process the data in `record` before continuing
-                    // println!("found a record: {record}");
+                    let (buffer, (_level, _xref, tag, _value)) = parse::line(&record).unwrap();
 
-                    // parse the first line in the record to find out what tag this is
-                    // let level: u8 = 0;
-                    let (tmp, _level) = parse::level(&record).unwrap();
-                    let (tmp, _) = parse::delim(tmp).unwrap();
-                    let (tmp, _xref) = parse::xref(tmp).unwrap();
-                    let (tmp, tag) = parse::tag(tmp.trim_start()).unwrap();
-                    // let (tmp, _) = parse::delim(tmp).unwrap();
-                    let (tmp, _) = parse::eol(tmp).unwrap();
-
-                    // println!("Level: {level}, xref: '{xref}', tag: '{tag}', Buffer: '{record}'");
-                    // record. = tmp.to_owned();
-
-                    match tag {
+                    match tag.unwrap() {
                         "HEAD" => {
-                            println!("Parsing a HEAD record!");
-                            // println!("record: {tmp}");
-                            // gedcom.header = parse_header(record);
-                            gedcom.header = Header::parse(tmp.to_string());
+                            // println!("Parsing a HEAD record!");
+                            gedcom.header = Header::parse(buffer.to_string());
+                            // println!("read {} line parsing Header", lc);
+                            // lc = 0;
                         }
-                        "INDI" => {}
+                        "INDI" => {
+                            let indi = Individual::parse(record.to_string());
+                            if indi.xref.clone().unwrap() == "I1" {
+                                println!("Found a INDI: {:#?}", indi);
+                                gedcom.individuals.push(indi);
+                            }
+                        }
                         "SOUR" => {}
                         "REPO" => {}
                         "OBJE" => {}
@@ -112,75 +87,23 @@ fn main() {
                     };
 
                     record.clear();
-                    break;
+                    // break;
                 }
             }
             record = record + &buffer.clone() + "\n";
         }
 
         println!("{gedcom:?}");
+        // TODO: print a pretty summary of the gedcom. Use `tabled` crate?
 
-        //     // let (buffer, _) = parse::zero_with_no_break_space(&buffer).unwrap();
-
-        //     let (buffer, level) = parse::level(&buffer).unwrap();
-
-        //     let (buffer, _) = parse::delim(&buffer).unwrap();
-        //     let (buffer, xref) = parse::xref(&buffer).unwrap();
-        //     let (buffer, tag) = parse::tag(&buffer.trim_start()).unwrap();
-        //     let (buffer, _) = parse::delim(&buffer).unwrap();
-        //     // println!("Level: {level}, xref: '{xref}', tag: '{tag}', Buffer: '{buffer}'");
-
-        //     if level == 0 && !records.is_empty() {
-        //         // need to get the first row from records
-        //         let record = records.get(0).unwrap();
-        //         // println!("Tag: {tag}");
-        //         // Need to figure out why this fails, but the general idea
-        //         // is to match on the tag and call the appropriate parse fn
-        //         // maybe implement a get_tag method on the struct?
-        //         // println!("Records: {records:?}");
-
-        //         match record.tag.as_str() {
-        //             "HEAD" => {
-        //                 // Parse all of the lines in `records` to build
-        //                 // a Header struct
-        //                 // let foo = records.iter().map(|r| r.level + 1);
-
-        //                 // let last_plus_1 = lines.iter().map(|r| r.level + 1);
-        //                 // println!("last plus 1: {last_plus_1:?}");
-
-        //                 let header = Header::parse(records.clone());
-        //                 println!("Header: {header:?}")
-        //             },
-        //             _ => {},
-        //         };
-
-        //         // Parse the record
-        //         // println!("Parsing a record");
-        //         records.clear();
-        //     }
-        //     // I've got record and records, but do I need both? Or rename one.
-        //     // I need a temp buffer (Vec<Line>) that stores the lines in this record
-        //     // And then I need to build the data into a more proper struct that
-        //     // represents the GEDCOM data, probably set in the above `match tag`.
-        //     // let line = Line {
-        //     //     level: level,
-        //     //     xref: Some(xref.to_string()),
-        //     //     tag: tag.to_string(),
-        //     //     value: Some(buffer.to_string())
-        //     // };
-        //     // println!("Line: {line:?}");
-        //     // record.push(line);
-        //     let line = Line{
-        //         level: level,
-        //         xref: Some(xref.to_string()),
-        //         tag: tag.to_string(),
-        //         value: Some(buffer.to_string()),
-        //     };
-
-        //     // println!("Adding Line {line:?} to records");
-        //     records.push(line);
-        // }
-        // }
+        // TODO: should gedcom.header.submitter be a Vec? Can there be more than
+        // one submitter?
+        // println!("\tsubmitters: {}", 1);
+        // println!("\tindividuals: {}", gedcom.individuals.len());
+        // TODO: families
+        // TODO: repositories
+        // TODO: sources
+        // TODO: multimedia
     }
 }
 
