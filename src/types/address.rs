@@ -1,4 +1,5 @@
 use crate::parse;
+use super::Line;
 
 #[derive(Debug, Default)]
 pub struct Address {
@@ -28,7 +29,7 @@ pub struct Address {
 /// ```
 ///
 /// or:
-/// 
+///
 /// ```
 /// /*
 /// 3 ADDR 1300 West Traverse Parkway   
@@ -66,7 +67,8 @@ pub fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
         fax: vec![],
         www: vec![],
     };
-    let mut line: (u8, Option<&str>, Option<&str>, Option<&str>);
+    // let mut line: (u8, Option<&str>, Option<&str>, Option<&str>);
+    let mut line: Line;
 
     let (_, mut lvl) = parse::peek_level(buffer).unwrap();
 
@@ -74,13 +76,13 @@ pub fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
     while lvl >= 3 {
         (buffer, line) = parse::line(buffer).unwrap();
         // let (mut str, tpl) = parse::line(buffer).unwrap();
-        match line.2.unwrap() {
+        match line.tag {
             "ADDR" => {
                 // TODO: Should we attempt to parse this? Or stuff it all
                 // into addr1? It's not like it's a searchable field.
                 let mut addr: String = String::from("");
 
-                addr += line.3.unwrap_or("");
+                addr += line.value.unwrap_or("");
 
                 // handle CONT/CONC; but what's the best way to append that data?
                 // CONT implies that we're continuing the data, i.e., adding a
@@ -98,17 +100,15 @@ pub fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
                         let (asdf, cont) = parse::cont(buffer).unwrap();
 
                         addr += "\n";
-    
+
                         addr += cont;
-    
+
                         buffer = asdf;
-    
                     } else if tag == "CONC" {
                         let (asdf, cont) = parse::conc(buffer).unwrap();
                         addr += " ";
                         addr += cont;
                         buffer = asdf;
-                            
                     }
 
                     (_, tag) = parse::peek_tag(buffer).unwrap();
@@ -117,37 +117,37 @@ pub fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
                 address.addr1 = Some(addr);
             }
             "ADR1" => {
-                address.addr1 = Some(line.3.unwrap_or("").to_string());
+                address.addr1 = Some(line.value.unwrap_or("").to_string());
             }
             "ADR2" => {
-                address.addr2 = Some(line.3.unwrap_or("").to_string());
+                address.addr2 = Some(line.value.unwrap_or("").to_string());
             }
             "ADR3" => {
-                address.addr3 = Some(line.3.unwrap_or("").to_string());
+                address.addr3 = Some(line.value.unwrap_or("").to_string());
             }
             "CITY" => {
-                address.city = Some(line.3.unwrap_or("").to_string());
+                address.city = Some(line.value.unwrap_or("").to_string());
             }
             "STAE" => {
-                address.state = Some(line.3.unwrap_or("").to_string());
+                address.state = Some(line.value.unwrap_or("").to_string());
             }
             "POST" => {
-                address.postal_code = Some(line.3.unwrap_or("").to_string());
+                address.postal_code = Some(line.value.unwrap_or("").to_string());
             }
             "CTRY" => {
-                address.country = Some(line.3.unwrap_or("").to_string());
+                address.country = Some(line.value.unwrap_or("").to_string());
             }
             "PHON" => {
-                address.phone.push(line.3.unwrap_or("").to_string());
+                address.phone.push(line.value.unwrap_or("").to_string());
             }
             "EMAIL" => {
-                address.email.push(line.3.unwrap_or("").to_string());
+                address.email.push(line.value.unwrap_or("").to_string());
             }
             "FAX" => {
-                address.fax.push(line.3.unwrap_or("").to_string());
+                address.fax.push(line.value.unwrap_or("").to_string());
             }
             "WWW" => {
-                address.www.push(line.3.unwrap_or("").to_string());
+                address.www.push(line.value.unwrap_or("").to_string());
             }
             _ => {}
         }
@@ -168,25 +168,25 @@ mod tests {
     #[test]
     fn parse_addr_tag() {
         let data = "3 ADDR\n";
-        let (str, (level, xref, tag, value)) = parse::line(&data).unwrap();
+        let (str, line) = parse::line(&data).unwrap();
 
         assert!(str.len() == 0);
-        assert!(level == 3);
-        assert!(xref == Some(""));
-        assert!(tag == Some("ADDR"));
-        assert!(value == Some(""));
+        assert!(line.level == 3);
+        assert!(line.xref == Some(""));
+        assert!(line.tag == "ADDR");
+        assert!(line.value == Some(""));
     }
 
     #[test]
     fn parse_adr1_tag() {
         let data = "4 ADR1 RSAC Software\n";
-        let (str, (level, xref, tag, value)) = parse::line(&data).unwrap();
+        let (str, line) = parse::line(&data).unwrap();
 
         assert!(str.len() == 0);
-        assert!(level == 4);
-        assert!(xref == Some(""));
-        assert!(tag == Some("ADR1"));
-        assert!(value == Some("RSAC Software"));
+        assert!(line.level == 4);
+        assert!(line.xref == Some(""));
+        assert!(line.tag == "ADR1");
+        assert!(line.value == Some("RSAC Software"));
     }
 
     #[test]
@@ -268,5 +268,4 @@ mod tests {
 
         assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043 USA".to_string()));
     }
-
 }

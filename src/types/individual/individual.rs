@@ -37,8 +37,11 @@ pub struct Individual {
     pub residences: Vec<Residence>,
 }
 
+// impl<'a> Individual<'a> {
 impl Individual {
-    pub fn parse(mut record: String) -> Individual {
+        pub fn parse(mut record: String) -> Individual {
+
+    // pub fn parse(mut record: String) -> Individual {
         let mut individual = Individual {
             xref: None,
             names: vec![],
@@ -49,28 +52,26 @@ impl Individual {
         };
 
         while !record.is_empty() {
-            let (buffer, (level, xref, tag, value)) = parse::line(&record).unwrap();
+            let (buffer, line) = parse::line(&record).unwrap();
 
             // If we're at the top of the record, get the xref
             // && level == 0
-            match level {
+            match line.level {
                 0 => {
-                    if let Some(xref) = xref {
+                    if let Some(xref) = line.xref {
                         individual.xref = Some(xref.to_string());
-        
                     }
                 }
                 _ => {
-                    match tag.unwrap() {
+                    match line.tag {
                         "NAME" => {
                             let (_, pn) = PersonalName::parse(&record).unwrap();
-    
-                            individual
-                                .names
-                                .push(pn);
+
+                            individual.names.push(pn);
                         }
                         "SEX" => {
-                            individual.gender = super::Gender::from_str(value.unwrap_or("U")).unwrap();
+                            individual.gender =
+                                super::Gender::from_str(line.value.unwrap_or("U")).unwrap();
                         }
                         "BIRT" => {}
                         "DEAT" => {}
@@ -134,10 +135,11 @@ impl Individual {
                         _ => {
                             // println!("Unknown Individual tag: {tag:?}")
                         }
-                    }    
+                    }
                 }
             }
 
+            // record = buffer.to_string();
             record = buffer.to_string();
         }
 
@@ -802,7 +804,10 @@ mod tests {
         assert_eq!(Some("I1".to_string()), indi.xref);
 
         // Check the name.name
-        assert_eq!(Some("Joseph Tag /Torture/"), indi.names[0].name.value.as_deref());
+        assert_eq!(
+            Some("Joseph Tag /Torture/"),
+            indi.names[0].name.value.as_deref()
+        );
         assert_eq!(Some("Joseph"), indi.names[0].name.given.as_deref());
         assert_eq!(Some("Torture"), indi.names[0].name.surname.as_deref());
         assert_eq!(Some("Joe"), indi.names[0].name.nickname.as_deref());
@@ -812,25 +817,42 @@ mod tests {
         assert_eq!(Some("birth"), indi.names[0].name.r#type.as_deref());
 
         // Check the indi.names[0].romanized
-        assert_eq!(Some("Joseph Tag /Torture/"), indi.names[0].romanized.value.as_deref());
+        assert_eq!(
+            Some("Joseph Tag /Torture/"),
+            indi.names[0].romanized.value.as_deref()
+        );
         assert_eq!(Some("Joseph"), indi.names[0].romanized.given.as_deref());
         assert_eq!(Some("Torture"), indi.names[0].romanized.surname.as_deref());
         assert_eq!(Some("Joe"), indi.names[0].romanized.nickname.as_deref());
         assert_eq!(Some("Prof."), indi.names[0].romanized.prefix.as_deref());
         assert_eq!(Some("Le"), indi.names[0].romanized.suffix.as_deref());
-        assert_eq!(Some("Jr."), indi.names[0].romanized.surname_prefix.as_deref());
-        assert_eq!(Some("user defined"), indi.names[0].romanized.r#type.as_deref());
+        assert_eq!(
+            Some("Jr."),
+            indi.names[0].romanized.surname_prefix.as_deref()
+        );
+        assert_eq!(
+            Some("user defined"),
+            indi.names[0].romanized.r#type.as_deref()
+        );
 
         // Check the indi.names[0].phonetic
-        assert_eq!(Some("Joseph Tag /Torture/"), indi.names[0].phonetic.value.as_deref());
+        assert_eq!(
+            Some("Joseph Tag /Torture/"),
+            indi.names[0].phonetic.value.as_deref()
+        );
         assert_eq!(Some("Joseph"), indi.names[0].phonetic.given.as_deref());
         assert_eq!(Some("Torture"), indi.names[0].phonetic.surname.as_deref());
         assert_eq!(Some("Joe"), indi.names[0].phonetic.nickname.as_deref());
         assert_eq!(Some("Prof."), indi.names[0].phonetic.prefix.as_deref());
         assert_eq!(Some("Le"), indi.names[0].phonetic.suffix.as_deref());
-        assert_eq!(Some("Jr."), indi.names[0].phonetic.surname_prefix.as_deref());
-        assert_eq!(Some("user defined"), indi.names[0].phonetic.r#type.as_deref());
-
+        assert_eq!(
+            Some("Jr."),
+            indi.names[0].phonetic.surname_prefix.as_deref()
+        );
+        assert_eq!(
+            Some("user defined"),
+            indi.names[0].phonetic.r#type.as_deref()
+        );
     }
 
     // #[test]

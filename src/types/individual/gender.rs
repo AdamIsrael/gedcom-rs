@@ -15,11 +15,11 @@ impl FromStr for Gender {
 
     fn from_str(input: &str) -> Result<Gender, Self::Err> {
         match input {
-            "M"  => Ok(Gender::Male),
-            "F"  => Ok(Gender::Female),
-            "N"  => Ok(Gender::Nonbinary),
+            "M" => Ok(Gender::Male),
+            "F" => Ok(Gender::Female),
+            "N" => Ok(Gender::Nonbinary),
             "U" => Ok(Gender::Unknown),
-            _      => Err(()),
+            _ => Err(()),
         }
     }
 }

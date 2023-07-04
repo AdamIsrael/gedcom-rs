@@ -1,5 +1,6 @@
 use crate::parse;
-use crate::types::Address;
+use crate::types::address;
+use super::Line;
 
 // +1 SOUR <APPROVED_SYSTEM_ID>
 //     +2 VERS <VERSION_NUMBER>
@@ -14,31 +15,94 @@ use crate::types::Address;
 #[derive(Debug, Default)]
 pub struct Corporation {
     pub name: Option<String>,
-    pub address: Option<Address>,
+    pub address: Option<address::Address>,
 }
 
-pub fn parse_corporation(mut buffer: &str) -> (&str, Option<Corporation>) {
-    let mut corp: Corporation = Corporation {
-        name: None,
-        address: None,
-    };
-
-    let (_, lvl) = parse::peek_level(buffer).unwrap();
-    let (_, tag) = parse::peek_tag(buffer).unwrap();
-
-    // Verify we have a CORP record
-    if lvl == 2 && tag == "CORP" {
-        let line: (u8, Option<&str>, Option<&str>, Option<&str>);
-
-        (buffer, line) = parse::line(buffer).unwrap();
-        corp.name = Some(line.3.unwrap_or("").to_string());
-
-        // Check if the next line contains an address struct
-        let (_, lvl) = parse::peek_level(buffer).unwrap();
-        if lvl == 3 {
-            //corp.address = addrss::parse_address(buffer).unwrap();
+impl Corporation {
+    pub fn parse(mut buffer: &str) -> (&str, Option<Corporation>) {
+        let mut corp: Corporation = Corporation {
+            name: None,
+            address: None,
+        };
+    
+        let mut line: Line;
+    
+        // Verify we have a CORP record
+        (_, line) = parse::peek_line(buffer).unwrap();
+        if line.level == 2 && line.tag == "CORP" {
+    
+            (buffer, line) = parse::line(buffer).unwrap();
+            corp.name = Some(line.value.unwrap_or("").to_string());
+    
+            // Check if the next line contains an address struct
+            (_, line) = parse::peek_line(buffer).unwrap();
+            if line.level == 3 && line.tag == "ADDR" {
+                (buffer, corp.address) = address::parse_address(buffer);
+            }
         }
+    
+        (buffer, Some(corp))
+    }
+    
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::corporation::Corporation;
+
+
+    #[test]
+    fn parse_corp() {
+        let data = vec![
+            "2 CORP RSAC Software",
+            "3 ADDR",
+            "4 ADR1 RSAC Software",
+            "4 ADR2 7108 South Pine Cone Street",
+            "4 ADR3 Ste 1",
+            "4 CITY Salt Lake City",
+            "4 STAE UT",
+            "4 POST 84121",
+            "4 CTRY USA",
+            "3 PHON +1-801-942-7768",
+            "3 PHON +1-801-555-1212",
+            "3 PHON +1-801-942-1148",
+            "3 EMAIL a@@example.com",
+            "3 EMAIL b@@example.com",
+            "3 EMAIL c@@example.com",
+            "3 FAX +1-801-942-7768",
+            "3 FAX +1-801-555-1212",
+            "3 FAX +1-801-942-1148",
+            "3 WWW https://www.example.com",
+            "3 WWW https://www.example.org",
+            "3 WWW https://www.example.net",
+        ];
+
+        let (_data, _corp) = Corporation::parse(data.join("\n").as_str());
+        let corp = _corp.unwrap();
+
+        assert!(Some("RSAC Software".to_string()) == corp.name);
+        
+        let addr = corp.address.unwrap();
+        
+        assert!(Some("RSAC Software".to_string()) == addr.addr1);
+        assert!(Some("7108 South Pine Cone Street".to_string()) == addr.addr2);
+        assert!(Some("Ste 1".to_string()) == addr.addr3);
+        assert!(Some("Salt Lake City".to_string()) == addr.city);
+        assert!(Some("UT".to_string()) == addr.state);
+        assert!(Some("84121".to_string()) == addr.postal_code);
+        assert!(Some("USA".to_string()) == addr.country);
+        assert!(addr.phone.contains(&"+1-801-942-7768".to_string()));
+        assert!(addr.phone.contains(&"+1-801-555-1212".to_string()));
+        assert!(addr.phone.contains(&"+1-801-942-1148".to_string()));
+        assert!(addr.email.contains(&"a@@example.com".to_string()));
+        assert!(addr.email.contains(&"b@@example.com".to_string()));
+        assert!(addr.email.contains(&"c@@example.com".to_string()));
+        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
+        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
+        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
+        assert!(addr.www.contains(&"https://www.example.com".to_string()));
+        assert!(addr.www.contains(&"https://www.example.org".to_string()));
+        assert!(addr.www.contains(&"https://www.example.net".to_string()));
     }
 
-    (buffer, Some(corp))
 }

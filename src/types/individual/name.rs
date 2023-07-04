@@ -1,4 +1,5 @@
 use crate::parse;
+use crate::types::Line;
 
 use nom::IResult;
 
@@ -75,41 +76,42 @@ impl Name {
 
         let mut buffer: &str = record;
 
-        let mut _level: u8;
-        let mut _xref: Option<&str>;
-        let mut tag: Option<&str>;
-        let mut value: Option<&str>;
+        // let mut _level: u8;
+        // let mut _xref: Option<&str>;
+        // let mut tag: Option<&str>;
+        // let mut value: Option<&str>;
+        let mut line: Line;
 
         while !buffer.is_empty() {
-            (buffer, (_level, _xref, tag, value)) = parse::line(buffer).unwrap();
+            (buffer, line) = parse::line(buffer).unwrap();
             // println!("Name::level = {level}, tag = {tag:?}, value={value:?}");
 
-            match tag.unwrap() {
+            match line.tag {
                 "NAME" => {
-                    name.value = Some(value.unwrap_or("").to_string());
+                    name.value = Some(line.value.unwrap_or("").to_string());
                 }
                 "TYPE" => {
                     // type
-                    name.r#type = Some(value.unwrap_or("").to_string());
+                    name.r#type = Some(line.value.unwrap_or("").to_string());
                 }
                 "GIVN" => {
-                    name.given = Some(value.unwrap_or("").to_string());
+                    name.given = Some(line.value.unwrap_or("").to_string());
                 }
                 "SURN" => {
-                    name.surname = Some(value.unwrap_or("").to_string());
+                    name.surname = Some(line.value.unwrap_or("").to_string());
                 }
                 "NICK" => {
-                    name.nickname = Some(value.unwrap_or("").to_string());
+                    name.nickname = Some(line.value.unwrap_or("").to_string());
                 }
                 "NOTE" => {}
                 "NPFX" => {
-                    name.prefix = Some(value.unwrap_or("").to_string());
+                    name.prefix = Some(line.value.unwrap_or("").to_string());
                 }
                 "SPFX" => {
-                    name.suffix = Some(value.unwrap_or("").to_string());
+                    name.suffix = Some(line.value.unwrap_or("").to_string());
                 }
                 "NSFX" => {
-                    name.surname_prefix = Some(value.unwrap_or("").to_string());
+                    name.surname_prefix = Some(line.value.unwrap_or("").to_string());
                 }
                 _ => {
                     // println!("Unhandled name tag: {:?}", tag.unwrap());
@@ -119,7 +121,7 @@ impl Name {
             // Check if the next line is a new NAME record
             // TODO: a peek_line method so we can check level and tag in one call
             let level = parse::peek_level(buffer).unwrap_or(("", 0_u8)).1;
-            tag = Some(parse::peek_tag(buffer).unwrap().1);
+            let tag = Some(parse::peek_tag(buffer).unwrap().1);
 
             if level == 1 && tag.unwrap() == "NAME" {
                 break;
@@ -247,32 +249,32 @@ impl PersonalName {
         // level = parse::peek_level(&buffer).unwrap().1;
         // tag = Some(parse::peek_tag(&buffer).unwrap().1);
         // println!("DEBUG: Level {level}, tag {tag:?}");
-        let (mut buffer, (mut level, mut _xref, mut tag, mut value)) = parse::line(buffer).unwrap();
+        let (mut buffer, mut line) = parse::line(buffer).unwrap();
 
-        while level > 1 && !buffer.is_empty() {
-            if level == 2 {
-                match tag.unwrap() {
+        while line.level > 1 && !buffer.is_empty() {
+            if line.level == 2 {
+                match line.tag {
                     "ROMN" => {
                         (buffer, pn.romanized) = Name::parse(buffer).unwrap();
-                        if let Some(value) = value {
+                        if let Some(value) = line.value {
                             pn.romanized.value = Some(value.to_string());
                         } else {
                             println!(
                                 "Romanized value is missing; Level={}, tag={}",
-                                level,
-                                tag.unwrap()
+                                line.level,
+                                line.tag
                             );
                         }
                     }
                     "FONE" => {
                         (buffer, pn.phonetic) = Name::parse(buffer).unwrap();
-                        if let Some(value) = value {
+                        if let Some(value) = line.value {
                             pn.phonetic.value = Some(value.to_string());
                         } else {
                             println!(
                                 "Phonetic value is missing; Level={}, tag={}",
-                                level,
-                                tag.unwrap()
+                                line.level,
+                                line.tag
                             );
                         }
                     }
@@ -281,10 +283,10 @@ impl PersonalName {
                     }
                 }
             }
-            if level == 1 {
+            if line.level == 1 {
                 break;
             } else {
-                (buffer, (level, _xref, tag, value)) = parse::line(buffer).unwrap();
+                (buffer, line) = parse::line(buffer).unwrap();
             }
         }
 

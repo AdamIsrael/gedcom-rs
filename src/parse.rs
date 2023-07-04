@@ -1,4 +1,5 @@
 // use crate::types::{Address, Line, Source};
+use super::types::Line;
 
 use std::str::FromStr;
 
@@ -54,20 +55,12 @@ use nom::sequence::{
 // use nom::ParseTo;
 
 // /// A line of GEDCOM data
-type Line<'a> = (
-    u8,              // level
-    Option<&'a str>, // xref
-    Option<&'a str>, // tag
-    Option<&'a str>, // value
-);
-
-// #[derive(Debug, Eq, PartialEq)]
-// pub struct Line<'a> {
-//     level: u8,
-//     xref: Option<&'a str>,
-//     tag: &'a str,
-//     value: Option<Value<'a>>,
-// }
+// type Line<'a> = (
+//     u8,              // level
+//     Option<&'a str>, // xref
+//     Option<&'a str>, // tag
+//     Option<&'a str>, // value
+// );
 
 /// Peek at the next character to see if it's a newline
 pub fn peek_eol(input: &str) -> IResult<&str, bool> {
@@ -88,7 +81,26 @@ pub fn peek_level(input: &str) -> IResult<&str, u8> {
 pub fn peek_tag(input: &str) -> IResult<&str, &str> {
     let (_, l) = line(input).unwrap();
 
-    Ok((input, l.2.unwrap_or("")))
+    Ok((input, l.tag))
+}
+
+// /// nop -- just testing
+// pub fn nop(input: &str) -> IResult<&str, Line> {
+//     let line = Line {
+//         level: 0,
+//         xref: Some("adsf"),
+//         tag: "HEAD",
+//         value: Some("a value"),
+//     };
+
+//     Ok(("", line))
+// }
+
+/// Peek at the next line.
+pub fn peek_line(input: &str) -> IResult<&str, Line> {
+    let (_, l) = line(input).unwrap();
+
+    Ok((input, l))
 }
 
 /// Parse a single line of GEDCOM data
@@ -128,7 +140,15 @@ pub fn line(input: &str) -> IResult<&str, Line> {
         tmp = eol(tmp).unwrap_or((tmp, "")).0;
     }
 
-    Ok((tmp, (_level, Some(_xref), Some(_tag), Some(_value))))
+    let line = Line {
+        level: _level,
+        xref: Some(_xref),
+        tag: _tag,
+        value: Some(_value),
+    };
+    Ok((tmp, line))
+
+    // Ok((tmp, (_level, Some(_xref), Some(_tag), Some(_value))))
 }
 
 // fn source(input: &str) -> IResult<&str, Source> {
@@ -172,8 +192,8 @@ pub fn zero_with_no_break_space(input: &str) -> IResult<&str, &str> {
 pub fn conc(input: &str) -> IResult<&str, &str> {
     let (buffer, line) = super::parse::line(input).unwrap();
 
-    if line.2 == Some("CONC") {
-        Ok((buffer, line.3.unwrap()))
+    if line.tag == "CONC" {
+        Ok((buffer, line.value.unwrap()))
     } else {
         Ok((buffer, ""))
     }
@@ -186,8 +206,8 @@ pub fn cont(input: &str) -> IResult<&str, &str> {
     // let buffer: &str;
     let (buffer, line) = super::parse::line(input).unwrap();
 
-    if line.2 == Some("CONT") {
-        Ok((buffer, line.3.unwrap()))
+    if line.tag == "CONT" {
+        Ok((buffer, line.value.unwrap()))
     } else {
         Ok((buffer, ""))
     }

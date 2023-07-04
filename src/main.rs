@@ -42,7 +42,7 @@ fn main() {
         individuals: vec![],
     };
 
-    if let Ok(lines) = read_lines(filename) {
+    if let Ok(lines) = read_lines(filename) { 
         // Consumes the iterator, returns an (Optional) String
 
         // Read through the lines and build a buffer of <records>, each starting
@@ -53,28 +53,29 @@ fn main() {
         // We read into the buffer until we hit a new record, and then parse that
         // record into a struct.
         let mut record: String = String::new();
+
         for mut buffer in lines.flatten() {
             // Strip off any weird leading spaces
             if buffer.strip_prefix('\u{FEFF}').is_some() {
                 buffer.remove(0);
             }
+
             if let Some(ch) = buffer.chars().next() {
                 if ch == '0' && !record.is_empty() {
                     // We found a new record, beginning with buffer, so
                     // process the data in `record` before continuing
-                    let (buffer, (_level, _xref, tag, _value)) = parse::line(&record).unwrap();
 
-                    match tag.unwrap() {
+                    // Peek at the next line to see where we're at.
+                    let (buff, line) = parse::peek_line(&record).unwrap();
+
+                    match line.tag {
                         "HEAD" => {
-                            // println!("Parsing a HEAD record!");
-                            gedcom.header = Header::parse(buffer.to_string());
-                            // println!("read {} line parsing Header", lc);
-                            // lc = 0;
+                            gedcom.header = Header::parse(buff.to_string());
                         }
                         "INDI" => {
-                            let indi = Individual::parse(record.to_string());
+                            let indi = Individual::parse(buff.to_string());
+                            // TODO: Remove the if. This is just to clean up the output for debugging.
                             if indi.xref.clone().unwrap() == "I1" {
-                                println!("Found a INDI: {:#?}", indi);
                                 gedcom.individuals.push(indi);
                             }
                         }
@@ -87,13 +88,12 @@ fn main() {
                     };
 
                     record.clear();
-                    // break;
                 }
             }
             record = record + &buffer.clone() + "\n";
         }
 
-        println!("{gedcom:?}");
+        println!("{:#?}", gedcom.header);
         // TODO: print a pretty summary of the gedcom. Use `tabled` crate?
 
         // TODO: should gedcom.header.submitter be a Vec? Can there be more than
@@ -107,8 +107,10 @@ fn main() {
     }
 }
 
+
 // The output is wrapped in a Result to allow matching on errors
 // Returns an Iterator to the Reader of the lines of the file.
+// https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
     P: AsRef<Path>,
@@ -127,7 +129,7 @@ fn usage(msg: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*;
 
     #[test]
     /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note

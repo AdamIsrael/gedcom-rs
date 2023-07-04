@@ -3,6 +3,7 @@
 // top-level record types
 mod address;
 mod corporation;
+mod datetime;
 mod header;
 mod individual;
 mod line;
@@ -11,6 +12,7 @@ mod source;
 // use std::collections::binary_heap::Iter;
 
 pub use address::*;
+pub use datetime::DateTime;
 pub use header::*;
 pub use individual::*;
 pub use line::Line;

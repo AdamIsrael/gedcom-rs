@@ -2,7 +2,6 @@
 // and child modules (individual.Individual) have the same name.
 #![allow(clippy::module_inception)]
 
-
 mod birth;
 mod gender;
 mod individual;
