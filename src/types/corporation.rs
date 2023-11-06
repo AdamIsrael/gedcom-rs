@@ -1,6 +1,6 @@
+use super::Line;
 use crate::parse;
 use crate::types::address;
-use super::Line;
 
 // +1 SOUR <APPROVED_SYSTEM_ID>
 //     +2 VERS <VERSION_NUMBER>
@@ -24,32 +24,29 @@ impl Corporation {
             name: None,
             address: None,
         };
-    
+
         let mut line: Line;
-    
+
         // Verify we have a CORP record
         (_, line) = parse::peek_line(buffer).unwrap();
         if line.level == 2 && line.tag == "CORP" {
-    
             (buffer, line) = parse::line(buffer).unwrap();
             corp.name = Some(line.value.unwrap_or("").to_string());
-    
+
             // Check if the next line contains an address struct
             (_, line) = parse::peek_line(buffer).unwrap();
             if line.level == 3 && line.tag == "ADDR" {
                 (buffer, corp.address) = address::parse_address(buffer);
             }
         }
-    
+
         (buffer, Some(corp))
     }
-    
 }
 
 #[cfg(test)]
 mod tests {
     use crate::types::corporation::Corporation;
-
 
     #[test]
     fn parse_corp() {
@@ -81,9 +78,9 @@ mod tests {
         let corp = _corp.unwrap();
 
         assert!(Some("RSAC Software".to_string()) == corp.name);
-        
+
         let addr = corp.address.unwrap();
-        
+
         assert!(Some("RSAC Software".to_string()) == addr.addr1);
         assert!(Some("7108 South Pine Cone Street".to_string()) == addr.addr2);
         assert!(Some("Ste 1".to_string()) == addr.addr3);
@@ -104,5 +101,4 @@ mod tests {
         assert!(addr.www.contains(&"https://www.example.org".to_string()));
         assert!(addr.www.contains(&"https://www.example.net".to_string()));
     }
-
 }

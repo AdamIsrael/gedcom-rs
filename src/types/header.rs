@@ -1,8 +1,10 @@
 use crate::parse;
+// use crate::types::corporation;
+use crate::types::Copyright;
 use crate::types::Source;
-use crate::types::corporation;
 
 use super::DateTime;
+use super::Gedc;
 use super::Line;
 
 /*
@@ -31,54 +33,18 @@ HEADER:= n HEAD
     +2 [CONC|CONT] <GEDCOM_CONTENT_DESCRIPTION>
 */
 
-// #[derive(Debug, Default)]
-// #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-// /// Header containing GEDCOM metadata
-// pub struct Header<'a> {
-//     pub encoding: Option<& 'a str>,
-//     pub copyright: Option<& 'a str>,
-//     pub corporation: Option<& 'a str>,
-//     pub date: Option<& 'a str>,
-//     pub destination: Option<& 'a str>,
-//     pub gedcom_version: Option<& 'a str>,
-//     pub language: Option<& 'a str>,
-//     pub filename: Option<& 'a str>,
-//     pub note: Option<& 'a str>,
-//     pub source: Option<Source>,
-//     pub submitter: Option<& 'a str>,
-//     pub submission: Option<& 'a str>,
-// }
-
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-// pub struct Header<'a> {
-//     pub encoding: Option<&'a str>,
-//     pub copyright: Option<&'a str>,
-//     pub corporation: Option<&'a str>,
-//     pub date: Option<&'a str>,
-//     pub destination: Option<&'a str>,
-//     pub gedcom_version: Option<&'a str>,
-//     pub language: Option<&'a str>,
-//     pub filename: Option<&'a str>,
-//     pub note: Option<&'a str>,
-//     pub source: Option<Source>,
-//     // pub sources: Vec<Source>,
-//     pub submitter: Option<&'a str>,
-//     pub submission: Option<&'a str>,
-// }
-
 pub struct Header {
     pub encoding: Option<String>,
-    pub copyright: Option<String>,
-    pub corporation: Option<corporation::Corporation>,
+    pub copyright: Option<Copyright>,
     pub date: Option<DateTime>,
     pub destination: Option<String>,
-    pub gedcom_version: Option<String>,
+    pub gedcom_version: Option<Gedc>,
     pub language: Option<String>,
     pub filename: Option<String>,
     pub note: Option<String>,
     pub source: Option<Source>,
-    // pub sources: Vec<Source>,
     pub submitter: Option<String>,
     pub submission: Option<String>,
 }
@@ -88,7 +54,7 @@ impl Header {
         let mut header = Header {
             encoding: None,
             copyright: None,
-            corporation: None,
+            // corporation: None,
             date: None,
             destination: None,
             gedcom_version: None,
@@ -102,49 +68,71 @@ impl Header {
 
         // do parser stuff here
         while !record.is_empty() {
-            let mut buffer: &str = "";
+            let buffer: &str;
             let line: Line;
 
-            // This should probably be a peek
-            // (buffer, line) = parse::line(&record).unwrap();
-
             (_, line) = parse::peek_line(&record).unwrap();
+            // println!("Next line: {:?}", line);
 
             // Inspect the top-level tags only.
-            if line.level == 1 {
+            if line.level == 0 && line.tag == "HEAD" {
+                // Consume the line
+                // println!("Consuming HEAD");
+                (buffer, _) = parse::line(&record).unwrap();
+            } else if line.level == 1 {
+                // println!("Found an inner tag: {}", line.tag);
                 match line.tag {
                     "CHAR" => {
+                        // println!("parsing CHAR");
                         header.encoding = Some(line.value.unwrap_or("").to_string());
+                        (buffer, _) = parse::line(&record).unwrap();
                     }
                     "COPR" => {
-                        // Need an actual parse for copyright, to account for CONT/CONC
-                        header.copyright = Some(line.value.unwrap_or("").to_string());
+                        (buffer, header.copyright) = Copyright::parse(&record);
                     }
-                    "CORP" => {
-                        (buffer, header.corporation) = corporation::Corporation::parse(&record);
-                    }
-                    "DATA" => {}
+                    // "CORP" => {
+                    //     println!("parsing CORP");
+                    //     (buffer, header.corporation) = corporation::Corporation::parse(&record);
+                    // }
                     "DATE" => {
                         // We're doing lazy parsing of the date, because parsing
                         // date strings is hard. For now.
                         (buffer, header.date) = DateTime::parse(&record);
-    
+                    }
+                    "DEST" => {
+                        header.destination = Some(line.value.unwrap_or("").to_string());
+                        (buffer, _) = parse::line(&record).unwrap();
+                    }
+                    "FILE" => {
+                        header.filename = Some(line.value.unwrap_or("").to_string());
+                        (buffer, _) = parse::line(&record).unwrap();
+                    }
+                    "GEDC" => {
+                        (buffer, header.gedcom_version) = Gedc::parse(&record);
+                    }
+                    "LANG" => {
+                        header.language = Some(line.value.unwrap_or("").to_string());
+                        (buffer, _) = parse::line(&record).unwrap();
                     }
                     "SOUR" => {
                         (buffer, header.source) = Source::parse(&record);
                     }
                     "SUBM" => {
-                        println!("TODO: Parse SUBM");
+                        (buffer, _) = parse::line(&record).unwrap();
                     }
                     _ => {
                         println!("Unhandled header tag: {}", line.tag);
+                        (buffer, _) = parse::line(&record).unwrap();
                     }
                 };
-    
+            } else {
+                (buffer, _) = parse::line(&record).unwrap();
+                // println!("Consuming line for {}", line.tag);
             }
 
             record = buffer.to_string();
         }
+        // println!("Record is empty");
         header
     }
 
@@ -217,7 +205,6 @@ impl Header {
 
     //     (buffer, Some(source))
     // }
-
 }
 
 // #[cfg(test)]

@@ -39,9 +39,8 @@ pub struct Individual {
 
 // impl<'a> Individual<'a> {
 impl Individual {
-        pub fn parse(mut record: String) -> Individual {
-
-    // pub fn parse(mut record: String) -> Individual {
+    pub fn parse(mut record: String) -> Individual {
+        // pub fn parse(mut record: String) -> Individual {
         let mut individual = Individual {
             xref: None,
             names: vec![],

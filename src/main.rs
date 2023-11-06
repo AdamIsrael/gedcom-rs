@@ -28,7 +28,6 @@ fn main() {
         header: Header {
             encoding: None,
             copyright: None,
-            corporation: None,
             date: None,
             destination: None,
             gedcom_version: None,
@@ -42,7 +41,7 @@ fn main() {
         individuals: vec![],
     };
 
-    if let Ok(lines) = read_lines(filename) { 
+    if let Ok(lines) = read_lines(filename) {
         // Consumes the iterator, returns an (Optional) String
 
         // Read through the lines and build a buffer of <records>, each starting
@@ -70,7 +69,10 @@ fn main() {
 
                     match line.tag {
                         "HEAD" => {
+                            println!("Parsing HEAD");
+                            // println!("{buff}");
                             gedcom.header = Header::parse(buff.to_string());
+                            println!("Done parsing HEAD");
                         }
                         "INDI" => {
                             let indi = Individual::parse(buff.to_string());
@@ -83,7 +85,10 @@ fn main() {
                         "REPO" => {}
                         "OBJE" => {}
                         "FAM" => {}
-                        "SUBM" => {}
+                        "SUBM" => {
+                            // The record of the submitter of the family tree
+                            // Not always present (it exists in complete.ged)
+                        }
                         _ => {}
                     };
 
@@ -106,7 +111,6 @@ fn main() {
         // TODO: multimedia
     }
 }
-
 
 // The output is wrapped in a Result to allow matching on errors
 // Returns an Iterator to the Reader of the lines of the file.

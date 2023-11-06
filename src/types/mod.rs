@@ -2,21 +2,28 @@
 
 // top-level record types
 mod address;
+mod copyright;
 mod corporation;
 mod datetime;
+mod gedc;
 mod header;
 mod individual;
 mod line;
 mod source;
+mod sourcedata;
 
 // use std::collections::binary_heap::Iter;
 
 pub use address::*;
+pub use copyright::Copyright;
 pub use datetime::DateTime;
+// pub use gedcom::Gedcom;
+pub use gedc::Gedc;
 pub use header::*;
 pub use individual::*;
 pub use line::Line;
 pub use source::Source;
+pub use sourcedata::SourceData;
 
 #[derive(Debug, Default)]
 pub struct Gedcom {

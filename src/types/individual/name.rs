@@ -121,13 +121,14 @@ impl Name {
             // Check if the next line is a new NAME record
             // TODO: a peek_line method so we can check level and tag in one call
             let level = parse::peek_level(buffer).unwrap_or(("", 0_u8)).1;
-            let tag = Some(parse::peek_tag(buffer).unwrap().1);
+            // let tag = Some(parse::peek_tag(buffer).unwrap().1);
+            let tag = parse::peek_tag(buffer).unwrap().1;
 
-            if level == 1 && tag.unwrap() == "NAME" {
+            if level == 1 && tag == "NAME" {
                 break;
             }
 
-            if level == 2 && (tag.unwrap() == "ROMN" || tag.unwrap() == "FONE") {
+            if level == 2 && (tag == "ROMN" || tag == "FONE") {
                 break;
             }
         }
@@ -261,8 +262,7 @@ impl PersonalName {
                         } else {
                             println!(
                                 "Romanized value is missing; Level={}, tag={}",
-                                line.level,
-                                line.tag
+                                line.level, line.tag
                             );
                         }
                     }
@@ -273,8 +273,7 @@ impl PersonalName {
                         } else {
                             println!(
                                 "Phonetic value is missing; Level={}, tag={}",
-                                line.level,
-                                line.tag
+                                line.level, line.tag
                             );
                         }
                     }

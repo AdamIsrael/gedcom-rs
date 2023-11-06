@@ -1,7 +1,7 @@
 use crate::parse;
 // use crate::types::corporation::Corporation;
 
-use super::{corporation::Corporation, Line, DateTime};
+use super::{corporation::Corporation, Line, SourceData};
 
 // +1 SOUR <APPROVED_SYSTEM_ID>
 //     +2 VERS <VERSION_NUMBER>
@@ -38,12 +38,6 @@ pub struct Source {
     pub version: Option<String>,
 }
 
-#[derive(Debug, Default)]
-pub struct SourceData {
-    pub name: Option<String>,
-    pub date: Option<DateTime>,
-}
-
 impl Source {
     /// Parse a SOUR record
     pub fn parse(mut buffer: &str) -> (&str, Option<Source>) {
@@ -70,7 +64,9 @@ impl Source {
             while lvl >= line.level {
                 let inner_line: Line;
 
-                (buffer, inner_line) = parse::peek_line(buffer).unwrap();
+                // We don't want to consume the line yet because we may need
+                // the original for a parser.
+                (_, inner_line) = parse::peek_line(buffer).unwrap();
 
                 // println!("Evaluating tag: {:?}", inner_line.tag);
                 match inner_line.tag {
@@ -85,13 +81,7 @@ impl Source {
                         (buffer, _) = parse::line(buffer).unwrap();
                     }
                     "CORP" => {
-                        // println!("Line: {:#?}", line);
-                        // (buffer, _) = parse::line(buffer).unwrap();
-
-                        // println!("Buffer before Corporation: {:?}", buffer);
                         (buffer, source.corporation) = Corporation::parse(buffer);
-
-                        // println!("Buffer after Corporation: {:?}", buffer);
                     }
                     "NAME" => {
                         source.name = Some(inner_line.value.unwrap_or("").to_string());
@@ -101,17 +91,30 @@ impl Source {
                         source.version = Some(inner_line.value.unwrap_or("").to_string());
                         (buffer, _) = parse::line(buffer).unwrap();
                     }
+                    "DATA" => {
+                        (buffer, source.data) = SourceData::parse(buffer);
+                    }
                     _ => {
-                        println!("Unknown tag: {:?}", inner_line.tag);
+                        println!("Unknown line: {:?}", inner_line);
+
+                        // consume the line so we can parse the next
                         (buffer, _) = parse::line(buffer).unwrap();
                     }
                 }
 
                 // Peek at the next level
-                if buffer.is_empty() {
+                if !buffer.is_empty() {
+                    (_, lvl) = parse::peek_level(buffer).unwrap();
+                    if lvl <= 1 {
+                        break;
+                    }
+                } else {
                     break;
                 }
-                (_, lvl) = parse::peek_level(buffer).unwrap();
+                // if buffer.is_empty() || lvl <= 1 {
+                //     println!("Aborting SOUR.");
+                //     break;
+                // }
             }
         }
 
@@ -121,7 +124,9 @@ impl Source {
 
 #[cfg(test)]
 mod tests {
-    use super::Source;
+    use crate::types::{Copyright, DateTime};
+
+    use super::{Source, SourceData};
 
     #[test]
     fn parse() {
@@ -161,11 +166,25 @@ mod tests {
         assert_eq!(sour.source, "GEDitCOM".to_string());
         assert_eq!(sour.name, Some("GEDitCOM".to_string()));
         assert_eq!(sour.version, Some("2.9.4".to_string()));
-
+        assert_eq!(
+            sour.data,
+            Some(SourceData {
+                name: Some("Name of source data".to_string()),
+                date: Some(DateTime {
+                    date: Some("1 JAN 1998".to_string()),
+                    time: None
+                }),
+                copyright: Some(Copyright {
+                    copyright: Some("Copyright of source data".to_string()),
+                    note: None
+                })
+            })
+        );
         let corp = sour.corporation.unwrap();
-        let corp_address: crate::types::Address = corp.address.unwrap();
 
         assert_eq!(corp.name, Some("RSAC Software".to_string()));
+
+        let corp_address: crate::types::Address = corp.address.unwrap();
         assert_eq!(corp_address.addr1, Some("RSAC Software".to_string()));
         assert_eq!(
             corp_address.addr2,

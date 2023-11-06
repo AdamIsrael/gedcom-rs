@@ -1,5 +1,5 @@
-use crate::parse;
 use super::Line;
+use crate::parse;
 
 #[derive(Debug, Default)]
 pub struct Address {
@@ -22,9 +22,9 @@ pub struct Address {
 ///
 /// ```
 /// /*
-/// 3 ADDR 1300 West Traverse Parkway   
-/// 4 CONT Lehi, UT  84043   
-/// 4 CONT USA   
+/// 3 ADDR 1300 West Traverse Parkway
+/// 4 CONT Lehi, UT  84043
+/// 4 CONT USA
 /// */
 /// ```
 ///
@@ -32,9 +32,9 @@ pub struct Address {
 ///
 /// ```
 /// /*
-/// 3 ADDR 1300 West Traverse Parkway   
-/// 4 CONT Lehi, UT  84043   
-/// 4 CONC USA   
+/// 3 ADDR 1300 West Traverse Parkway
+/// 4 CONT Lehi, UT  84043
+/// 4 CONC USA
 /// */
 /// ```
 ///
@@ -100,7 +100,6 @@ pub fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
                         let (asdf, cont) = parse::cont(buffer).unwrap();
 
                         addr += "\n";
-
                         addr += cont;
 
                         buffer = asdf;
@@ -151,9 +150,6 @@ pub fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
             }
             _ => {}
         }
-        // Update the buffer with the remainder of data
-        // TODO: Clean this up. It's hella fugly.
-        // buffer = str;
 
         // Grab the next level, if there is one, or short-circuit the loop
         (_, lvl) = parse::peek_level(buffer).unwrap_or(("", 0));

@@ -3,7 +3,7 @@ use crate::parse;
 
 // +1 DATE <TRANSMISSION_DATE>
 // +2 TIME <TIME_VALUE>
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DateTime {
     pub date: Option<String>,
     pub time: Option<String>,
