@@ -9,6 +9,7 @@ mod gedc;
 mod header;
 mod individual;
 mod line;
+mod note;
 mod source;
 mod sourcedata;
 
@@ -22,6 +23,7 @@ pub use gedc::Gedc;
 pub use header::*;
 pub use individual::*;
 pub use line::Line;
+pub use note::Note;
 pub use source::Source;
 pub use sourcedata::SourceData;
 
