@@ -23,6 +23,13 @@ fn main() {
         usage("");
     }
 
+    let gedcom = parse_gedcom(filename);
+
+    println!("{:#?}", gedcom.header);
+}
+
+/// Parse a GEDCOM file
+fn parse_gedcom(filename: &str) -> Gedcom {
     // Initialize an empty gedcom
     let mut gedcom = Gedcom {
         header: Header {
@@ -98,7 +105,7 @@ fn main() {
             record = record + &buffer.clone() + "\n";
         }
 
-        println!("{:#?}", gedcom.header);
+        // println!("{:#?}", gedcom.header);
         // TODO: print a pretty summary of the gedcom. Use `tabled` crate?
 
         // TODO: should gedcom.header.submitter be a Vec? Can there be more than
@@ -110,6 +117,7 @@ fn main() {
         // TODO: sources
         // TODO: multimedia
     }
+    gedcom
 }
 
 // The output is wrapped in a Result to allow matching on errors
@@ -133,52 +141,37 @@ fn usage(msg: &str) {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use super::*;
 
     #[test]
-    /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
-    /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
-    fn newline_in_note() {
-        let data = vec![
-            "0 @S313871942@ SOUR",
-            "1 TITL Germany, Lutheran Baptisms, Marriages, and Burials, 1567-1945",
-            "1 AUTH Ancestry.com",
-            "1 PUBL Ancestry.com Operations, Inc.",
-            "1 NOTE <p>Mikrofilm Sammlung.  Familysearch.org</p>",
-            "<p>Originale:  Lutherische Kirchenbücher, 1567-1945. Various sources.</p>",
-            "1 _APID 1,61250::0",
-        ];
+    fn test_complete_gedcom() {
+        let gedcom = parse_gedcom("./data/complete.ged");
 
-        // assert_eq!(expected, line("\r")("0 HEAD\r").unwrap());
-        // assert_eq!(expected, line("\n")("0 HEAD\n").unwrap());
-        // assert_eq!(expected, line("\r\n")("0 HEAD\r\n").unwrap());
+        // Test the header
+
+        // Test the copyright header
+        assert!(gedcom.header.copyright.is_some());
+        let copyright = gedcom.header.copyright.unwrap();
+        assert!(copyright.copyright.is_some());
+        // assert!(copyright.note.is_some());
     }
 
     // #[test]
-    // fn parse_addr() {
+    // /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
+    // /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
+    // fn newline_in_note() {
     //     let data = vec![
-    //         "3 ADDR",
-    //         "4 ADR1 RSAC Software",
-    //         "4 ADR2 7108 South Pine Cone Street",
-    //         "4 ADR3 Ste 1",
-    //         "4 CITY Salt Lake City",
-    //         "4 STAE UT",
-    //         "4 POST 84121",
-    //         "4 CTRY USA",
-    //         "3 PHON +1-801-942-7768",
-    //         "3 PHON +1-801-555-1212",
-    //         "3 PHON +1-801-942-1148",
-    //         "3 EMAIL a@@example.com",
-    //         "3 EMAIL b@@example.com",
-    //         "3 EMAIL c@@example.com",
-    //         "3 FAX +1-801-942-7768",
-    //         "3 FAX +1-801-555-1212",
-    //         "3 FAX +1-801-942-1148",
-    //         "3 WWW https://www.example.com",
-    //         "3 WWW https://www.example.org",
-    //         "3 WWW https://www.example.net",
+    //         "0 @S313871942@ SOUR",
+    //         "1 TITL Germany, Lutheran Baptisms, Marriages, and Burials, 1567-1945",
+    //         "1 AUTH Ancestry.com",
+    //         "1 PUBL Ancestry.com Operations, Inc.",
+    //         "1 NOTE <p>Mikrofilm Sammlung.  Familysearch.org</p>",
+    //         "<p>Originale:  Lutherische Kirchenbücher, 1567-1945. Various sources.</p>",
+    //         "1 _APID 1,61250::0",
     //     ];
-    //     addr = header::parse_address(data);
 
+    //     // assert_eq!(expected, line("\r")("0 HEAD\r").unwrap());
+    //     // assert_eq!(expected, line("\n")("0 HEAD\n").unwrap());
+    //     // assert_eq!(expected, line("\r\n")("0 HEAD\r\n").unwrap());
     // }
 }

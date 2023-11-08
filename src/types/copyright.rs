@@ -1,10 +1,13 @@
 use super::Line;
+use super::Note;
+
 use crate::parse;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Copyright {
     pub copyright: Option<String>,
-    pub note: Option<String>,
+    // pub note: Option<String>,
+    pub note: Option<Note>,
 }
 
 impl Copyright {
@@ -23,22 +26,9 @@ impl Copyright {
             (buffer, line) = parse::line(buffer).unwrap();
             copyright.copyright = Some(line.value.unwrap_or("").to_string());
         } else if line.tag == "NOTE" {
-            let mut note: String = String::from("");
-            (_, line) = parse::peek_line(buffer).unwrap();
-            while line.tag == "CONC" || line.tag == "CONT" {
-                // consume
-                (_, line) = parse::line(buffer).unwrap();
-
-                // allocate
-                note += line.value.unwrap_or("");
-                if line.tag == "CONT" {
-                    note += "\n";
-                }
-
-                // peek ahead
-                (_, line) = parse::peek_line(buffer).unwrap();
-            }
-            copyright.note = Some(note);
+            (buffer, copyright.note) = Note::parse(buffer);
+            println!("Remaining buffer: {:?}", buffer);
+            // copyright.note = Some(note);
         }
         // TODO: Check for NOTE, followed by n CONC/CONT lines
 
