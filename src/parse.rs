@@ -188,6 +188,33 @@ pub fn zero_with_no_break_space(input: &str) -> IResult<&str, &str> {
 //     Ok((input, ("", "")))
 // }
 
+/// Read the next tag's value and any continuations
+pub fn get_tag_value(input: &str) -> IResult<&str, Option<String>> {
+    let mut text: String = String::from("");
+    let mut line;
+    let mut buffer;
+
+    (buffer, line) = super::parse::line(input).unwrap();
+    text += line.value.unwrap_or("");
+
+    (_, line) = super::parse::peek_line(buffer).unwrap();
+    while line.tag == "CONC" || line.tag == "CONT" {
+        // consume
+        (buffer, line) = super::parse::line(buffer).unwrap();
+
+        // allocate
+        text += line.value.unwrap_or("");
+        if line.tag == "CONT" {
+            text += "\n";
+        }
+
+        // peek ahead
+        (_, line) = super::parse::peek_line(buffer).unwrap();
+    }
+
+    Ok((buffer, Some(text)))
+}
+
 /// Parse the buffer if the CONC tag is found and return the resulting string.
 pub fn conc(input: &str) -> IResult<&str, &str> {
     let (buffer, line) = super::parse::line(input).unwrap();

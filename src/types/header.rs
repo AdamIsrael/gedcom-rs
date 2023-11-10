@@ -1,6 +1,7 @@
 use crate::parse;
 // use crate::types::corporation;
-use crate::types::Copyright;
+// use crate::types::Copyright;
+// use crate::types::Note;
 use crate::types::Source;
 
 use super::DateTime;
@@ -37,12 +38,13 @@ HEADER:= n HEAD
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Header {
     pub encoding: Option<String>,
-    pub copyright: Option<Copyright>,
+    pub copyright: Option<String>,
     pub date: Option<DateTime>,
     pub destination: Option<String>,
     pub gedcom_version: Option<Gedc>,
     pub language: Option<String>,
     pub filename: Option<String>,
+    // pub note: Option<Note>,
     pub note: Option<String>,
     pub source: Option<Source>,
     pub submitter: Option<String>,
@@ -88,7 +90,11 @@ impl Header {
                         (buffer, _) = parse::line(&record).unwrap();
                     }
                     "COPR" => {
-                        (buffer, header.copyright) = Copyright::parse(&record);
+                        (buffer, header.copyright) = parse::get_tag_value(&record).unwrap();
+
+                        // header.copyright = Some(line.value.unwrap_or("").to_string());
+                        // (buffer, _) = parse::line(&record).unwrap();
+                        // (buffer, header.copyright) = Copyright::parse(&record);
                     }
                     // "CORP" => {
                     //     println!("parsing CORP");
@@ -113,6 +119,14 @@ impl Header {
                     "LANG" => {
                         header.language = Some(line.value.unwrap_or("").to_string());
                         (buffer, _) = parse::line(&record).unwrap();
+                    }
+                    "NOTE" => {
+                        // This is just parsing the value of a line, and any
+                        // CONC/CONT that follows. Rewrite
+                        (buffer, header.note) = parse::get_tag_value(&record).unwrap();
+                        // let note: Option<Note>;
+                        // (buffer, note) = Note::parse(&record);
+                        // header.note = note;
                     }
                     "SOUR" => {
                         (buffer, header.source) = Source::parse(&record);

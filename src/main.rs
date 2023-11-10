@@ -76,10 +76,7 @@ fn parse_gedcom(filename: &str) -> Gedcom {
 
                     match line.tag {
                         "HEAD" => {
-                            println!("Parsing HEAD");
-                            // println!("{buff}");
                             gedcom.header = Header::parse(buff.to_string());
-                            println!("Done parsing HEAD");
                         }
                         "INDI" => {
                             let indi = Individual::parse(buff.to_string());
@@ -152,7 +149,11 @@ mod tests {
         // Test the copyright header
         assert!(gedcom.header.copyright.is_some());
         let copyright = gedcom.header.copyright.unwrap();
-        assert!(copyright.copyright.is_some());
+        assert!(
+            copyright == "© 1997 by H. Eichmann, parts © 1999-2000 by J. A. Nairn.".to_string()
+        );
+        // assert!(copyright.copyright.is_some());
+        // println!("note: {:?}", copyright.note);
         // assert!(copyright.note.is_some());
     }
 

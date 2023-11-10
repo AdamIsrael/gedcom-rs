@@ -1,4 +1,4 @@
-use super::{Copyright, DateTime, Line};
+use super::{DateTime, Line};
 use crate::parse;
 
 //     +2 DATA <NAME_OF_SOURCE_DATA>
@@ -9,7 +9,7 @@ use crate::parse;
 pub struct SourceData {
     pub name: Option<String>,
     pub date: Option<DateTime>,
-    pub copyright: Option<Copyright>,
+    pub copyright: Option<String>,
 }
 
 impl SourceData {
@@ -47,7 +47,8 @@ impl SourceData {
                     "COPR" => {
                         // Consume the line and get the value
                         // (buffer, line) = parse::line(buffer).unwrap();
-                        (buffer, data.copyright) = Copyright::parse(buffer);
+                        // (buffer, data.copyright) = Copyright::parse(buffer);
+                        (buffer, data.copyright) = parse::get_tag_value(buffer).unwrap();
                     }
                     _ => {
                         panic!("Found unexpected tag while parsing Source Data: {:?}", line);
@@ -63,7 +64,7 @@ impl SourceData {
 #[cfg(test)]
 mod tests {
     use super::SourceData;
-    use crate::types::{Copyright, DateTime};
+    use crate::types::DateTime;
 
     #[test]
     fn parse() {
@@ -84,10 +85,7 @@ mod tests {
                     date: Some("1 JAN 1998".to_string()),
                     time: None
                 }),
-                copyright: Some(Copyright {
-                    copyright: Some("Copyright of source data".to_string()),
-                    note: None,
-                })
+                copyright: Some("Copyright of source data".to_string()),
             })
         );
     }

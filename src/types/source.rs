@@ -124,7 +124,7 @@ impl Source {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{Copyright, DateTime};
+    use crate::types::DateTime;
 
     use super::{Source, SourceData};
 
@@ -174,10 +174,7 @@ mod tests {
                     date: Some("1 JAN 1998".to_string()),
                     time: None
                 }),
-                copyright: Some(Copyright {
-                    copyright: Some("Copyright of source data".to_string()),
-                    note: None
-                })
+                copyright: Some("Copyright of source data".to_string()),
             })
         );
         let corp = sour.corporation.unwrap();
