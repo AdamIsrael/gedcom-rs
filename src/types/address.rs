@@ -1,7 +1,7 @@
 use super::Line;
 use crate::parse;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Address {
     pub addr1: Option<String>,
     pub addr2: Option<String>,

@@ -61,7 +61,7 @@ fn parse_gedcom(filename: &str) -> Gedcom {
         let mut record: String = String::new();
 
         for mut buffer in lines.flatten() {
-            // Strip off any weird leading spaces
+            // Strip off any leading Zero Width No-Break Space
             if buffer.strip_prefix('\u{FEFF}').is_some() {
                 buffer.remove(0);
             }
@@ -152,9 +152,12 @@ mod tests {
         assert!(
             copyright == "© 1997 by H. Eichmann, parts © 1999-2000 by J. A. Nairn.".to_string()
         );
-        // assert!(copyright.copyright.is_some());
-        // println!("note: {:?}", copyright.note);
-        // assert!(copyright.note.is_some());
+
+        // Test the note field
+        assert!(gedcom.header.note.is_some());
+        let note = gedcom.header.note.unwrap();
+        assert!(note.starts_with("This file demonstrates all tags that are allowed in GEDCOM 5.5."));
+        assert!(note.ends_with("GEDCOM 5.5 specs on the Internet at <http://homepages.rootsweb.com/~pmcbride/gedcom/55gctoc.htm>."));
     }
 
     // #[test]

@@ -12,7 +12,7 @@ use crate::types::address;
 //         +3 COPR <COPYRIGHT_SOURCE_DATA>
 //         +4 [CONT|CONC]<COPYRIGHT_SOURCE_DATA>
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Corporation {
     pub name: Option<String>,
     pub address: Option<address::Address>,

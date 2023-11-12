@@ -44,7 +44,6 @@ pub struct Header {
     pub gedcom_version: Option<Gedc>,
     pub language: Option<String>,
     pub filename: Option<String>,
-    // pub note: Option<Note>,
     pub note: Option<String>,
     pub source: Option<Source>,
     pub submitter: Option<String>,
@@ -85,7 +84,6 @@ impl Header {
                 // println!("Found an inner tag: {}", line.tag);
                 match line.tag {
                     "CHAR" => {
-                        // println!("parsing CHAR");
                         header.encoding = Some(line.value.unwrap_or("").to_string());
                         (buffer, _) = parse::line(&record).unwrap();
                     }
@@ -146,110 +144,109 @@ impl Header {
 
             record = buffer.to_string();
         }
-        // println!("Record is empty");
         header
     }
-
-    // fn parse_source(mut buffer: &str) -> (&str, Option<Source>) {
-    //     let mut source = Source {
-    //         corporation: None,
-    //         name: None,
-    //         source: "".to_string(),
-    //         version: None,
-    //     };
-    //     // let mut line: parse::Line;
-
-    //     let (_, lvl) = parse::peek_level(buffer).unwrap();
-    //     let (_, tag) = parse::peek_tag(buffer).unwrap();
-
-    //     // Verify we have a SOUR record
-    //     if lvl == 1 && tag == "SOUR" {
-    //         let (str, line) = parse::line(buffer).unwrap();
-    //         buffer = str;
-    //         source.source = line.value.unwrap_or("").to_string();
-
-    //         let (_, mut lvl) = parse::peek_level(buffer).unwrap();
-
-    //         // println!("Level: {lvl}");
-    //         while lvl >= 2 {
-    //             let (mut str, line) = parse::line(buffer).unwrap();
-    //             // let (buffer, (level, xref, tag, value)) = parse::line(&record).unwrap();
-
-    //             // println!("Value: level: {:?}, tag {:?} = '{:?}'", tpl.1, tpl.3, tpl.5);
-    //             // println!("tpl: {:?}", tpl);
-    //             match line.tag {
-    //                 // An ancestry-speecific tag
-    //                 "_TREE" => {
-    //                     // The value of tree contains the tree name, which is useful,
-    //                     // but not a part of the GEDCOM spec.
-    //                     // The next level (3) may contain RIN, some sort of internal id
-    //                     // but is probably not useful for anything
-    //                 }
-    //                 // "ADDR" => {
-    //                 //     println!("[debug] parsing address: {buffer}");
-    //                 //     (str, source.address) = Self::parse_address(buffer);
-    //                 // }
-    //                 "CORP" => {
-    //                     (str, source.corporation) =
-    //                         crate::types::corporation::parse_corporation(buffer);
-    //                     // source.corporation = Some(tpl.3.unwrap_or("").to_string());
-
-    //                     // What remains in the buffer may include an address
-    //                 }
-    //                 "NAME" => {
-    //                     source.name = Some(line.value.unwrap_or("").to_string());
-    //                 }
-    //                 "VERS" => {
-    //                     source.version = Some(line.value.unwrap_or("").to_string());
-    //                 }
-    //                 _ => {}
-    //             }
-
-    //             // Update the buffer with the remainder of data
-    //             // TODO: Clean this up. It's hella fugly.
-    //             buffer = str;
-
-    //             // Peek at the next level
-    //             if buffer.is_empty() {
-    //                 break;
-    //             }
-    //             (_, lvl) = parse::peek_level(str).unwrap();
-    //         }
-    //     }
-
-    //     (buffer, Some(source))
-    // }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     // use super::*;
+#[cfg(test)]
+mod tests {
+    use crate::types::{corporation::Corporation, Address, Form};
 
-//     #[test]
-//     fn parse_source() {
-//         let data = vec![
-//             "1 SOUR Ancestry.com Family Trees",
-//             "2 NAME Ancestry.com Member Trees",
-//             "2 VERS 2021.07",
-//             "2 _TREE Ambrose Bierce Family Tree",
-//             "3 RIN 116823582",
-//             "3 _ENV prd",
-//             "2 CORP Ancestry.com",
-//             "3 PHON 801-705-7000",
-//             "3 WWW www.ancestry.com",
-//             "3 ADDR 1300 West Traverse Parkway",
-//             "4 CONT Lehi, UT  84043",
-//             "4 CONT USA",
-//         ];
+    use super::Header;
 
-//         let (_data, source) = super::Header::parse_source(&data.join("\n"));
-//         let sour = source.unwrap();
-//         // println!("source: {:#?}", sour);
+    #[test]
+    fn parse_header() {
+        let data = vec![
+            "0 HEAD",
+            "1 CHAR UTF-8",
+            "1 SOUR Ancestry.com Family Trees",
+            "2 VERS (2010.3)",
+            "2 NAME Ancestry.com Family Trees",
+            "2 CORP Ancestry.com",
+            "3 ADDR",
+            "4 ADR1 Example Software",
+            "4 ADR2 123 Main Street",
+            "4 ADR3 Ste 1",
+            "4 CITY Anytown",
+            "4 STAE IL",
+            "4 POST 55555",
+            "4 CTRY USA",
+            "3 PHON +1-800-555-1111",
+            "3 PHON +1-800-555-1212",
+            "3 PHON +1-800-555-1313",
+            "3 EMAIL a@example.com",
+            "3 EMAIL b@example.com",
+            "3 EMAIL c@example.com",
+            "3 FAX +1-800-555-1414",
+            "3 FAX +1-800-555-1515",
+            "3 FAX +1-800-555-1616",
+            "3 WWW https://www.example.com",
+            "3 WWW https://www.example.org",
+            "3 WWW https://www.example.net",
+            "1 GEDC",
+            "2 VERS 5.5",
+            "2 FORM LINEAGE-LINKED",
+            "3 VERS 5.5",
+            "1 COPR A copyright statement",
+        ];
 
-//         assert_eq!(sour.source, "Ancestry.com Family Trees".to_string());
-//         assert_eq!(sour.name, Some("Ancestry.com Member Trees".to_string()));
-//         assert_eq!(sour.version, Some("2021.07".to_string()));
-//         assert_eq!(sour.corporation.unwrap().name, Some("Ancestry.com".to_string()));
+        let header = Header::parse(data.join("\n"));
 
-//     }
-// }
+        assert!(header.encoding.is_some());
+        assert!(header.encoding == Some("UTF-8".to_string()));
+
+        assert!(header.copyright.is_some());
+        assert!(header.copyright == Some("A copyright statement".to_string()));
+
+        assert!(header.source.is_some());
+        assert!(header.source.as_ref().unwrap().source == "Ancestry.com Family Trees".to_string());
+        assert!(header.source.as_ref().unwrap().version == Some("(2010.3)".to_string()));
+        assert!(
+            header.source.as_ref().unwrap().name == Some("Ancestry.com Family Trees".to_string())
+        );
+        assert!(
+            header.source.as_ref().unwrap().corporation
+                == Some(Corporation {
+                    name: Some("Ancestry.com".to_string()),
+                    address: Some(Address {
+                        addr1: Some("Example Software".to_string()),
+                        addr2: Some("123 Main Street".to_string()),
+                        addr3: Some("Ste 1".to_string()),
+                        city: Some("Anytown".to_string()),
+                        state: Some("IL".to_string()),
+                        postal_code: Some("55555".to_string()),
+                        country: Some("USA".to_string()),
+                        phone: vec![
+                            "+1-800-555-1111".to_string(),
+                            "+1-800-555-1212".to_string(),
+                            "+1-800-555-1313".to_string(),
+                        ],
+                        email: vec![
+                            "a@example.com".to_string(),
+                            "b@example.com".to_string(),
+                            "c@example.com".to_string(),
+                        ],
+                        fax: vec![
+                            "+1-800-555-1414".to_string(),
+                            "+1-800-555-1515".to_string(),
+                            "+1-800-555-1616".to_string(),
+                        ],
+                        www: vec![
+                            "https://www.example.com".to_string(),
+                            "https://www.example.org".to_string(),
+                            "https://www.example.net".to_string(),
+                        ],
+                    })
+                })
+        );
+
+        assert!(
+            header.gedcom_version.as_ref().unwrap().form
+                == Some(Form {
+                    name: Some("LINEAGE-LINKED".to_string()),
+                    version: Some("5.5".to_string()),
+                })
+        );
+        assert!(header.gedcom_version.as_ref().unwrap().version == Some("5.5".to_string()));
+    }
+}
