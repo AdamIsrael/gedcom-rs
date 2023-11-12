@@ -51,7 +51,7 @@ impl SourceData {
                         (buffer, data.copyright) = parse::get_tag_value(buffer).unwrap();
                     }
                     _ => {
-                        panic!("Found unexpected tag while parsing Source Data: {:?}", line);
+                        break;
                     }
                 }
             }
