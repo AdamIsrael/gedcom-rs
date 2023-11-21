@@ -2,7 +2,7 @@ use crate::parse;
 // use crate::types::corporation;
 // use crate::types::Copyright;
 // use crate::types::Note;
-use crate::types::Source;
+use crate::types::{Source, Submitter};
 
 use super::DateTime;
 use super::Gedc;
@@ -46,7 +46,7 @@ pub struct Header {
     pub filename: Option<String>,
     pub note: Option<String>,
     pub source: Option<Source>,
-    pub submitter: Option<String>,
+    pub submitter: Option<Submitter>,
     pub submission: Option<String>,
 }
 
@@ -73,7 +73,6 @@ impl Header {
             let line: Line;
 
             (_, line) = parse::peek_line(&record).unwrap();
-            // println!("Next line: {:?}", line);
 
             // Inspect the top-level tags only.
             if line.level == 0 && line.tag == "HEAD" {
@@ -130,16 +129,15 @@ impl Header {
                         (buffer, header.source) = Source::parse(&record);
                     }
                     "SUBM" => {
-                        (buffer, _) = parse::line(&record).unwrap();
+                        (buffer, header.submitter) = Submitter::parse(&record);
                     }
                     _ => {
-                        println!("Unhandled header tag: {}", line.tag);
+                        // println!("Unhandled header tag: {}", line.tag);
                         (buffer, _) = parse::line(&record).unwrap();
                     }
                 };
             } else {
                 (buffer, _) = parse::line(&record).unwrap();
-                // println!("Consuming line for {}", line.tag);
             }
 
             record = buffer.to_string();
@@ -150,7 +148,7 @@ impl Header {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{corporation::Corporation, Address, Form};
+    use crate::types::{corporation::Corporation, Address, DateTime, Form};
 
     use super::Header;
 
@@ -160,6 +158,9 @@ mod tests {
             "0 HEAD",
             "1 CHAR UTF-8",
             "1 SOUR Ancestry.com Family Trees",
+            "2 DATA Name of source data",
+            "3 DATE 1 JAN 1998",
+            "3 COPR Copyright of source data",
             "2 VERS (2010.3)",
             "2 NAME Ancestry.com Family Trees",
             "2 CORP Ancestry.com",
@@ -183,24 +184,83 @@ mod tests {
             "3 WWW https://www.example.com",
             "3 WWW https://www.example.org",
             "3 WWW https://www.example.net",
+            "1 SUBM @U1@",
             "1 GEDC",
             "2 VERS 5.5",
             "2 FORM LINEAGE-LINKED",
             "3 VERS 5.5",
             "1 COPR A copyright statement",
+            "1 LANG English",
+            "1 DATE 1 JAN 2023",
+            "2 TIME 12:13:14.15",
+            // The submitter record
+            "0 @U1@ SUBM",
+            "1 NAME Adam Israel",
+            "1 ADDR",
+            "2 ADR1 Example Software",
+            "2 ADR2 123 Main Street",
+            "2 ADR3 Ste 1",
+            "2 CITY Anytown",
+            "2 STAE IL ",
+            "2 POST 55555",
+            "2 CTRY USA",
+            "1 PHON +1-800-555-1111",
+            "1 PHON +1-800-555-1212",
+            "1 PHON +1-800-555-1313",
+            "1 EMAIL a@@example.com",
+            "1 EMAIL b@@example.com",
+            "1 EMAIL c@@example.com",
+            "1 FAX +1-800-555-1414",
+            "1 FAX +1-800-555-1515",
+            "1 FAX +1-800-555-1616",
+            "1 WWW https://www.example.com",
+            "1 WWW https://www.example.org",
+            "1 WWW https://www.example.net",
+            "1 OBJE @M1@",
+            "1 RIN 1",
+            "1 CHAN",
+            "2 DATE 7 SEP 2000",
+            "3 TIME 8:35:36",
         ];
 
         let header = Header::parse(data.join("\n"));
 
+        // encoding
         assert!(header.encoding.is_some());
         assert!(header.encoding == Some("UTF-8".to_string()));
 
+        // copyright
         assert!(header.copyright.is_some());
         assert!(header.copyright == Some("A copyright statement".to_string()));
 
+        // source
         assert!(header.source.is_some());
         assert!(header.source.as_ref().unwrap().source == "Ancestry.com Family Trees".to_string());
         assert!(header.source.as_ref().unwrap().version == Some("(2010.3)".to_string()));
+
+        assert!(
+            header
+                .source
+                .as_ref()
+                .unwrap()
+                .data
+                .as_ref()
+                .unwrap()
+                .copyright
+                == Some("Copyright of source data".to_string())
+        );
+        assert!(
+            header.source.as_ref().unwrap().data.as_ref().unwrap().date
+                == Some(DateTime {
+                    date: Some("1 JAN 1998".to_string()),
+                    time: None,
+                })
+        );
+        assert!(
+            header.source.as_ref().unwrap().data.as_ref().unwrap().name
+                == Some("Name of source data".to_string())
+        );
+
         assert!(
             header.source.as_ref().unwrap().name == Some("Ancestry.com Family Trees".to_string())
         );
@@ -240,6 +300,7 @@ mod tests {
                 })
         );
 
+        // Version
         assert!(
             header.gedcom_version.as_ref().unwrap().form
                 == Some(Form {
@@ -248,5 +309,22 @@ mod tests {
                 })
         );
         assert!(header.gedcom_version.as_ref().unwrap().version == Some("5.5".to_string()));
+
+        // language
+        assert!(header.language.is_some());
+        assert!(header.language == Some("English".to_string()));
+
+        // datetime
+        assert!(header.date.is_some());
+        assert!(
+            header.date
+                == Some(DateTime {
+                    date: Some("1 JAN 2023".to_string()),
+                    time: Some("12:13:14.15".to_string())
+                })
+        );
+
+        // submitter
+        assert!(header.submitter.is_some());
     }
 }

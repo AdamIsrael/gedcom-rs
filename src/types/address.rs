@@ -1,7 +1,7 @@
 use super::Line;
 use crate::parse;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct Address {
     pub addr1: Option<String>,
     pub addr2: Option<String>,
@@ -14,6 +14,118 @@ pub struct Address {
     pub email: Vec<String>,
     pub fax: Vec<String>,
     pub www: Vec<String>,
+}
+
+impl Address {
+    pub fn parse(mut buffer: &str) -> (&str, Option<Address>) {
+        // println!("DEBUG: {:?}", buffer);
+        let mut address = Address {
+            addr1: None,
+            addr2: None,
+            addr3: None,
+            city: None,
+            state: None,
+            postal_code: None,
+            country: None,
+            phone: vec![],
+            email: vec![],
+            fax: vec![],
+            www: vec![],
+        };
+        let mut line: Line;
+
+        let (_, mut lvl) = parse::peek_level(buffer).unwrap();
+
+        let min_level = lvl;
+
+        // Only iterate through the ADDR records
+        while lvl >= min_level {
+            (_, line) = parse::peek_line(buffer).unwrap();
+
+            match line.tag {
+                "ADDR" => {
+                    let mut addr: String = String::from("");
+
+                    addr += line.value.unwrap_or("");
+
+                    // handle CONT/CONC; but what's the best way to append that data?
+                    // CONT implies that we're continuing the data, i.e., adding a
+                    // newline to preserve the formatting
+                    // CONC implies that we're concatenating the line
+
+                    let mut tag;
+
+                    // create a temp buffer to see if we have a CONC/CONT
+                    let (mut addr_buffer, _) = parse::line(buffer).unwrap();
+                    (_, tag) = parse::peek_tag(addr_buffer).unwrap_or(("", ""));
+
+                    while tag == "CONT" || tag == "CONC" {
+                        if tag == "CONT" {
+                            let (asdf, cont) = parse::cont(addr_buffer).unwrap();
+
+                            addr += "\n";
+                            addr += cont;
+
+                            addr_buffer = asdf;
+                        } else if tag == "CONC" {
+                            let (asdf, cont) = parse::conc(addr_buffer).unwrap();
+                            addr += " ";
+                            addr += cont;
+                            addr_buffer = asdf;
+                        }
+
+                        (_, tag) = parse::peek_tag(addr_buffer).unwrap();
+                    }
+                    address.addr1 = Some(addr);
+                }
+                "ADR1" => {
+                    address.addr1 = Some(line.value.unwrap_or("").to_string());
+                }
+                "ADR2" => {
+                    address.addr2 = Some(line.value.unwrap_or("").to_string());
+                }
+                "ADR3" => {
+                    address.addr3 = Some(line.value.unwrap_or("").to_string());
+                }
+                "CONT" => {} // Ignore, it's a special case handled by ADDR
+                "CONC" => {} // Ignore, it's a special case handled by ADDR
+                "CITY" => {
+                    address.city = Some(line.value.unwrap_or("").to_string());
+                }
+                "STAE" => {
+                    address.state = Some(line.value.unwrap_or("").to_string());
+                }
+                "POST" => {
+                    address.postal_code = Some(line.value.unwrap_or("").to_string());
+                }
+                "CTRY" => {
+                    address.country = Some(line.value.unwrap_or("").to_string());
+                }
+                "PHON" => {
+                    address.phone.push(line.value.unwrap_or("").to_string());
+                }
+                "EMAIL" => {
+                    address.email.push(line.value.unwrap_or("").to_string());
+                }
+                "FAX" => {
+                    address.fax.push(line.value.unwrap_or("").to_string());
+                }
+                "WWW" => {
+                    address.www.push(line.value.unwrap_or("").to_string());
+                }
+                _ => {
+                    // We've hit a non-address tag, so break out of the loop
+                    break;
+                }
+            }
+
+            (buffer, _) = parse::line(buffer).unwrap();
+
+            // Grab the next level, if there is one, or short-circuit the loop
+            (_, lvl) = parse::peek_level(buffer).unwrap_or(("", 0));
+        }
+        (buffer, Some(address))
+    }
 }
 
 /// Parse the Address entity
@@ -53,109 +165,7 @@ pub struct Address {
 /// */
 /// ```
 ///
-pub fn parse_address(mut buffer: &str) -> (&str, Option<Address>) {
-    let mut address = Address {
-        addr1: None,
-        addr2: None,
-        addr3: None,
-        city: None,
-        state: None,
-        postal_code: None,
-        country: None,
-        phone: vec![],
-        email: vec![],
-        fax: vec![],
-        www: vec![],
-    };
-    // let mut line: (u8, Option<&str>, Option<&str>, Option<&str>);
-    let mut line: Line;
-
-    let (_, mut lvl) = parse::peek_level(buffer).unwrap();
-
-    // Only iterate through the ADDR records
-    while lvl >= 3 {
-        (buffer, line) = parse::line(buffer).unwrap();
-        // let (mut str, tpl) = parse::line(buffer).unwrap();
-        match line.tag {
-            "ADDR" => {
-                // TODO: Should we attempt to parse this? Or stuff it all
-                // into addr1? It's not like it's a searchable field.
-                let mut addr: String = String::from("");
-
-                addr += line.value.unwrap_or("");
-
-                // handle CONT/CONC; but what's the best way to append that data?
-                // CONT implies that we're continuing the data, i.e., adding a
-                // newline to preserve the formatting
-                // CONC implies that we're concatenating the line
-
-                let mut tag;
-
-                // TODO: Need to check the result and bail from this block if
-                // it returns an error
-                (_, tag) = parse::peek_tag(buffer).unwrap_or(("", ""));
-
-                while tag == "CONT" || tag == "CONC" {
-                    if tag == "CONT" {
-                        let (asdf, cont) = parse::cont(buffer).unwrap();
-
-                        addr += "\n";
-                        addr += cont;
-
-                        buffer = asdf;
-                    } else if tag == "CONC" {
-                        let (asdf, cont) = parse::conc(buffer).unwrap();
-                        addr += " ";
-                        addr += cont;
-                        buffer = asdf;
-                    }
-
-                    (_, tag) = parse::peek_tag(buffer).unwrap();
-                }
-
-                address.addr1 = Some(addr);
-            }
-            "ADR1" => {
-                address.addr1 = Some(line.value.unwrap_or("").to_string());
-            }
-            "ADR2" => {
-                address.addr2 = Some(line.value.unwrap_or("").to_string());
-            }
-            "ADR3" => {
-                address.addr3 = Some(line.value.unwrap_or("").to_string());
-            }
-            "CITY" => {
-                address.city = Some(line.value.unwrap_or("").to_string());
-            }
-            "STAE" => {
-                address.state = Some(line.value.unwrap_or("").to_string());
-            }
-            "POST" => {
-                address.postal_code = Some(line.value.unwrap_or("").to_string());
-            }
-            "CTRY" => {
-                address.country = Some(line.value.unwrap_or("").to_string());
-            }
-            "PHON" => {
-                address.phone.push(line.value.unwrap_or("").to_string());
-            }
-            "EMAIL" => {
-                address.email.push(line.value.unwrap_or("").to_string());
-            }
-            "FAX" => {
-                address.fax.push(line.value.unwrap_or("").to_string());
-            }
-            "WWW" => {
-                address.www.push(line.value.unwrap_or("").to_string());
-            }
-            _ => {}
-        }
-
-        // Grab the next level, if there is one, or short-circuit the loop
-        (_, lvl) = parse::peek_level(buffer).unwrap_or(("", 0));
-    }
-    (buffer, Some(address))
-}
+/// Why did I do it this way, vs implementing `parse` on the Address?
 
 #[cfg(test)]
 mod tests {
@@ -210,7 +220,56 @@ mod tests {
             "3 WWW https://www.example.net",
         ];
 
-        let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
+        let (_data, address) = Address::parse(data.join("\n").as_str());
+        let addr = address.unwrap();
+
+        assert!(addr.addr1 == Some("RSAC Software".to_string()));
+        assert!(addr.addr2 == Some("7108 South Pine Cone Street".to_string()));
+        assert!(addr.addr3 == Some("Ste 1".to_string()));
+        assert!(addr.city == Some("Salt Lake City".to_string()));
+        assert!(addr.state == Some("UT".to_string()));
+        assert!(addr.postal_code == Some("84121".to_string()));
+        assert!(addr.country == Some("USA".to_string()));
+        assert!(addr.phone.contains(&"+1-801-942-7768".to_string()));
+        assert!(addr.phone.contains(&"+1-801-555-1212".to_string()));
+        assert!(addr.phone.contains(&"+1-801-942-1148".to_string()));
+        assert!(addr.email.contains(&"a@@example.com".to_string()));
+        assert!(addr.email.contains(&"b@@example.com".to_string()));
+        assert!(addr.email.contains(&"c@@example.com".to_string()));
+        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
+        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
+        assert!(addr.fax.contains(&"+1-801-942-1148".to_string()));
+        assert!(addr.www.contains(&"https://www.example.com".to_string()));
+        assert!(addr.www.contains(&"https://www.example.org".to_string()));
+        assert!(addr.www.contains(&"https://www.example.net".to_string()));
+    }
+
+    #[test]
+    fn parse_full_address2() {
+        let data = vec![
+            "1 ADDR",
+            "2 ADR1 RSAC Software",
+            "2 ADR2 7108 South Pine Cone Street",
+            "2 ADR3 Ste 1",
+            "2 CITY Salt Lake City",
+            "2 STAE UT",
+            "2 POST 84121",
+            "2 CTRY USA",
+            "1 PHON +1-801-942-7768",
+            "1 PHON +1-801-555-1212",
+            "1 PHON +1-801-942-1148",
+            "1 EMAIL a@@example.com",
+            "1 EMAIL b@@example.com",
+            "1 EMAIL c@@example.com",
+            "1 FAX +1-801-942-7768",
+            "1 FAX +1-801-555-1212",
+            "1 FAX +1-801-942-1148",
+            "1 WWW https://www.example.com",
+            "1 WWW https://www.example.org",
+            "1 WWW https://www.example.net",
+        ];
+
+        let (_data, address) = Address::parse(data.join("\n").as_str());
         let addr = address.unwrap();
 
         // println!("addr1: {:?}", addr.addr1);
@@ -242,12 +301,18 @@ mod tests {
             "3 ADDR 1300 West Traverse Parkway",
             "4 CONT Lehi, UT  84043",
             "4 CONT USA",
+            "3 PHON +1-801-942-7768",
+            "3 PHON +1-801-555-1212",
+            "3 PHON +1-801-942-1148",
         ];
 
-        let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
+        let (_data, address) = Address::parse(data.join("\n").as_str());
         let addr = address.unwrap();
 
         assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043\nUSA".to_string()));
+        assert!(addr.phone.contains(&"+1-801-942-7768".to_string()));
+        assert!(addr.phone.contains(&"+1-801-555-1212".to_string()));
+        assert!(addr.phone.contains(&"+1-801-942-1148".to_string()));
     }
 
     #[test]
@@ -259,7 +324,7 @@ mod tests {
             "4 CONC USA",
         ];
 
-        let (_data, address) = crate::types::address::parse_address(data.join("\n").as_str());
+        let (_data, address) = Address::parse(data.join("\n").as_str());
         let addr = address.unwrap();
 
         assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043 USA".to_string()));

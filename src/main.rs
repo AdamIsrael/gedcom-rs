@@ -77,6 +77,20 @@ fn parse_gedcom(filename: &str) -> Gedcom {
                     match line.tag {
                         "HEAD" => {
                             gedcom.header = Header::parse(buff.to_string());
+                            // If a SUBM is found, find the record
+                            // if gedcom.header.submitter.is_some()
+                            //     && gedcom.header.submitter.unwrap().xref.is_some()
+                            // {
+                            //     // let xref = gedcom.header.submitter.unwrap().xref.unwrap();
+                            //     let xref = "@U1@".to_string();
+                            //     // Create a copy of the buffer
+                            //     let mut foo = String::from("");
+
+                            //     for l in lines.flatten() {
+                            //         foo += l.as_str();
+                            //     }
+                            //     gedcom.header.submitter = Submitter::find_by_xref(&foo, xref)
+                            // }
                         }
                         "INDI" => {
                             let indi = Individual::parse(buff.to_string());
@@ -92,6 +106,15 @@ fn parse_gedcom(filename: &str) -> Gedcom {
                         "SUBM" => {
                             // The record of the submitter of the family tree
                             // Not always present (it exists in complete.ged)
+
+                            // TODO: Need to fix the parsing of xref to not strip off the @
+                            if line.xref.unwrap() == "U1" {
+                                let subm = gedcom.header.submitter.clone();
+                                if subm.is_some() && subm.unwrap().xref.is_some() {
+                                    gedcom.header.submitter =
+                                        Submitter::find_by_xref(buff, "@U1@".to_string());
+                                }
+                            }
                         }
                         _ => {}
                     };

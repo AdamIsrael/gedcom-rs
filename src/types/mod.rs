@@ -9,6 +9,7 @@ mod individual;
 mod line;
 mod source;
 mod sourcedata;
+mod submitter;
 
 pub use address::*;
 pub use datetime::DateTime;
@@ -18,6 +19,7 @@ pub use individual::*;
 pub use line::Line;
 pub use source::Source;
 pub use sourcedata::SourceData;
+pub use submitter::Submitter;
 
 #[derive(Debug, Default)]
 pub struct Gedcom {

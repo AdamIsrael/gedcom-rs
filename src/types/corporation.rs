@@ -1,6 +1,6 @@
 use super::Line;
 use crate::parse;
-use crate::types::address;
+use crate::types::Address;
 
 // +1 SOUR <APPROVED_SYSTEM_ID>
 //     +2 VERS <VERSION_NUMBER>
@@ -15,7 +15,7 @@ use crate::types::address;
 #[derive(Debug, Default, PartialEq)]
 pub struct Corporation {
     pub name: Option<String>,
-    pub address: Option<address::Address>,
+    pub address: Option<Address>,
 }
 
 impl Corporation {
@@ -36,7 +36,7 @@ impl Corporation {
             // Check if the next line contains an address struct
             (_, line) = parse::peek_line(buffer).unwrap();
             if line.level == 3 && line.tag == "ADDR" {
-                (buffer, corp.address) = address::parse_address(buffer);
+                (buffer, corp.address) = Address::parse(buffer);
             }
         }
 
