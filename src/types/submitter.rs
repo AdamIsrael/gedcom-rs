@@ -170,6 +170,7 @@ mod tests {
             "1 WWW https://www.example.org",
             "1 WWW https://www.example.net",
             "1 OBJE @M1@",
+            "1 RFN 123456789",
             "1 RIN 1",
             "1 CHAN",
             "2 DATE 7 SEP 2000",
@@ -225,7 +226,7 @@ mod tests {
         assert!(date.time == Some("8:35:36".to_string()));
 
         // TODO: Implement these once the fields are implemented.
-        assert!(s.rfn.is_none());
+        assert!(s.rfn == Some("123456789".to_string()));
         assert!(s.note.is_none());
     }
 }
