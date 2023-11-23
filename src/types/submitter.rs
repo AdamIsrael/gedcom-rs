@@ -1,7 +1,7 @@
 use super::Line;
 use crate::parse;
 // use crate::types::address::Address;
-use crate::types::{Address, DateTime};
+use crate::types::{Address, DateTime, Note};
 
 // n @<XREF:SUBM>@ SUBM {1:1}
 // +1 NAME <SUBMITTER_NAME> {1:1} p.63
@@ -25,7 +25,7 @@ pub struct Submitter {
     pub lang: Vec<String>,
     pub rfn: Option<String>,
     pub rin: Option<String>,
-    pub note: Option<String>,
+    pub note: Option<Note>,
     pub change_date: Option<DateTime>,
 }
 
@@ -85,6 +85,9 @@ impl Submitter {
                             let lang = line.value.unwrap();
                             submitter.lang.push(lang.to_string());
                             (buffer, _) = parse::line(buffer).unwrap();
+                        }
+                        "NOTE" => {
+                            (buffer, submitter.note) = Note::parse(buffer);
                         }
                         "RFN" => {
                             let rfn = line.value.unwrap();
@@ -172,6 +175,8 @@ mod tests {
             "1 OBJE @M1@",
             "1 RFN 123456789",
             "1 RIN 1",
+            "1 NOTE This is a test note.",
+            "2 CONT And so is this.",
             "1 CHAN",
             "2 DATE 7 SEP 2000",
             "3 TIME 8:35:36",
@@ -227,6 +232,9 @@ mod tests {
 
         // TODO: Implement these once the fields are implemented.
         assert!(s.rfn == Some("123456789".to_string()));
-        assert!(s.note.is_none());
+        println!("{:?}", s.note);
+        let note = s.note.unwrap().note.unwrap();
+        assert!(note.starts_with("This is a test note."));
+        assert!(note.ends_with("And so is this.\n"));
     }
 }
