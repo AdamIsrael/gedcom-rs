@@ -46,7 +46,7 @@ impl Address {
                 "ADDR" => {
                     let mut addr: String = String::from("");
 
-                    addr += line.value.unwrap_or("");
+                    addr += line.value;
 
                     // handle CONT/CONC; but what's the best way to append that data?
                     // CONT implies that we're continuing the data, i.e., adding a
@@ -79,39 +79,39 @@ impl Address {
                     address.addr1 = Some(addr);
                 }
                 "ADR1" => {
-                    address.addr1 = Some(line.value.unwrap_or("").to_string());
+                    address.addr1 = Some(line.value.to_string());
                 }
                 "ADR2" => {
-                    address.addr2 = Some(line.value.unwrap_or("").to_string());
+                    address.addr2 = Some(line.value.to_string());
                 }
                 "ADR3" => {
-                    address.addr3 = Some(line.value.unwrap_or("").to_string());
+                    address.addr3 = Some(line.value.to_string());
                 }
                 "CONT" => {} // Ignore, it's a special case handled by ADDR
                 "CONC" => {} // Ignore, it's a special case handled by ADDR
                 "CITY" => {
-                    address.city = Some(line.value.unwrap_or("").to_string());
+                    address.city = Some(line.value.to_string());
                 }
                 "STAE" => {
-                    address.state = Some(line.value.unwrap_or("").to_string());
+                    address.state = Some(line.value.to_string());
                 }
                 "POST" => {
-                    address.postal_code = Some(line.value.unwrap_or("").to_string());
+                    address.postal_code = Some(line.value.to_string());
                 }
                 "CTRY" => {
-                    address.country = Some(line.value.unwrap_or("").to_string());
+                    address.country = Some(line.value.to_string());
                 }
                 "PHON" => {
-                    address.phone.push(line.value.unwrap_or("").to_string());
+                    address.phone.push(line.value.to_string());
                 }
                 "EMAIL" => {
-                    address.email.push(line.value.unwrap_or("").to_string());
+                    address.email.push(line.value.to_string());
                 }
                 "FAX" => {
-                    address.fax.push(line.value.unwrap_or("").to_string());
+                    address.fax.push(line.value.to_string());
                 }
                 "WWW" => {
-                    address.www.push(line.value.unwrap_or("").to_string());
+                    address.www.push(line.value.to_string());
                 }
                 _ => {
                     // We've hit a non-address tag, so break out of the loop
@@ -178,9 +178,9 @@ mod tests {
 
         assert!(str.len() == 0);
         assert!(line.level == 3);
-        assert!(line.xref == Some(""));
+        assert!(line.xref == "");
         assert!(line.tag == "ADDR");
-        assert!(line.value == Some(""));
+        assert!(line.value == "");
     }
 
     #[test]
@@ -188,11 +188,11 @@ mod tests {
         let data = "4 ADR1 RSAC Software\n";
         let (str, line) = parse::line(&data).unwrap();
 
-        assert!(str.len() == 0);
+        assert!(str.is_empty());
         assert!(line.level == 4);
-        assert!(line.xref == Some(""));
+        assert!(line.xref == "");
         assert!(line.tag == "ADR1");
-        assert!(line.value == Some("RSAC Software"));
+        assert!(line.value == "RSAC Software");
     }
 
     #[test]

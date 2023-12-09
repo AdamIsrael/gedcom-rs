@@ -57,9 +57,9 @@ impl Individual {
             // && level == 0
             match line.level {
                 0 => {
-                    if let Some(xref) = line.xref {
-                        individual.xref = Some(xref.to_string());
-                    }
+                    // if let xref = line.xref {
+                    individual.xref = Some(line.xref.to_string());
+                    // }
                 }
                 _ => {
                     match line.tag {
@@ -69,8 +69,9 @@ impl Individual {
                             individual.names.push(pn);
                         }
                         "SEX" => {
-                            individual.gender =
-                                super::Gender::from_str(line.value.unwrap_or("U")).unwrap();
+                            // individual.gender =
+                            //     super::Gender::from_str(line.value.unwrap_or("U")).unwrap();
+                            individual.gender = super::Gender::from_str(line.value).unwrap();
                         }
                         "BIRT" => {}
                         "DEAT" => {}

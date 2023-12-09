@@ -31,7 +31,7 @@ impl Corporation {
         (_, line) = parse::peek_line(buffer).unwrap();
         if line.level == 2 && line.tag == "CORP" {
             (buffer, line) = parse::line(buffer).unwrap();
-            corp.name = Some(line.value.unwrap_or("").to_string());
+            corp.name = Some(line.value.to_string());
 
             // Check if the next line contains an address struct
             (_, line) = parse::peek_line(buffer).unwrap();

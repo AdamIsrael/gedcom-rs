@@ -88,30 +88,30 @@ impl Name {
 
             match line.tag {
                 "NAME" => {
-                    name.value = Some(line.value.unwrap_or("").to_string());
+                    name.value = Some(line.value.to_string());
                 }
                 "TYPE" => {
                     // type
-                    name.r#type = Some(line.value.unwrap_or("").to_string());
+                    name.r#type = Some(line.value.to_string());
                 }
                 "GIVN" => {
-                    name.given = Some(line.value.unwrap_or("").to_string());
+                    name.given = Some(line.value.to_string());
                 }
                 "SURN" => {
-                    name.surname = Some(line.value.unwrap_or("").to_string());
+                    name.surname = Some(line.value.to_string());
                 }
                 "NICK" => {
-                    name.nickname = Some(line.value.unwrap_or("").to_string());
+                    name.nickname = Some(line.value.to_string());
                 }
                 "NOTE" => {}
                 "NPFX" => {
-                    name.prefix = Some(line.value.unwrap_or("").to_string());
+                    name.prefix = Some(line.value.to_string());
                 }
                 "SPFX" => {
-                    name.suffix = Some(line.value.unwrap_or("").to_string());
+                    name.suffix = Some(line.value.to_string());
                 }
                 "NSFX" => {
-                    name.surname_prefix = Some(line.value.unwrap_or("").to_string());
+                    name.surname_prefix = Some(line.value.to_string());
                 }
                 _ => {
                     // println!("Unhandled name tag: {:?}", tag.unwrap());
@@ -257,8 +257,9 @@ impl PersonalName {
                 match line.tag {
                     "ROMN" => {
                         (buffer, pn.romanized) = Name::parse(buffer).unwrap();
-                        if let Some(value) = line.value {
-                            pn.romanized.value = Some(value.to_string());
+                        // if let Some(value) = line.value {
+                        if !line.value.is_empty() {
+                            pn.romanized.value = Some(line.value.to_string());
                         } else {
                             println!(
                                 "Romanized value is missing; Level={}, tag={}",
@@ -268,8 +269,8 @@ impl PersonalName {
                     }
                     "FONE" => {
                         (buffer, pn.phonetic) = Name::parse(buffer).unwrap();
-                        if let Some(value) = line.value {
-                            pn.phonetic.value = Some(value.to_string());
+                        if !line.value.is_empty() {
+                            pn.phonetic.value = Some(line.value.to_string());
                         } else {
                             println!(
                                 "Phonetic value is missing; Level={}, tag={}",

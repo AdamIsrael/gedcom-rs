@@ -3,7 +3,7 @@
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub struct Line<'a> {
     pub level: u8,
-    pub xref: Option<&'a str>,
+    pub xref: &'a str,
     pub tag: &'a str,
-    pub value: Option<&'a str>,
+    pub value: &'a str,
 }

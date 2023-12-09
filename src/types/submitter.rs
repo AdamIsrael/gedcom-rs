@@ -58,7 +58,7 @@ impl Submitter {
                 while line.level > 0 || !buffer.is_empty() {
                     match line.tag {
                         "NAME" => {
-                            submitter.name = Some(line.value.unwrap().to_string());
+                            submitter.name = Some(line.value.to_string());
                             (buffer, _) = parse::line(buffer).unwrap();
                         }
                         "ADDR" => {
@@ -66,14 +66,14 @@ impl Submitter {
                         }
                         "OBJE" => {
                             // Parse the object id and add it to the list
-                            let media_xref = line.value.unwrap();
+                            let media_xref = line.value;
                             submitter.media.push(media_xref.to_string());
                             (buffer, _) = parse::line(buffer).unwrap();
                             // TODO: find the media object and parse it
                         }
                         "RIN" => {
                             (buffer, line) = parse::line(buffer).unwrap();
-                            submitter.rin = Some(line.value.unwrap().to_string());
+                            submitter.rin = Some(line.value.to_string());
                             // println!("!! {:}", line.tag);
                         }
                         "CHAN" => {
@@ -82,7 +82,7 @@ impl Submitter {
                             (buffer, submitter.change_date) = DateTime::parse(buffer);
                         }
                         "LANG" => {
-                            let lang = line.value.unwrap();
+                            let lang = line.value;
                             submitter.lang.push(lang.to_string());
                             (buffer, _) = parse::line(buffer).unwrap();
                         }
@@ -90,7 +90,7 @@ impl Submitter {
                             (buffer, submitter.note) = Note::parse(buffer);
                         }
                         "RFN" => {
-                            let rfn = line.value.unwrap();
+                            let rfn = line.value;
                             submitter.rfn = Some(rfn.to_string());
                             (buffer, _) = parse::line(buffer).unwrap();
                         }
@@ -130,7 +130,7 @@ impl Submitter {
             // advance our position in the buffer
             (buffer, line) = parse::line(buffer).unwrap();
             // This is a temporary hack, because parse::xref strips @ from the id
-            let xref = line.value.unwrap();
+            let xref = line.value;
             submitter.xref = Some(xref.to_owned());
         }
 

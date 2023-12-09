@@ -83,7 +83,7 @@ impl Header {
                 // println!("Found an inner tag: {}", line.tag);
                 match line.tag {
                     "CHAR" => {
-                        header.encoding = Some(line.value.unwrap_or("").to_string());
+                        header.encoding = Some(line.value.to_string());
                         (buffer, _) = parse::line(&record).unwrap();
                     }
                     "COPR" => {
@@ -103,18 +103,18 @@ impl Header {
                         (buffer, header.date) = DateTime::parse(&record);
                     }
                     "DEST" => {
-                        header.destination = Some(line.value.unwrap_or("").to_string());
+                        header.destination = Some(line.value.to_string());
                         (buffer, _) = parse::line(&record).unwrap();
                     }
                     "FILE" => {
-                        header.filename = Some(line.value.unwrap_or("").to_string());
+                        header.filename = Some(line.value.to_string());
                         (buffer, _) = parse::line(&record).unwrap();
                     }
                     "GEDC" => {
                         (buffer, header.gedcom_version) = Gedc::parse(&record);
                     }
                     "LANG" => {
-                        header.language = Some(line.value.unwrap_or("").to_string());
+                        header.language = Some(line.value.to_string());
                         (buffer, _) = parse::line(&record).unwrap();
                     }
                     "NOTE" => {

@@ -25,7 +25,7 @@ impl Form {
         if line.tag == "FORM" {
             (buffer, line) = parse::line(buffer).unwrap();
 
-            form.name = Some(line.value.unwrap_or("").to_string());
+            form.name = Some(line.value.to_string());
 
             while !buffer.is_empty() {
                 // Peek the next line
@@ -34,7 +34,7 @@ impl Form {
                     "VERS" => {
                         // consume the line
                         (buffer, line) = parse::line(buffer).unwrap();
-                        form.version = Some(line.value.unwrap_or("").to_string());
+                        form.version = Some(line.value.to_string());
                     }
                     _ => {
                         // panic!("Unknown tag: {}", line.tag);
@@ -79,7 +79,7 @@ impl Gedc {
                     "VERS" => {
                         // consume the line
                         (buffer, line) = parse::line(buffer).unwrap();
-                        gedc.version = Some(line.value.unwrap_or("").to_string());
+                        gedc.version = Some(line.value.to_string());
                     }
                     _ => {
                         // panic!("Unknown tag: {}", line.tag);

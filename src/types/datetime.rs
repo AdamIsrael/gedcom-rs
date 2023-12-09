@@ -26,14 +26,14 @@ impl DateTime {
 
             // Consume the line
             (buffer, line) = parse::line(buffer).unwrap();
-            dt.date = Some(line.value.unwrap_or("").to_string());
+            dt.date = Some(line.value.to_string());
 
             // Check to see if we have time as a child of the date record
             (_, line) = parse::peek_line(buffer).unwrap();
             if line.level == parent_level + 1 && line.tag == "TIME" {
                 // Consume the line
                 (buffer, line) = parse::line(buffer).unwrap();
-                dt.time = Some(line.value.unwrap_or("").to_string());
+                dt.time = Some(line.value.to_string());
             }
         }
 

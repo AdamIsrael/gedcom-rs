@@ -57,7 +57,7 @@ impl Source {
             // Consume the first line
             (buffer, line) = parse::line(buffer).unwrap();
 
-            source.source = line.value.unwrap_or("").to_string();
+            source.source = line.value.to_string();
 
             let (_, mut lvl) = parse::peek_level(buffer).unwrap();
 
@@ -84,11 +84,11 @@ impl Source {
                         (buffer, source.corporation) = Corporation::parse(buffer);
                     }
                     "NAME" => {
-                        source.name = Some(inner_line.value.unwrap_or("").to_string());
+                        source.name = Some(inner_line.value.to_string());
                         (buffer, _) = parse::line(buffer).unwrap();
                     }
                     "VERS" => {
-                        source.version = Some(inner_line.value.unwrap_or("").to_string());
+                        source.version = Some(inner_line.value.to_string());
                         (buffer, _) = parse::line(buffer).unwrap();
                     }
                     "DATA" => {

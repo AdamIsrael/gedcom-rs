@@ -28,7 +28,7 @@ impl SourceData {
 
             // consume the line
             (buffer, line) = parse::line(buffer).unwrap();
-            data.name = Some(line.value.unwrap_or("").to_string());
+            data.name = Some(line.value.to_string());
 
             while line.level >= lvl {
                 if buffer.is_empty() {
