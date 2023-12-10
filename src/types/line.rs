@@ -150,3 +150,44 @@ impl<'b> Line<'b> {
     //     Ok((input, l.tag))
     // }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_lines() {
+        let data = vec![
+            "0 HEAD",
+            "1 CHAR UTF-8",
+            "1 SOUR Ancestry.com Family Trees",
+            "2 DATA Name of source data",
+            "3 DATE 1 JAN 1998",
+            "3 COPR Copyright of source data",
+            "1 SUBM @U1@",
+        ];
+
+        let (_, line) = Line::parse(data[0]).unwrap();
+        assert!(line.level == 0 && line.tag == "HEAD");
+
+        let (_, line) = Line::parse(data[1]).unwrap();
+        assert!(line.level == 1 && line.tag == "CHAR" && line.value == "UTF-8");
+
+        let (_, line) = Line::parse(data[2]).unwrap();
+        assert!(line.level == 1 && line.tag == "SOUR" && line.value == "Ancestry.com Family Trees");
+
+        let (_, line) = Line::parse(data[3]).unwrap();
+        assert!(line.level == 2 && line.tag == "DATA" && line.value == "Name of source data");
+
+        let (_, line) = Line::parse(data[4]).unwrap();
+        assert!(line.level == 3 && line.tag == "DATE" && line.value == "1 JAN 1998");
+
+        let (_, line) = Line::parse(data[5]).unwrap();
+        assert!(line.level == 3 && line.tag == "COPR" && line.value == "Copyright of source data");
+
+        let (_, line) = Line::parse(data[6]).unwrap();
+        assert!(line.level == 1 && line.tag == "SUBM" && line.value == "@U1@");
+
+    }
+}
