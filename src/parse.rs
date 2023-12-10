@@ -7,16 +7,10 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-
 // use nom::character::complete::newline;
 // use nom::character::complete::digit1;
 
-use nom::{
-    // sequence::delimited,
-    // character::complete::char,
-    // bytes::complete::is_not,
-    IResult,
-};
+use nom::IResult;
 
 // use nom::{
 //     error::{make_error, ErrorKind, ParseError},
@@ -67,7 +61,6 @@ use nom::{
 //     Option<&'a str>, // value
 // );
 
-
 // /// nop -- just testing
 // pub fn nop(input: &str) -> IResult<&str, Line> {
 //     let line = Line {
@@ -79,8 +72,6 @@ use nom::{
 
 //     Ok(("", line))
 // }
-
-
 
 // fn source(input: &str) -> IResult<&str, Source> {
 //     let source = Source {
@@ -170,7 +161,6 @@ pub fn cont(input: &str) -> IResult<&str, &str> {
         Ok((buffer, ""))
     }
 }
-
 
 /// Parse a GEDCOM file
 pub fn parse_gedcom(filename: &str) -> Gedcom {

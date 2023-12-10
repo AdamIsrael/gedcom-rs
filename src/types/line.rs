@@ -1,17 +1,8 @@
 use std::str::FromStr;
 
-use nom::{
-    bytes::complete::is_not,
-    IResult,
-};
+use nom::{bytes::complete::is_not, IResult};
 
-use nom::character::complete::{
-    alphanumeric1,
-    digit1,
-    line_ending,
-    not_line_ending,
-    space0,
-};
+use nom::character::complete::{alphanumeric1, digit1, line_ending, not_line_ending, space0};
 use nom::combinator::{
     map_res,
     opt,
@@ -19,10 +10,7 @@ use nom::combinator::{
     recognize,
     verify,
 };
-use nom::sequence::{
-    delimited,
-    preceded,
-};
+use nom::sequence::{delimited, preceded};
 
 /// A GEDCOM line
 /// level + delim (space) + [optional_xref_ID] + tag + [optional_line_value] + terminator
@@ -34,8 +22,7 @@ pub struct Line<'a> {
     pub value: &'a str,
 }
 
-impl <'b> Line<'b> {
-
+impl<'b> Line<'b> {
     /// Peek at the next line.
     pub fn peek(input: &str) -> IResult<&str, Line> {
         let (_, l) = Line::parse(input).unwrap();
@@ -162,5 +149,4 @@ impl <'b> Line<'b> {
 
     //     Ok((input, l.tag))
     // }
-
 }

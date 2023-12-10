@@ -1,8 +1,8 @@
 // use std::num::ParseIntError;
 use std::str::FromStr;
 
-use crate::types::Line;
 use crate::types::individual::name::*;
+use crate::types::Line;
 
 use super::Birth;
 use super::Residence;
