@@ -7,15 +7,14 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-use std::str::FromStr;
 
 // use nom::character::complete::newline;
-use nom::character::complete::digit1;
+// use nom::character::complete::digit1;
 
 use nom::{
     // sequence::delimited,
     // character::complete::char,
-    bytes::complete::is_not,
+    // bytes::complete::is_not,
     IResult,
 };
 
@@ -30,34 +29,34 @@ use nom::{
 // use nom::branch::alt;
 
 // use nom::bytes::complete::{take_while, take_while1};
-use nom::character::complete::{
-    alphanumeric1,
-    // alpha1,
-    // one_of,
-    line_ending,
-    // multispace0,
-    // multispace1,
-    not_line_ending,
-    space0,
-};
-use nom::combinator::{
-    // all_consuming,
-    // map,
-    // map_opt,
-    map_res,
-    opt,
-    peek,
-    recognize,
-    verify,
-};
-use nom::sequence::{
-    delimited,
-    // pair,
-    preceded,
-    // separated_pair,
-    // terminated,
-    // tuple,
-};
+// use nom::character::complete::{
+//     alphanumeric1,
+//     // alpha1,
+//     // one_of,
+//     line_ending,
+//     // multispace0,
+//     // multispace1,
+//     not_line_ending,
+//     space0,
+// };
+// use nom::combinator::{
+//     // all_consuming,
+//     // map,
+//     // map_opt,
+//     map_res,
+//     opt,
+//     peek,
+//     recognize,
+//     verify,
+// };
+// use nom::sequence::{
+//     delimited,
+//     // pair,
+//     preceded,
+//     // separated_pair,
+//     // terminated,
+//     // tuple,
+// };
 // use nom::ParseTo;
 
 // /// A line of GEDCOM data
@@ -68,27 +67,6 @@ use nom::sequence::{
 //     Option<&'a str>, // value
 // );
 
-/// Peek at the next character to see if it's a newline
-pub fn peek_eol(input: &str) -> IResult<&str, bool> {
-    let (input, is_eol) = eol(input).unwrap_or((input, ""));
-    Ok((input, !is_eol.is_empty()))
-}
-
-/// Peek the level of the next line
-pub fn peek_level(input: &str) -> IResult<&str, u8> {
-    let mut parser = map_res(peek(digit1), u8::from_str);
-    parser(input)
-}
-
-/// Peek at the tag in the next line.
-///
-/// This allows us to check what the next tag is so we can determine if we need
-/// to keep processing, i.e., a CONT.
-pub fn peek_tag(input: &str) -> IResult<&str, &str> {
-    let (_, l) = line(input).unwrap();
-
-    Ok((input, l.tag))
-}
 
 // /// nop -- just testing
 // pub fn nop(input: &str) -> IResult<&str, Line> {
@@ -102,82 +80,7 @@ pub fn peek_tag(input: &str) -> IResult<&str, &str> {
 //     Ok(("", line))
 // }
 
-/// Peek at the next line.
-pub fn peek_line(input: &str) -> IResult<&str, Line> {
-    let (_, l) = line(input).unwrap();
 
-    Ok((input, l))
-}
-
-/// Parse a single line of GEDCOM data
-pub fn line(input: &str) -> IResult<&str, Line> {
-    /*
-    New strategy: let the wookie win.
-
-    Parse the whole line out of the input first. Then parse the individual elements
-    out into variables, present or not.
-
-    Lastly, return the input minus our line, and a tuple representing level, xref, tag, value
-
-    */
-
-    // let mut _level: u8 = 0;
-    // let mut _xref: &str = "";
-    // let mut _tag: &str = "";
-    // let mut _value: &str = "";
-    let is_eol: bool;
-    let mut tmp: &str = "";
-    // let mut _value: &str = "";
-    let mut line = Line {
-        level: 0,
-        xref: "",
-        tag: "",
-        value: "",
-    };
-
-    if !input.is_empty() {
-        match level(input) {
-            Ok((mut buffer, _level)) => {
-                line.level = _level;
-
-                (buffer, _) = delim(buffer).unwrap();
-                (buffer, line.xref) = xref(buffer).unwrap();
-                (buffer, line.tag) = tag(buffer.trim_start()).unwrap();
-                (buffer, _) = delim(buffer).unwrap();
-                (buffer, is_eol) = peek_eol(buffer).unwrap();
-
-                if !is_eol {
-                    (buffer, _) = delim(buffer).unwrap();
-
-                    (buffer, line.value) = value(buffer).unwrap();
-                }
-
-                tmp = eol(buffer).unwrap_or((buffer, "")).0;
-            }
-            Err(e) => {
-                println!("Error parsing level: {}", e);
-            }
-        }
-        // (tmp, line.level) = level(input).unwrap();
-        // (tmp, _) = delim(tmp).unwrap();
-        // (tmp, line.xref) = xref(tmp).unwrap();
-        // (tmp,  line.tag) = tag(tmp.trim_start()).unwrap();
-        // (tmp, _) = delim(tmp).unwrap();
-        // (tmp, is_eol) = peek_eol(tmp).unwrap();
-
-        // if !is_eol {
-        //     (tmp, _) = delim(tmp).unwrap();
-
-        //     (tmp, line.value) = value(tmp).unwrap();
-        // }
-
-        // tmp = eol(tmp).unwrap_or((tmp, "")).0;
-    }
-    // println!("End of buffer: '{}'", tmp);
-    Ok((tmp, line))
-
-    // Ok((tmp, (_level, Some(_xref), Some(_tag), Some(_value))))
-}
 
 // fn source(input: &str) -> IResult<&str, Source> {
 //     let source = Source {
@@ -222,13 +125,13 @@ pub fn get_tag_value(input: &str) -> IResult<&str, Option<String>> {
     let mut line;
     let mut buffer;
 
-    (buffer, line) = super::parse::line(input).unwrap();
+    (buffer, line) = Line::parse(input).unwrap();
     text += line.value;
 
-    (_, line) = super::parse::peek_line(buffer).unwrap();
+    (_, line) = Line::peek(buffer).unwrap();
     while line.tag == "CONC" || line.tag == "CONT" {
         // consume
-        (buffer, line) = super::parse::line(buffer).unwrap();
+        (buffer, line) = Line::parse(buffer).unwrap();
 
         // allocate
         text += line.value;
@@ -237,7 +140,7 @@ pub fn get_tag_value(input: &str) -> IResult<&str, Option<String>> {
         }
 
         // peek ahead
-        (_, line) = super::parse::peek_line(buffer).unwrap();
+        (_, line) = Line::peek(buffer).unwrap();
     }
 
     Ok((buffer, Some(text)))
@@ -245,7 +148,7 @@ pub fn get_tag_value(input: &str) -> IResult<&str, Option<String>> {
 
 /// Parse the buffer if the CONC tag is found and return the resulting string.
 pub fn conc(input: &str) -> IResult<&str, &str> {
-    let (buffer, line) = super::parse::line(input).unwrap();
+    let (buffer, line) = Line::parse(input).unwrap();
 
     if line.tag == "CONC" {
         Ok((buffer, line.value))
@@ -259,7 +162,7 @@ pub fn conc(input: &str) -> IResult<&str, &str> {
 pub fn cont(input: &str) -> IResult<&str, &str> {
     // let line: (u8, Option<&str>, Option<&str>, Option<&str>);
     // let buffer: &str;
-    let (buffer, line) = super::parse::line(input).unwrap();
+    let (buffer, line) = Line::parse(input).unwrap();
 
     if line.tag == "CONT" {
         Ok((buffer, line.value))
@@ -268,49 +171,6 @@ pub fn cont(input: &str) -> IResult<&str, &str> {
     }
 }
 
-/// Parse a number from the string, but return it as an actual Rust number, not a string.
-pub fn level(input: &str) -> IResult<&str, u8> {
-    let mut parser = map_res(digit1, u8::from_str);
-    parser(input)
-}
-
-/// Parse the delimiter
-pub fn delim(input: &str) -> IResult<&str, &str> {
-    space0(input)
-}
-
-/// Parse the xref, if present
-///
-/// TODO: Return the leading/trailing @ portion of the xref
-pub fn xref(input: &str) -> IResult<&str, &str> {
-    if input.starts_with('@') {
-        let mut parser = delimited(
-            nom::bytes::complete::tag("@"),
-            is_not("@"),
-            nom::bytes::complete::tag("@"),
-        );
-        parser(input)
-    } else {
-        Ok((input, ""))
-    }
-}
-
-pub fn tag(input: &str) -> IResult<&str, &str> {
-    // one of: a-zA-Z_
-    // alpha1(input)
-    verify(
-        recognize(preceded(opt(nom::bytes::complete::tag("_")), alphanumeric1)),
-        |o: &str| o.len() <= 31,
-    )(input)
-}
-
-pub fn value(input: &str) -> IResult<&str, &str> {
-    not_line_ending(input)
-}
-
-pub fn eol(input: &str) -> IResult<&str, &str> {
-    line_ending(input)
-}
 
 /// Parse a GEDCOM file
 pub fn parse_gedcom(filename: &str) -> Gedcom {
@@ -356,7 +216,7 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
                     // process the data in `record` before continuing
 
                     // Peek at the next line to see where we're at.
-                    let (buff, line) = peek_line(&record).unwrap();
+                    let (buff, line) = Line::peek(&record).unwrap();
 
                     match line.tag {
                         "HEAD" => {

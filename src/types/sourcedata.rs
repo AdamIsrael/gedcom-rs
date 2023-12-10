@@ -22,12 +22,12 @@ impl SourceData {
         };
         let mut line: Line;
 
-        (buffer, line) = parse::peek_line(buffer).unwrap();
+        (buffer, line) = Line::peek(buffer).unwrap();
         if line.tag == "DATA" {
             let lvl = line.level;
 
             // consume the line
-            (buffer, line) = parse::line(buffer).unwrap();
+            (buffer, line) = Line::parse(buffer).unwrap();
             data.name = Some(line.value.to_string());
 
             while line.level >= lvl {
@@ -35,7 +35,7 @@ impl SourceData {
                     break;
                 }
 
-                (buffer, line) = parse::peek_line(buffer).unwrap();
+                (buffer, line) = Line::peek(buffer).unwrap();
                 if line.level == 1 {
                     // abort
                     break;

@@ -72,25 +72,25 @@ impl Header {
             let buffer: &str;
             let line: Line;
 
-            (_, line) = parse::peek_line(&record).unwrap();
+            (_, line) = Line::peek(&record).unwrap();
 
             // Inspect the top-level tags only.
             if line.level == 0 && line.tag == "HEAD" {
                 // Consume the line
                 // println!("Consuming HEAD");
-                (buffer, _) = parse::line(&record).unwrap();
+                (buffer, _) = Line::parse(&record).unwrap();
             } else if line.level == 1 {
                 // println!("Found an inner tag: {}", line.tag);
                 match line.tag {
                     "CHAR" => {
                         header.encoding = Some(line.value.to_string());
-                        (buffer, _) = parse::line(&record).unwrap();
+                        (buffer, _) = Line::parse(&record).unwrap();
                     }
                     "COPR" => {
                         (buffer, header.copyright) = parse::get_tag_value(&record).unwrap();
 
                         // header.copyright = Some(line.value.unwrap_or("").to_string());
-                        // (buffer, _) = parse::line(&record).unwrap();
+                        // (buffer, _) = Line::parse(&record).unwrap();
                         // (buffer, header.copyright) = Copyright::parse(&record);
                     }
                     // "CORP" => {
@@ -104,18 +104,18 @@ impl Header {
                     }
                     "DEST" => {
                         header.destination = Some(line.value.to_string());
-                        (buffer, _) = parse::line(&record).unwrap();
+                        (buffer, _) = Line::parse(&record).unwrap();
                     }
                     "FILE" => {
                         header.filename = Some(line.value.to_string());
-                        (buffer, _) = parse::line(&record).unwrap();
+                        (buffer, _) = Line::parse(&record).unwrap();
                     }
                     "GEDC" => {
                         (buffer, header.gedcom_version) = Gedc::parse(&record);
                     }
                     "LANG" => {
                         header.language = Some(line.value.to_string());
-                        (buffer, _) = parse::line(&record).unwrap();
+                        (buffer, _) = Line::parse(&record).unwrap();
                     }
                     "NOTE" => {
                         // This is just parsing the value of a line, and any
@@ -133,11 +133,11 @@ impl Header {
                     }
                     _ => {
                         // println!("Unhandled header tag: {}", line.tag);
-                        (buffer, _) = parse::line(&record).unwrap();
+                        (buffer, _) = Line::parse(&record).unwrap();
                     }
                 };
             } else {
-                (buffer, _) = parse::line(&record).unwrap();
+                (buffer, _) = Line::parse(&record).unwrap();
             }
 
             record = buffer.to_string();

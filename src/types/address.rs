@@ -32,15 +32,17 @@ impl Address {
             fax: vec![],
             www: vec![],
         };
-        let mut line: Line;
+        // let mut line: Line;
 
-        let (_, mut lvl) = parse::peek_level(buffer).unwrap();
+        let (_, mut line) = Line::peek(buffer).unwrap();
 
-        let min_level = lvl;
+        // let (_, mut lvl) = parse::peek_level(buffer).unwrap();
+
+        let min_level = line.level;
 
         // Only iterate through the ADDR records
-        while lvl >= min_level {
-            (_, line) = parse::peek_line(buffer).unwrap();
+        while line.level >= min_level {
+            (_, line) = Line::peek(buffer).unwrap();
 
             match line.tag {
                 "ADDR" => {
@@ -53,28 +55,30 @@ impl Address {
                     // newline to preserve the formatting
                     // CONC implies that we're concatenating the line
 
-                    let mut tag;
+                    // let mut line;
 
                     // create a temp buffer to see if we have a CONC/CONT
-                    let (mut addr_buffer, _) = parse::line(buffer).unwrap();
-                    (_, tag) = parse::peek_tag(addr_buffer).unwrap_or(("", ""));
+                    let (mut addr_buffer, _) = Line::parse(buffer).unwrap();
+                    let (_, mut line) = Line::peek(addr_buffer).unwrap();
 
-                    while tag == "CONT" || tag == "CONC" {
-                        if tag == "CONT" {
+                    // (_, tag) = parse::peek_tag(addr_buffer).unwrap_or(("", ""));
+
+                    while line.tag == "CONT" || line.tag == "CONC" {
+                        if line.tag == "CONT" {
                             let (asdf, cont) = parse::cont(addr_buffer).unwrap();
 
                             addr += "\n";
                             addr += cont;
 
                             addr_buffer = asdf;
-                        } else if tag == "CONC" {
+                        } else if line.tag == "CONC" {
                             let (asdf, cont) = parse::conc(addr_buffer).unwrap();
                             addr += " ";
                             addr += cont;
                             addr_buffer = asdf;
                         }
 
-                        (_, tag) = parse::peek_tag(addr_buffer).unwrap();
+                        (_, line) = Line::peek(addr_buffer).unwrap();
                     }
                     address.addr1 = Some(addr);
                 }
@@ -119,10 +123,10 @@ impl Address {
                 }
             }
 
-            (buffer, _) = parse::line(buffer).unwrap();
+            (buffer, _) = Line::parse(buffer).unwrap();
 
-            // Grab the next level, if there is one, or short-circuit the loop
-            (_, lvl) = parse::peek_level(buffer).unwrap_or(("", 0));
+            // Grab the next line, if there is one, or short-circuit the loop
+            (_, line) = Line::peek(buffer).unwrap();
         }
         (buffer, Some(address))
     }
@@ -174,7 +178,7 @@ mod tests {
     #[test]
     fn parse_addr_tag() {
         let data = "3 ADDR\n";
-        let (str, line) = parse::line(&data).unwrap();
+        let (str, line) = Line::parse(&data).unwrap();
 
         assert!(str.len() == 0);
         assert!(line.level == 3);
@@ -186,7 +190,7 @@ mod tests {
     #[test]
     fn parse_adr1_tag() {
         let data = "4 ADR1 RSAC Software\n";
-        let (str, line) = parse::line(&data).unwrap();
+        let (str, line) = Line::parse(&data).unwrap();
 
         assert!(str.is_empty());
         assert!(line.level == 4);

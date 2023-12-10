@@ -1,4 +1,4 @@
-use crate::parse;
+// use crate::parse;
 // use crate::types::corporation::Corporation;
 
 use super::{corporation::Corporation, Line, SourceData};
@@ -50,23 +50,24 @@ impl Source {
         };
         let mut line: Line;
 
-        (_, line) = parse::peek_line(buffer).unwrap();
+        (_, line) = Line::peek(buffer).unwrap();
 
         // Verify we have a SOUR record
         if line.level == 1 && line.tag == "SOUR" {
             // Consume the first line
-            (buffer, line) = parse::line(buffer).unwrap();
+            (buffer, line) = Line::parse(buffer).unwrap();
 
             source.source = line.value.to_string();
 
-            let (_, mut lvl) = parse::peek_level(buffer).unwrap();
+            let (_, mut next) = Line::peek(buffer).unwrap();
+            // let (_, mut lvl) = parse::peek_level(buffer).unwrap();
 
-            while lvl >= line.level {
+            while next.level >= line.level {
                 let inner_line: Line;
 
                 // We don't want to consume the line yet because we may need
                 // the original for a parser.
-                (_, inner_line) = parse::peek_line(buffer).unwrap();
+                (_, inner_line) = Line::peek(buffer).unwrap();
 
                 // println!("Evaluating tag: {:?}", inner_line.tag);
                 match inner_line.tag {
@@ -78,18 +79,18 @@ impl Source {
                         // but is probably not useful for anything
                         println!("Skipping _TREE");
                         // Consume the line
-                        (buffer, _) = parse::line(buffer).unwrap();
+                        (buffer, _) = Line::parse(buffer).unwrap();
                     }
                     "CORP" => {
                         (buffer, source.corporation) = Corporation::parse(buffer);
                     }
                     "NAME" => {
                         source.name = Some(inner_line.value.to_string());
-                        (buffer, _) = parse::line(buffer).unwrap();
+                        (buffer, _) = Line::parse(buffer).unwrap();
                     }
                     "VERS" => {
                         source.version = Some(inner_line.value.to_string());
-                        (buffer, _) = parse::line(buffer).unwrap();
+                        (buffer, _) = Line::parse(buffer).unwrap();
                     }
                     "DATA" => {
                         (buffer, source.data) = SourceData::parse(buffer);
@@ -98,23 +99,19 @@ impl Source {
                         println!("Unknown line: {:?}", inner_line);
 
                         // consume the line so we can parse the next
-                        (buffer, _) = parse::line(buffer).unwrap();
+                        (buffer, _) = Line::parse(buffer).unwrap();
                     }
                 }
 
                 // Peek at the next level
                 if !buffer.is_empty() {
-                    (_, lvl) = parse::peek_level(buffer).unwrap();
-                    if lvl <= 1 {
+                    (_, next) = Line::peek(buffer).unwrap();
+                    if next.level <= 1 {
                         break;
                     }
                 } else {
                     break;
                 }
-                // if buffer.is_empty() || lvl <= 1 {
-                //     println!("Aborting SOUR.");
-                //     break;
-                // }
             }
         }
 

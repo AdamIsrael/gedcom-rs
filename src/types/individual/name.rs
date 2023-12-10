@@ -1,4 +1,4 @@
-use crate::parse;
+// use crate::parse;
 use crate::types::Line;
 
 use nom::IResult;
@@ -83,7 +83,7 @@ impl Name {
         let mut line: Line;
 
         while !buffer.is_empty() {
-            (buffer, line) = parse::line(buffer).unwrap();
+            (buffer, line) = Line::parse(buffer).unwrap();
             // println!("Name::level = {level}, tag = {tag:?}, value={value:?}");
 
             match line.tag {
@@ -120,15 +120,17 @@ impl Name {
 
             // Check if the next line is a new NAME record
             // TODO: a peek_line method so we can check level and tag in one call
-            let level = parse::peek_level(buffer).unwrap_or(("", 0_u8)).1;
-            // let tag = Some(parse::peek_tag(buffer).unwrap().1);
-            let tag = parse::peek_tag(buffer).unwrap().1;
+            let (_, line) = Line::parse(buffer).unwrap();
 
-            if level == 1 && tag == "NAME" {
+            // let level = parse::peek_level(buffer).unwrap_or(("", 0_u8)).1;
+            // // let tag = Some(parse::peek_tag(buffer).unwrap().1);
+            // let tag = parse::peek_tag(buffer).unwrap().1;
+
+            if line.level == 1 && line.tag == "NAME" {
                 break;
             }
 
-            if level == 2 && (tag == "ROMN" || tag == "FONE") {
+            if line.level == 2 && (line.tag == "ROMN" || line.tag == "FONE") {
                 break;
             }
         }
@@ -250,7 +252,7 @@ impl PersonalName {
         // level = parse::peek_level(&buffer).unwrap().1;
         // tag = Some(parse::peek_tag(&buffer).unwrap().1);
         // println!("DEBUG: Level {level}, tag {tag:?}");
-        let (mut buffer, mut line) = parse::line(buffer).unwrap();
+        let (mut buffer, mut line) = Line::parse(buffer).unwrap();
 
         while line.level > 1 && !buffer.is_empty() {
             if line.level == 2 {
@@ -286,7 +288,7 @@ impl PersonalName {
             if line.level == 1 {
                 break;
             } else {
-                (buffer, line) = parse::line(buffer).unwrap();
+                (buffer, line) = Line::parse(buffer).unwrap();
             }
         }
 

@@ -1,7 +1,4 @@
-use super::Line;
-use crate::parse;
-// use crate::types::address::Address;
-use crate::types::{Address, DateTime, Note};
+use crate::types::{Address, DateTime, Line, Note};
 
 // n @<XREF:SUBM>@ SUBM {1:1}
 // +1 NAME <SUBMITTER_NAME> {1:1} p.63
@@ -44,7 +41,7 @@ impl Submitter {
             change_date: None,
         };
         let mut line: Line;
-        (_, line) = parse::peek_line(buffer).unwrap();
+        (_, line) = Line::peek(buffer).unwrap();
 
         while !buffer.is_empty() {
             // this is only going to match one line. We want to skip forward
@@ -52,14 +49,14 @@ impl Submitter {
             // if line.level == 0 && xref == line.xref.unwrap() {
             if line.level == 0 {
                 // Peek at the next line so we know how to parse it.
-                (_, line) = parse::peek_line(buffer).unwrap();
+                (_, line) = Line::peek(buffer).unwrap();
 
                 // Loop through the rest of the record
                 while line.level > 0 || !buffer.is_empty() {
                     match line.tag {
                         "NAME" => {
                             submitter.name = Some(line.value.to_string());
-                            (buffer, _) = parse::line(buffer).unwrap();
+                            (buffer, _) = Line::parse(buffer).unwrap();
                         }
                         "ADDR" => {
                             (buffer, submitter.address) = Address::parse(buffer);
@@ -68,23 +65,23 @@ impl Submitter {
                             // Parse the object id and add it to the list
                             let media_xref = line.value;
                             submitter.media.push(media_xref.to_string());
-                            (buffer, _) = parse::line(buffer).unwrap();
+                            (buffer, _) = Line::parse(buffer).unwrap();
                             // TODO: find the media object and parse it
                         }
                         "RIN" => {
-                            (buffer, line) = parse::line(buffer).unwrap();
+                            (buffer, line) = Line::parse(buffer).unwrap();
                             submitter.rin = Some(line.value.to_string());
                             // println!("!! {:}", line.tag);
                         }
                         "CHAN" => {
                             // Parse the date/time
-                            (buffer, _) = parse::line(buffer).unwrap();
+                            (buffer, _) = Line::parse(buffer).unwrap();
                             (buffer, submitter.change_date) = DateTime::parse(buffer);
                         }
                         "LANG" => {
                             let lang = line.value;
                             submitter.lang.push(lang.to_string());
-                            (buffer, _) = parse::line(buffer).unwrap();
+                            (buffer, _) = Line::parse(buffer).unwrap();
                         }
                         "NOTE" => {
                             (buffer, submitter.note) = Note::parse(buffer);
@@ -92,17 +89,17 @@ impl Submitter {
                         "RFN" => {
                             let rfn = line.value;
                             submitter.rfn = Some(rfn.to_string());
-                            (buffer, _) = parse::line(buffer).unwrap();
+                            (buffer, _) = Line::parse(buffer).unwrap();
                         }
                         _ => {
                             // Advance the buffer past the unknown line
-                            (buffer, _) = parse::line(buffer).unwrap();
+                            (buffer, _) = Line::parse(buffer).unwrap();
                         }
                     }
-                    (_, line) = parse::peek_line(buffer).unwrap();
+                    (_, line) = Line::peek(buffer).unwrap();
                 }
             } else {
-                (buffer, line) = parse::line(buffer).unwrap();
+                (buffer, line) = Line::parse(buffer).unwrap();
             }
         }
 
@@ -125,10 +122,10 @@ impl Submitter {
 
         let mut line: Line;
 
-        (_, line) = parse::peek_line(buffer).unwrap();
+        (_, line) = Line::peek(buffer).unwrap();
         if line.level == 1 && line.tag == "SUBM" {
             // advance our position in the buffer
-            (buffer, line) = parse::line(buffer).unwrap();
+            (buffer, line) = Line::parse(buffer).unwrap();
             // This is a temporary hack, because parse::xref strips @ from the id
             let xref = line.value;
             submitter.xref = Some(xref.to_owned());

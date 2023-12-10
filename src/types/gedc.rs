@@ -1,5 +1,5 @@
 use super::Line;
-use crate::parse;
+// use crate::parse;
 
 #[derive(Debug, Default, PartialEq)]
 // pub enum Form {
@@ -20,20 +20,20 @@ impl Form {
 
         let mut line: Line;
 
-        (_, line) = parse::peek_line(buffer).unwrap();
+        (_, line) = Line::peek(buffer).unwrap();
 
         if line.tag == "FORM" {
-            (buffer, line) = parse::line(buffer).unwrap();
+            (buffer, line) = Line::parse(buffer).unwrap();
 
             form.name = Some(line.value.to_string());
 
             while !buffer.is_empty() {
                 // Peek the next line
-                (_, line) = parse::peek_line(buffer).unwrap();
+                (_, line) = Line::peek(buffer).unwrap();
                 match line.tag {
                     "VERS" => {
                         // consume the line
-                        (buffer, line) = parse::line(buffer).unwrap();
+                        (buffer, line) = Line::parse(buffer).unwrap();
                         form.version = Some(line.value.to_string());
                     }
                     _ => {
@@ -64,21 +64,21 @@ impl Gedc {
         };
         let mut line: Line;
 
-        (_, line) = parse::peek_line(buffer).unwrap();
+        (_, line) = Line::peek(buffer).unwrap();
 
         if line.tag == "GEDC" {
-            (buffer, _) = parse::line(buffer).unwrap();
+            (buffer, _) = Line::parse(buffer).unwrap();
 
             while !buffer.is_empty() {
                 // Peek the next line
-                (_, line) = parse::peek_line(buffer).unwrap();
+                (_, line) = Line::peek(buffer).unwrap();
                 match line.tag {
                     "FORM" => {
                         (buffer, gedc.form) = Form::parse(buffer);
                     }
                     "VERS" => {
                         // consume the line
-                        (buffer, line) = parse::line(buffer).unwrap();
+                        (buffer, line) = Line::parse(buffer).unwrap();
                         gedc.version = Some(line.value.to_string());
                     }
                     _ => {
