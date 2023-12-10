@@ -151,7 +151,6 @@ impl<'b> Line<'b> {
     // }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,6 +187,5 @@ mod tests {
 
         let (_, line) = Line::parse(data[6]).unwrap();
         assert!(line.level == 1 && line.tag == "SUBM" && line.value == "@U1@");
-
     }
 }
