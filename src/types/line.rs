@@ -6,11 +6,10 @@ use nom::character::complete::{alphanumeric1, digit1, line_ending, not_line_endi
 use nom::combinator::{
     map_res,
     opt,
-    // peek,
     recognize,
     verify,
 };
-use nom::sequence::{delimited, preceded};
+use nom::sequence::{preceded, separated_pair};
 
 /// A GEDCOM line
 /// level + delim (space) + [optional_xref_ID] + tag + [optional_line_value] + terminator
@@ -100,11 +99,11 @@ impl<'b> Line<'b> {
     /// TODO: Return the leading/trailing @ portion of the xref
     fn xref(input: &str) -> IResult<&str, &str> {
         if input.starts_with('@') {
-            let mut parser = delimited(
+            let mut parser = recognize(separated_pair(
                 nom::bytes::complete::tag("@"),
                 is_not("@"),
                 nom::bytes::complete::tag("@"),
-            );
+            ));
             parser(input)
         } else {
             Ok((input, ""))
@@ -165,6 +164,7 @@ mod tests {
             "3 DATE 1 JAN 1998",
             "3 COPR Copyright of source data",
             "1 SUBM @U1@",
+            "0 @U1@ SUBM",
         ];
 
         let (_, line) = Line::parse(data[0]).unwrap();
@@ -187,5 +187,9 @@ mod tests {
 
         let (_, line) = Line::parse(data[6]).unwrap();
         assert!(line.level == 1 && line.tag == "SUBM" && line.value == "@U1@");
+
+        let (_, line) = Line::parse(data[7]).unwrap();
+        // TODO: Update this to include the wrapping @ when I figure out how to make nom do that.
+        assert!(line.level == 0 && line.tag == "SUBM" && line.value == "" && line.xref == "@U1@");
     }
 }

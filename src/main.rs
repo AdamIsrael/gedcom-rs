@@ -20,7 +20,7 @@ fn main() {
 
     let gedcom = parse_gedcom(filename);
 
-    println!("{:#?}", gedcom.header);
+    println!("{:#?}", gedcom);
 }
 
 fn usage(msg: &str) {

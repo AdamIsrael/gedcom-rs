@@ -798,10 +798,8 @@ mod tests {
         let buffer = data.join("\n");
         let indi = Individual::parse(buffer);
 
-        // println!("{indi:#?}");
-
         assert_eq!(2, indi.names.len());
-        assert_eq!(Some("I1".to_string()), indi.xref);
+        assert_eq!(Some("@I1@".to_string()), indi.xref);
 
         // Check the name.name
         assert_eq!(
