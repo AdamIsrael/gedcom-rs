@@ -3,12 +3,7 @@ use std::str::FromStr;
 use nom::{bytes::complete::is_not, IResult};
 
 use nom::character::complete::{alphanumeric1, digit1, line_ending, not_line_ending, space0};
-use nom::combinator::{
-    map_res,
-    opt,
-    recognize,
-    verify,
-};
+use nom::combinator::{map_res, opt, recognize, verify};
 use nom::sequence::{preceded, separated_pair};
 
 /// A GEDCOM line
