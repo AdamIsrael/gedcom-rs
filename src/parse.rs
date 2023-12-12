@@ -240,13 +240,10 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
                         "SUBM" => {
                             // The record of the submitter of the family tree
                             // Not always present (it exists in complete.ged)
-
-                            // TODO: Need to fix the parsing of xref to not strip off the @
-                            if line.xref == "U1" {
-                                let subm = gedcom.header.submitter.clone();
-                                if subm.is_some() && subm.unwrap().xref.is_some() {
+                            if let Some(ref subm) = gedcom.header.submitter {
+                                if let Some(xref) = &subm.xref {
                                     gedcom.header.submitter =
-                                        Submitter::find_by_xref(buff, "@U1@".to_string());
+                                        Submitter::find_by_xref(buff, xref.to_string());
                                 }
                             }
                         }

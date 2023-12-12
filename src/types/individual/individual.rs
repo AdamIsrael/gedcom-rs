@@ -852,32 +852,4 @@ mod tests {
             indi.names[0].phonetic.r#type.as_deref()
         );
     }
-
-    // #[test]
-    // fn parse_addr() {
-    //     let data = vec![
-    //         "3 ADDR",
-    //         "4 ADR1 RSAC Software",
-    //         "4 ADR2 7108 South Pine Cone Street",
-    //         "4 ADR3 Ste 1",
-    //         "4 CITY Salt Lake City",
-    //         "4 STAE UT",
-    //         "4 POST 84121",
-    //         "4 CTRY USA",
-    //         "3 PHON +1-801-942-7768",
-    //         "3 PHON +1-801-555-1212",
-    //         "3 PHON +1-801-942-1148",
-    //         "3 EMAIL a@@example.com",
-    //         "3 EMAIL b@@example.com",
-    //         "3 EMAIL c@@example.com",
-    //         "3 FAX +1-801-942-7768",
-    //         "3 FAX +1-801-555-1212",
-    //         "3 FAX +1-801-942-1148",
-    //         "3 WWW https://www.example.com",
-    //         "3 WWW https://www.example.org",
-    //         "3 WWW https://www.example.net",
-    //     ];
-    //     addr = header::parse_address(data);
-
-    // }
 }

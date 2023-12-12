@@ -10,7 +10,7 @@ use crate::types::{Address, DateTime, Line, Note};
 // +1 <<NOTE_STRUCTURE>> {0:M} p.37
 // +1 <<CHANGE_DATE>>
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Submitter {
     /// The pointer to the SUBM record
     pub xref: Option<String>,
@@ -183,11 +183,9 @@ mod tests {
 
         let (_, mut submitter) = Submitter::parse(data.join("\n").as_str());
         let xref = submitter.unwrap().xref;
-        // println!("GOT xref: {:?}", xref);
-        // let header = Header::parse(data.join("\n"));
+
         // Now, find the xref
         submitter = Submitter::find_by_xref(data.join("\n").as_str(), xref.unwrap());
-        // println!("Submitter: {:?}", submitter);
         let s = submitter.unwrap();
 
         assert!(s.xref == Some("@U1@".to_string()));
