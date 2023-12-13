@@ -20,6 +20,7 @@ fn main() {
 
     let gedcom = parse_gedcom(filename);
 
+    // TODO: print a pretty summary of the gedcom. Use `tabled` crate?
     println!("{:#?}", gedcom);
 }
 

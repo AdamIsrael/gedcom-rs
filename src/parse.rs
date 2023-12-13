@@ -211,31 +211,20 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
                     match line.tag {
                         "HEAD" => {
                             gedcom.header = Header::parse(buff.to_string());
-                            // If a SUBM is found, find the record
-                            // if gedcom.header.submitter.is_some()
-                            //     && gedcom.header.submitter.unwrap().xref.is_some()
-                            // {
-                            //     // let xref = gedcom.header.submitter.unwrap().xref.unwrap();
-                            //     let xref = "@U1@".to_string();
-                            //     // Create a copy of the buffer
-                            //     let mut foo = String::from("");
-
-                            //     for l in lines.flatten() {
-                            //         foo += l.as_str();
-                            //     }
-                            //     gedcom.header.submitter = Submitter::find_by_xref(&foo, xref)
-                            // }
                         }
                         "INDI" => {
                             let indi = Individual::parse(buff.to_string());
                             // TODO: Remove the if. This is just to clean up the output for debugging.
-                            if indi.xref.clone().unwrap() == "I1" {
+                            if indi.xref.clone().unwrap() == "@I1@" {
                                 gedcom.individuals.push(indi);
                             }
                         }
                         "SOUR" => {}
                         "REPO" => {}
-                        "OBJE" => {}
+                        "OBJE" => {
+                            let obj = Object::parse(buff);
+                            println!("{:?}", obj);
+                        }
                         "FAM" => {}
                         "SUBM" => {
                             // The record of the submitter of the family tree
@@ -255,14 +244,6 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
             }
             record = record + &buffer.clone() + "\n";
         }
-
-        // println!("{:#?}", gedcom.header);
-        // TODO: print a pretty summary of the gedcom. Use `tabled` crate?
-
-        // TODO: should gedcom.header.submitter be a Vec? Can there be more than
-        // one submitter?
-        // println!("\tsubmitters: {}", 1);
-        // println!("\tindividuals: {}", gedcom.individuals.len());
         // TODO: families
         // TODO: repositories
         // TODO: sources
