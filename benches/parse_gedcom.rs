@@ -3,7 +3,7 @@ use gedcom_test::parse::parse_gedcom;
 
 use std::time::Duration;
 
-const FILENAME: &str = "../data/complete.ged";
+const FILENAME: &str = "data/complete.ged";
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("parse-gedcom");
