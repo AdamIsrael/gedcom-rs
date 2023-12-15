@@ -1,8 +1,6 @@
 // use std::str::FromStr;
 
-use winnow::ascii::{
-    alphanumeric1, digit1, line_ending, not_line_ending, space0,
-};
+use winnow::ascii::{alphanumeric1, digit1, line_ending, not_line_ending, space0};
 use winnow::combinator::{opt, preceded, separated_pair};
 use winnow::error::StrContext;
 use winnow::prelude::*;
