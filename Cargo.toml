@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 nom = "7"
 smallvec = "1.10.0"
+winnow = "0.5.28"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }

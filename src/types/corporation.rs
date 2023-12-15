@@ -1,5 +1,4 @@
 use super::Line;
-// use crate::parse;
 use crate::types::Address;
 
 // +1 SOUR <APPROVED_SYSTEM_ID>
@@ -25,16 +24,18 @@ impl Corporation {
             address: None,
         };
 
-        let mut line: Line;
+        let mut line: Line = Line::peek(&mut buffer).unwrap();
 
         // Verify we have a CORP record
-        (_, line) = Line::peek(buffer).unwrap();
+        // line = Line::peek(&mut buffer).unwrap();
         if line.level == 2 && line.tag == "CORP" {
-            (buffer, line) = Line::parse(buffer).unwrap();
+            line = Line::parse(&mut buffer).unwrap();
+            // (buffer, line) = Line::parse(buffer).unwrap();
             corp.name = Some(line.value.to_string());
 
             // Check if the next line contains an address struct
-            (_, line) = Line::peek(buffer).unwrap();
+            line = Line::peek(&mut buffer).unwrap();
+
             if line.level == 3 && line.tag == "ADDR" {
                 (buffer, corp.address) = Address::parse(buffer);
             }

@@ -20,20 +20,20 @@ impl Form {
 
         let mut line: Line;
 
-        (_, line) = Line::peek(buffer).unwrap();
+        line = Line::peek(&mut buffer).unwrap();
 
         if line.tag == "FORM" {
-            (buffer, line) = Line::parse(buffer).unwrap();
+            line = Line::parse(&mut buffer).unwrap();
 
             form.name = Some(line.value.to_string());
 
             while !buffer.is_empty() {
                 // Peek the next line
-                (_, line) = Line::peek(buffer).unwrap();
+                line = Line::peek(&mut buffer).unwrap();
                 match line.tag {
                     "VERS" => {
                         // consume the line
-                        (buffer, line) = Line::parse(buffer).unwrap();
+                        line = Line::parse(&mut buffer).unwrap();
                         form.version = Some(line.value.to_string());
                     }
                     _ => {
@@ -64,21 +64,21 @@ impl Gedc {
         };
         let mut line: Line;
 
-        (_, line) = Line::peek(buffer).unwrap();
+        line = Line::peek(&mut buffer).unwrap();
 
         if line.tag == "GEDC" {
-            (buffer, _) = Line::parse(buffer).unwrap();
+            Line::parse(&mut buffer).unwrap();
 
             while !buffer.is_empty() {
                 // Peek the next line
-                (_, line) = Line::peek(buffer).unwrap();
+                line = Line::peek(&mut buffer).unwrap();
                 match line.tag {
                     "FORM" => {
                         (buffer, gedc.form) = Form::parse(buffer);
                     }
                     "VERS" => {
                         // consume the line
-                        (buffer, line) = Line::parse(buffer).unwrap();
+                        line = Line::parse(&mut buffer).unwrap();
                         gedc.version = Some(line.value.to_string());
                     }
                     _ => {

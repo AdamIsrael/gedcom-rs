@@ -12,7 +12,7 @@ impl Note {
     pub fn parse(mut buffer: &str) -> (&str, Option<Note>) {
         let mut note = Note { note: None };
 
-        (buffer, note.note) = parse::get_tag_value(buffer).unwrap();
+        note.note = parse::get_tag_value(&mut buffer).unwrap();
 
         (buffer, Some(note))
     }
@@ -33,16 +33,16 @@ mod tests {
 
         let data = vec![
             "1 NOTE This is the first line of a note.",
-            "2 CONC This is the second line of a note.",
-            "2 CONT",
+            "2 CONT This is the second line of a note.",
+            "2 CONC This is also on the second line.",
             "2 CONT This line should be the last line.",
         ];
 
         let (_, note) = Note::parse(data.join("\n").as_str());
         let n = note.unwrap().note.unwrap();
 
-        assert!(n.starts_with("This is the first line"));
-        assert!(n.ends_with("the last line.\n"));
-        assert!(n == "This is the first line of a note.This is the second line of a note.\nThis line should be the last line.\n");
+        assert!(n.starts_with("This is the first line of a note.\n"));
+        assert!(n.ends_with("the last line."));
+        assert!(n == "This is the first line of a note.\nThis is the second line of a note. This is also on the second line.\nThis line should be the last line.");
     }
 }

@@ -51,7 +51,10 @@ impl Individual {
         };
 
         while !record.is_empty() {
-            let (buffer, line) = Line::parse(&record).unwrap();
+            let mut buffer = record.as_str();
+            let line = Line::parse(&mut buffer).unwrap();
+
+            // let (buffer, line) = Line::parse(&record).unwrap();
 
             // If we're at the top of the record, get the xref
             // && level == 0

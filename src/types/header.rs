@@ -69,25 +69,28 @@ impl Header {
 
         // do parser stuff here
         while !record.is_empty() {
-            let buffer: &str;
-            let line: Line;
-
-            (_, line) = Line::peek(&record).unwrap();
+            let mut buffer: &str = record.as_str();
+            let line = Line::peek(&mut buffer).unwrap();
 
             // Inspect the top-level tags only.
             if line.level == 0 && line.tag == "HEAD" {
                 // Consume the line
                 // println!("Consuming HEAD");
-                (buffer, _) = Line::parse(&record).unwrap();
+                // (buffer, _) = Line::parse(&record).unwrap();
+                Line::parse(&mut buffer).unwrap();
             } else if line.level == 1 {
                 // println!("Found an inner tag: {}", line.tag);
                 match line.tag {
                     "CHAR" => {
                         header.encoding = Some(line.value.to_string());
-                        (buffer, _) = Line::parse(&record).unwrap();
+                        // (buffer, _) = Line::parse(&record).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                     "COPR" => {
-                        (buffer, header.copyright) = parse::get_tag_value(&record).unwrap();
+                        // println!("Input before copyright: '{}'", buffer);
+                        header.copyright = parse::get_tag_value(&mut buffer).unwrap();
+                        // println!("Input after copyright: '{}'", buffer);
+                        // (buffer, header.copyright) = parse::get_tag_value(&record).unwrap();
 
                         // header.copyright = Some(line.value.unwrap_or("").to_string());
                         // (buffer, _) = Line::parse(&record).unwrap();
@@ -104,23 +107,27 @@ impl Header {
                     }
                     "DEST" => {
                         header.destination = Some(line.value.to_string());
-                        (buffer, _) = Line::parse(&record).unwrap();
+                        // (buffer, _) = Line::parse(&record).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                     "FILE" => {
                         header.filename = Some(line.value.to_string());
-                        (buffer, _) = Line::parse(&record).unwrap();
+                        // (buffer, _) = Line::parse(&record).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                     "GEDC" => {
                         (buffer, header.gedcom_version) = Gedc::parse(&record);
                     }
                     "LANG" => {
                         header.language = Some(line.value.to_string());
-                        (buffer, _) = Line::parse(&record).unwrap();
+                        // (buffer, _) = Line::parse(&record).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                     "NOTE" => {
                         // This is just parsing the value of a line, and any
                         // CONC/CONT that follows. Rewrite
-                        (buffer, header.note) = parse::get_tag_value(&record).unwrap();
+                        header.note = parse::get_tag_value(&mut buffer).unwrap();
+                        // (buffer, header.note) = parse::get_tag_value(&record).unwrap();
                         // let note: Option<Note>;
                         // (buffer, note) = Note::parse(&record);
                         // header.note = note;
@@ -133,11 +140,13 @@ impl Header {
                     }
                     _ => {
                         // println!("Unhandled header tag: {}", line.tag);
-                        (buffer, _) = Line::parse(&record).unwrap();
+                        // (buffer, _) = Line::parse(&record).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                 };
             } else {
-                (buffer, _) = Line::parse(&record).unwrap();
+                // (buffer, _) = Line::parse(&record).unwrap();
+                Line::parse(&mut buffer).unwrap();
             }
 
             record = buffer.to_string();

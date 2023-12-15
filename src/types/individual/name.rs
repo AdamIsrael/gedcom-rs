@@ -83,7 +83,9 @@ impl Name {
         let mut line: Line;
 
         while !buffer.is_empty() {
-            (buffer, line) = Line::parse(buffer).unwrap();
+            line = Line::parse(&mut buffer).unwrap();
+
+            // (buffer, line) = Line::parse(buffer).unwrap();
             // println!("Name::level = {level}, tag = {tag:?}, value={value:?}");
 
             match line.tag {
@@ -120,7 +122,8 @@ impl Name {
 
             // Check if the next line is a new NAME record
             // TODO: a peek_line method so we can check level and tag in one call
-            let (_, line) = Line::parse(buffer).unwrap();
+            // let (_, line) = Line::parse(buffer).unwrap();
+            let line = Line::peek(&mut buffer).unwrap();
 
             // let level = parse::peek_level(buffer).unwrap_or(("", 0_u8)).1;
             // // let tag = Some(parse::peek_tag(buffer).unwrap().1);
@@ -238,7 +241,7 @@ impl PersonalName {
         // We're on level one, so parse until we hit another level one?
         // let min_level = 1;
 
-        let buffer: &str;
+        let mut buffer: &str;
 
         // TODO: make a Line struct?
         // let mut level: u8 = 0;
@@ -252,7 +255,9 @@ impl PersonalName {
         // level = parse::peek_level(&buffer).unwrap().1;
         // tag = Some(parse::peek_tag(&buffer).unwrap().1);
         // println!("DEBUG: Level {level}, tag {tag:?}");
-        let (mut buffer, mut line) = Line::parse(buffer).unwrap();
+        let mut line = Line::parse(&mut buffer).unwrap();
+
+        // let (mut buffer, mut line) = Line::parse(buffer).unwrap();
 
         while line.level > 1 && !buffer.is_empty() {
             if line.level == 2 {
@@ -288,7 +293,8 @@ impl PersonalName {
             if line.level == 1 {
                 break;
             } else {
-                (buffer, line) = Line::parse(buffer).unwrap();
+                // (buffer, line) = Line::parse(buffer).unwrap();
+                line = Line::parse(&mut buffer).unwrap();
             }
         }
 
