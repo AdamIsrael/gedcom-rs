@@ -7,11 +7,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-// use winnow::ascii::{alpha1, alphanumeric1, digit1, line_ending, not_line_ending, space0};
-// use winnow::combinator::{delimited, opt, peek, preceded};
 use winnow::prelude::*;
-// use winnow::stream::Stream;
-// use winnow::token::{tag, take_till};
 
 /// This is pretty much a kludge to strip out U+FEFF, a Zero Width No-Break Space
 /// https://www.compart.com/en/unicode/U+FEFF
