@@ -50,24 +50,21 @@ impl Source {
         };
         let mut line: Line;
 
-        (_, line) = Line::peek(buffer).unwrap();
+        line = Line::peek(&mut buffer).unwrap();
 
         // Verify we have a SOUR record
         if line.level == 1 && line.tag == "SOUR" {
             // Consume the first line
-            (buffer, line) = Line::parse(buffer).unwrap();
+            line = Line::parse(&mut buffer).unwrap();
 
             source.source = line.value.to_string();
 
-            let (_, mut next) = Line::peek(buffer).unwrap();
-            // let (_, mut lvl) = parse::peek_level(buffer).unwrap();
+            let mut next = Line::peek(&mut buffer).unwrap();
 
             while next.level >= line.level {
-                let inner_line: Line;
-
                 // We don't want to consume the line yet because we may need
                 // the original for a parser.
-                (_, inner_line) = Line::peek(buffer).unwrap();
+                let inner_line: Line = Line::peek(&mut buffer).unwrap();
 
                 // println!("Evaluating tag: {:?}", inner_line.tag);
                 match inner_line.tag {
@@ -79,18 +76,18 @@ impl Source {
                         // but is probably not useful for anything
                         println!("Skipping _TREE");
                         // Consume the line
-                        (buffer, _) = Line::parse(buffer).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                     "CORP" => {
                         (buffer, source.corporation) = Corporation::parse(buffer);
                     }
                     "NAME" => {
                         source.name = Some(inner_line.value.to_string());
-                        (buffer, _) = Line::parse(buffer).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                     "VERS" => {
                         source.version = Some(inner_line.value.to_string());
-                        (buffer, _) = Line::parse(buffer).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                     "DATA" => {
                         (buffer, source.data) = SourceData::parse(buffer);
@@ -99,13 +96,13 @@ impl Source {
                         println!("Unknown line: {:?}", inner_line);
 
                         // consume the line so we can parse the next
-                        (buffer, _) = Line::parse(buffer).unwrap();
+                        Line::parse(&mut buffer).unwrap();
                     }
                 }
 
                 // Peek at the next level
                 if !buffer.is_empty() {
-                    (_, next) = Line::peek(buffer).unwrap();
+                    next = Line::peek(&mut buffer).unwrap();
                     if next.level <= 1 {
                         break;
                     }

@@ -41,7 +41,7 @@ mod tests {
         let gedcom = parse_gedcom("./data/complete.ged");
 
         // Test the header
-
+        // println!("Gedcom: {:?}", gedcom.header);
         // Test the copyright header
         assert!(gedcom.header.copyright.is_some());
         let copyright = gedcom.header.copyright.unwrap();

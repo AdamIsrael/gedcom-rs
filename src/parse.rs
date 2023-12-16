@@ -7,100 +7,21 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-// use nom::character::complete::newline;
-// use nom::character::complete::digit1;
-
-use nom::IResult;
-
-// use nom::{
-//     error::{make_error, ErrorKind, ParseError},
-//     Needed,
-// };
-// use nom::{
-//     AsChar, Compare, CompareResult, ExtendInto, InputIter, InputLength, InputTake,
-//     InputTakeAtPosition, Offset, Slice,
-// };
-// use nom::branch::alt;
-
-// use nom::bytes::complete::{take_while, take_while1};
-// use nom::character::complete::{
-//     alphanumeric1,
-//     // alpha1,
-//     // one_of,
-//     line_ending,
-//     // multispace0,
-//     // multispace1,
-//     not_line_ending,
-//     space0,
-// };
-// use nom::combinator::{
-//     // all_consuming,
-//     // map,
-//     // map_opt,
-//     map_res,
-//     opt,
-//     peek,
-//     recognize,
-//     verify,
-// };
-// use nom::sequence::{
-//     delimited,
-//     // pair,
-//     preceded,
-//     // separated_pair,
-//     // terminated,
-//     // tuple,
-// };
-// use nom::ParseTo;
-
-// /// A line of GEDCOM data
-// type Line<'a> = (
-//     u8,              // level
-//     Option<&'a str>, // xref
-//     Option<&'a str>, // tag
-//     Option<&'a str>, // value
-// );
-
-// /// nop -- just testing
-// pub fn nop(input: &str) -> IResult<&str, Line> {
-//     let line = Line {
-//         level: 0,
-//         xref: Some("adsf"),
-//         tag: "HEAD",
-//         value: Some("a value"),
-//     };
-
-//     Ok(("", line))
-// }
-
-// fn source(input: &str) -> IResult<&str, Source> {
-//     let source = Source {
-//         source: "".to_string(),
-//         name: None,
-//         version: None,
-//         address: None
-//     };
-
-//     // return IResult.ok(input, source);
-// }
-
-// fn parse_level(input: &str) -> IResult<&str, &str> {
-//     digit1(input)
-// }
+use winnow::prelude::*;
 
 /// This is pretty much a kludge to strip out U+FEFF, a Zero Width No-Break Space
 /// https://www.compart.com/en/unicode/U+FEFF
 ///
 /// So far, I've only seen this with one GEDCOM, as the starting byte.
-pub fn zero_with_no_break_space(input: &str) -> IResult<&str, &str> {
-    if input.starts_with('\u{FEFF}') {
-        let parser = nom::bytes::complete::tag("\u{FEFF}");
+// pub fn zero_with_no_break_space(input: &mut &str) -> PResult<&str> {
+//     if input.starts_with('\u{FEFF}') {
+//         let parser = tag("\u{FEFF}");
 
-        parser(input)
-    } else {
-        Ok((input, ""))
-    }
-}
+//         parser.parse_next(input)
+//     } else {
+//         Ok("")
+//     }
+// }
 
 /// What did I mean to do with this? gg
 /// I think it takes the input and returns a tuple containing the tag and it's
@@ -111,56 +32,53 @@ pub fn zero_with_no_break_space(input: &str) -> IResult<&str, &str> {
 // }
 
 /// Read the next tag's value and any continuations
-pub fn get_tag_value(input: &str) -> IResult<&str, Option<String>> {
-    let mut text: String = String::from("");
-    let mut line;
-    let mut buffer;
+pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
+    let mut line = Line::parse(input).unwrap();
 
-    (buffer, line) = Line::parse(input).unwrap();
-    text += line.value;
+    // Seed the value with the initial value
+    let mut text: String = line.value.to_string();
 
-    (_, line) = Line::peek(buffer).unwrap();
+    line = Line::peek(input).unwrap();
     while line.tag == "CONC" || line.tag == "CONT" {
         // consume
-        (buffer, line) = Line::parse(buffer).unwrap();
+        line = Line::parse(input).unwrap();
 
-        // allocate
-        text += line.value;
         if line.tag == "CONT" {
             text += "\n";
+        } else {
+            text += " ";
         }
+        text += line.value;
 
         // peek ahead
-        (_, line) = Line::peek(buffer).unwrap();
+        line = Line::peek(input).unwrap();
     }
 
-    Ok((buffer, Some(text)))
+    Ok(Some(text))
 }
 
 /// Parse the buffer if the CONC tag is found and return the resulting string.
-pub fn conc(input: &str) -> IResult<&str, &str> {
-    let (buffer, line) = Line::parse(input).unwrap();
+// pub fn conc(input: &mut &str) -> PResult<Option<String>> {
+//     let line = Line::parse(input).unwrap();
 
-    if line.tag == "CONC" {
-        Ok((buffer, line.value))
-    } else {
-        Ok((buffer, ""))
-    }
-}
+//     if line.tag == "CONC" {
+//         Ok(Some(line.value.to_string()))
+//     } else {
+//         Ok(None)
+//     }
+// }
 
 /// Parse the buffer if the CONT tag is found and return the resulting string.
 /// TODO: Refactor this. It should handle CONT and CONC.
-pub fn cont(input: &str) -> IResult<&str, &str> {
-    // let line: (u8, Option<&str>, Option<&str>, Option<&str>);
-    // let buffer: &str;
-    let (buffer, line) = Line::parse(input).unwrap();
+// pub fn cont(input: &mut &str) -> PResult<Option<String>> {
+//     let line = Line::parse(input).unwrap();
 
-    if line.tag == "CONT" {
-        Ok((buffer, line.value))
-    } else {
-        Ok((buffer, ""))
-    }
-}
+//     if line.tag == "CONT" {
+//         Ok(Some(line.value.to_string()))
+//     } else {
+//         Ok(None)
+//     }
+// }
 
 /// Parse a GEDCOM file
 pub fn parse_gedcom(filename: &str) -> Gedcom {
@@ -199,50 +117,152 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
             if buffer.strip_prefix('\u{FEFF}').is_some() {
                 buffer.remove(0);
             }
+            // println!("Buffer: \n'{}'", buffer);
+            // record = buffer.clone() + "\n";
 
             if let Some(ch) = buffer.chars().next() {
                 if ch == '0' && !record.is_empty() {
-                    // We found a new record, beginning with buffer, so
-                    // process the data in `record` before continuing
+                    let mut input: &str = record.as_str();
 
-                    // Peek at the next line to see where we're at.
-                    let (buff, line) = Line::peek(&record).unwrap();
-
+                    // Peek at the first line in the record so we know how
+                    // to parse it.
+                    let line = Line::peek(&mut input).unwrap();
+                    // println!("Got a line: {:?}", line);
                     match line.tag {
                         "HEAD" => {
-                            gedcom.header = Header::parse(buff.to_string());
+                            // println!("Parsing HEAD: \n{}", input);
+                            gedcom.header = Header::parse(input.to_string());
                         }
                         "INDI" => {
-                            let indi = Individual::parse(buff.to_string());
-                            // TODO: Remove the if. This is just to clean up the output for debugging.
-                            if indi.xref.clone().unwrap() == "@I1@" {
-                                gedcom.individuals.push(indi);
-                            }
+                            // let indi = Individual::parse(buff.to_string());
+                            // // TODO: Remove the if. This is just to clean up the output for debugging.
+                            // if indi.xref.clone().unwrap() == "@I1@" {
+                            //     gedcom.individuals.push(indi);
+                            // }
                         }
                         "SOUR" => {}
                         "REPO" => {}
                         "OBJE" => {
-                            let obj = Object::parse(buff);
-                            println!("{:?}", obj);
+                            // let obj = Object::parse(buff);
+                            // println!("{:?}", obj);
                         }
                         "FAM" => {}
                         "SUBM" => {
-                            // The record of the submitter of the family tree
-                            // Not always present (it exists in complete.ged)
-                            if let Some(ref subm) = gedcom.header.submitter {
-                                if let Some(xref) = &subm.xref {
-                                    gedcom.header.submitter =
-                                        Submitter::find_by_xref(buff, xref.to_string());
-                                }
-                            }
+                            // // The record of the submitter of the family tree
+                            // // Not always present (it exists in complete.ged)
+                            // if let Some(ref subm) = gedcom.header.submitter {
+                            //     if let Some(xref) = &subm.xref {
+                            //         gedcom.header.submitter =
+                            //             Submitter::find_by_xref(buff, xref.to_string());
+                            //     }
+                            // }
                         }
                         _ => {}
                     };
 
                     record.clear();
                 }
+                record = record + &buffer.clone() + "\n";
+                // println!("Record: {:?}", record);
             }
-            record = record + &buffer.clone() + "\n";
+
+            // match Line::peek(&mut linebuff) {
+            //     Ok(line) => {
+            //         if line.level == 0 && line.tag == "HEAD" {
+            //             // Consume the line
+            //             Line::parse(&mut linebuff).unwrap();
+            //         } else if line.level == 1 {
+            //             // println!("Found an inner tag: {}", line.tag);
+            //             match line.tag {
+            //                 "CHAR" => {
+            //                     gedcom.header.encoding = Some(line.value.to_string());
+            //                     Line::parse(&mut linebuff).unwrap();
+            //                 }
+            //                 "INDI" => {
+            //                     let indi = Individual::parse(buff.to_string());
+            //                     // TODO: Remove the if. This is just to clean up the output for debugging.
+            //                     if indi.xref.clone().unwrap() == "@I1@" {
+            //                         gedcom.individuals.push(indi);
+            //                     }
+            //                 }
+            //                 "SOUR" => {}
+            //                 "REPO" => {}
+            //                 "OBJE" => {
+            //                     let obj = Object::parse(buff);
+            //                     println!("{:?}", obj);
+            //                 }
+            //                 "FAM" => {}
+            //                 "SUBM" => {
+            //                     // The record of the submitter of the family tree
+            //                     // Not always present (it exists in complete.ged)
+            //                     if let Some(ref subm) = gedcom.header.submitter {
+            //                         if let Some(xref) = &subm.xref {
+            //                             gedcom.header.submitter =
+            //                                 Submitter::find_by_xref(buff, xref.to_string());
+            //                         }
+            //                     }
+            //                 }
+            //                 _ => {
+            //                     // println!("Unhandled header tag: {}", line.tag);
+            //                     // (_, _) = Line::parse(&buffer).unwrap();
+            //                 }
+            //             };
+            //         // } else {
+            //         //     (_, _) = Line::parse(&buffer).unwrap();
+            //         }
+
+            //         // println!("line: {:?}", line);
+
+            //     }
+            //     Err(_e) => {
+            //         println!("Error parsing line: '{}'", buffer);
+            //     }
+            // }
+
+            // if let Some(ch) = buffer.chars().next() {
+            //     if ch == '0' && !record.is_empty() {
+            //         // We found a new record, beginning with buffer, so
+            //         // process the data in `record` before continuing
+
+            //         // Peek at the next line to see where we're at.
+            //         // let (buff, line) = Line::peek(&record).unwrap();
+            //         let line = Line::peek(record).unwrap();
+
+            //         match line.tag {
+            //             "HEAD" => {
+            //                 gedcom.header = Header::parse(buff.to_string());
+            //             }
+            //             "INDI" => {
+            //                 let indi = Individual::parse(buff.to_string());
+            //                 // TODO: Remove the if. This is just to clean up the output for debugging.
+            //                 if indi.xref.clone().unwrap() == "@I1@" {
+            //                     gedcom.individuals.push(indi);
+            //                 }
+            //             }
+            //             "SOUR" => {}
+            //             "REPO" => {}
+            //             "OBJE" => {
+            //                 let obj = Object::parse(buff);
+            //                 println!("{:?}", obj);
+            //             }
+            //             "FAM" => {}
+            //             "SUBM" => {
+            //                 // The record of the submitter of the family tree
+            //                 // Not always present (it exists in complete.ged)
+            //                 if let Some(ref subm) = gedcom.header.submitter {
+            //                     if let Some(xref) = &subm.xref {
+            //                         gedcom.header.submitter =
+            //                             Submitter::find_by_xref(buff, xref.to_string());
+            //                     }
+            //                 }
+            //             }
+            //             _ => {}
+            //         };
+
+            //         record.clear();
+            //     }
+            // }
+            // record = record + &buffer.clone() + "\n";
         }
         // TODO: families
         // TODO: repositories
@@ -261,4 +281,21 @@ where
 {
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_get_tag_value() {
+        let mut input = "3 ADDR 1300 West Traverse Parkway\n4 CONT Lehi, UT 84043\n4 CONC USA";
+        let output = "1300 West Traverse Parkway\nLehi, UT 84043 USA";
+
+        let res = get_tag_value(&mut input).unwrap();
+        if let Some(value) = res {
+            assert!(output == value);
+        }
+        assert!(input.len() == 0);
+    }
 }

@@ -22,12 +22,12 @@ impl SourceData {
         };
         let mut line: Line;
 
-        (buffer, line) = Line::peek(buffer).unwrap();
+        line = Line::peek(&mut buffer).unwrap();
         if line.tag == "DATA" {
             let lvl = line.level;
 
             // consume the line
-            (buffer, line) = Line::parse(buffer).unwrap();
+            line = Line::parse(&mut buffer).unwrap();
             data.name = Some(line.value.to_string());
 
             while line.level >= lvl {
@@ -35,7 +35,7 @@ impl SourceData {
                     break;
                 }
 
-                (buffer, line) = Line::peek(buffer).unwrap();
+                line = Line::peek(&mut buffer).unwrap();
                 if line.level == 1 {
                     // abort
                     break;
@@ -46,9 +46,7 @@ impl SourceData {
                     }
                     "COPR" => {
                         // Consume the line and get the value
-                        // (buffer, line) = parse::line(buffer).unwrap();
-                        // (buffer, data.copyright) = Copyright::parse(buffer);
-                        (buffer, data.copyright) = parse::get_tag_value(buffer).unwrap();
+                        data.copyright = parse::get_tag_value(&mut buffer).unwrap();
                     }
                     _ => {
                         break;

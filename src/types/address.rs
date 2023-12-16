@@ -32,55 +32,20 @@ impl Address {
             fax: vec![],
             www: vec![],
         };
-        // let mut line: Line;
 
-        let (_, mut line) = Line::peek(buffer).unwrap();
-
-        // let (_, mut lvl) = parse::peek_level(buffer).unwrap();
-
+        let mut line = Line::peek(&mut buffer).unwrap();
         let min_level = line.level;
 
         // Only iterate through the ADDR records
         while line.level >= min_level {
-            (_, line) = Line::peek(buffer).unwrap();
+            line = Line::peek(&mut buffer).unwrap();
 
+            let mut consume = true;
             match line.tag {
                 "ADDR" => {
-                    let mut addr: String = String::from("");
-
-                    addr += line.value;
-
-                    // handle CONT/CONC; but what's the best way to append that data?
-                    // CONT implies that we're continuing the data, i.e., adding a
-                    // newline to preserve the formatting
-                    // CONC implies that we're concatenating the line
-
-                    // let mut line;
-
-                    // create a temp buffer to see if we have a CONC/CONT
-                    let (mut addr_buffer, _) = Line::parse(buffer).unwrap();
-                    let (_, mut line) = Line::peek(addr_buffer).unwrap();
-
-                    // (_, tag) = parse::peek_tag(addr_buffer).unwrap_or(("", ""));
-
-                    while line.tag == "CONT" || line.tag == "CONC" {
-                        if line.tag == "CONT" {
-                            let (asdf, cont) = parse::cont(addr_buffer).unwrap();
-
-                            addr += "\n";
-                            addr += cont;
-
-                            addr_buffer = asdf;
-                        } else if line.tag == "CONC" {
-                            let (asdf, cont) = parse::conc(addr_buffer).unwrap();
-                            addr += " ";
-                            addr += cont;
-                            addr_buffer = asdf;
-                        }
-
-                        (_, line) = Line::peek(addr_buffer).unwrap();
-                    }
-                    address.addr1 = Some(addr);
+                    address.addr1 = parse::get_tag_value(&mut buffer).unwrap();
+                    // println!("Input after get_tag_value: \n'{}'", buffer);
+                    consume = false;
                 }
                 "ADR1" => {
                     address.addr1 = Some(line.value.to_string());
@@ -122,11 +87,16 @@ impl Address {
                     break;
                 }
             }
-
-            (buffer, _) = Line::parse(buffer).unwrap();
+            // println!("Buffer before: {}", buffer.len());
+            if consume {
+                Line::parse(&mut buffer).unwrap();
+            }
+            // println!("Buffer after: {}", buffer.len());
+            // (buffer, _) = Line::parse(buffer).unwrap();
 
             // Grab the next line, if there is one, or short-circuit the loop
-            (_, line) = Line::peek(buffer).unwrap();
+            line = Line::peek(&mut buffer).unwrap();
+            // (_, line) = Line::peek(buffer).unwrap();
         }
         (buffer, Some(address))
     }
@@ -177,10 +147,12 @@ mod tests {
 
     #[test]
     fn parse_addr_tag() {
-        let data = "3 ADDR\n";
-        let (str, line) = Line::parse(&data).unwrap();
+        let mut data = "3 ADDR\n";
+        let line = Line::parse(&mut data).unwrap();
 
-        assert!(str.len() == 0);
+        // let (str, line) = Line::parse(&data).unwrap();
+
+        assert!(data.len() == 0);
         assert!(line.level == 3);
         assert!(line.xref == "");
         assert!(line.tag == "ADDR");
@@ -189,10 +161,10 @@ mod tests {
 
     #[test]
     fn parse_adr1_tag() {
-        let data = "4 ADR1 RSAC Software\n";
-        let (str, line) = Line::parse(&data).unwrap();
+        let mut data = "4 ADR1 RSAC Software\n";
+        let line = Line::parse(&mut data).unwrap();
 
-        assert!(str.is_empty());
+        assert!(data.is_empty());
         assert!(line.level == 4);
         assert!(line.xref == "");
         assert!(line.tag == "ADR1");
@@ -314,6 +286,7 @@ mod tests {
         let addr = address.unwrap();
 
         assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043\nUSA".to_string()));
+        println!("PHON: {:?}", addr.phone);
         assert!(addr.phone.contains(&"+1-801-942-7768".to_string()));
         assert!(addr.phone.contains(&"+1-801-555-1212".to_string()));
         assert!(addr.phone.contains(&"+1-801-942-1148".to_string()));
@@ -328,9 +301,11 @@ mod tests {
             "4 CONC USA",
         ];
 
+        println!("Parsing Address...('{}')", data.join("\n"));
         let (_data, address) = Address::parse(data.join("\n").as_str());
+        println!("done parsing address.");
         let addr = address.unwrap();
-
+        println!("Addr: {:?}", addr);
         assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043 USA".to_string()));
     }
 }

@@ -7,8 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nom = "7"
 smallvec = "1.10.0"
+winnow = "0.5.28"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }

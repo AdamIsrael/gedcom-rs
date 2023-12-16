@@ -4,13 +4,11 @@
 
 This is a work-in-progress library to parse a [GEDCOM 5.5.1](https://gedcom.io/specifications/ged551.pdf), which is the most commonly used file format for exchanging genealogical data.
 
-In this attempt, I am continuing to learn Rust, and learning [nom](https://docs.rs/nom/latest/nom/), to parse a gedcom into a structured data source which can then be serialized, manipulated, searched, etc.
+In this attempt, I am continuing to learn Rust, and learning ~~[nom](https://docs.rs/nom/latest/nom/)~~ [winnow](https://github.com/winnow-rs/winnow), to parse a gedcom into a structured data source which can then be serialized, manipulated, searched, etc.
 
 ## Notes
 
 I've got enough of the GEDCOM parsing that I should write a complete test suite, so I know exactly what is missing.
-
-I'm still not 100% convinced that I'm using nom correctly, but for a first pass, well, it's functional.
 
 ## Copyright
 

@@ -39,7 +39,7 @@ pub struct Individual {
 
 // impl<'a> Individual<'a> {
 impl Individual {
-    pub fn parse(mut record: String) -> Individual {
+    pub fn parse(record: &mut &str) -> Individual {
         // pub fn parse(mut record: String) -> Individual {
         let mut individual = Individual {
             xref: None,
@@ -51,22 +51,27 @@ impl Individual {
         };
 
         while !record.is_empty() {
-            let (buffer, line) = Line::parse(&record).unwrap();
+            // let mut buffer = record.as_str();
+            let line = Line::peek(record).unwrap();
+
+            // let (buffer, line) = Line::parse(&record).unwrap();
 
             // If we're at the top of the record, get the xref
             // && level == 0
+
+            // Flag to track if we should consume the next line in record
+            let mut parse = true;
+
             match line.level {
                 0 => {
-                    // if let xref = line.xref {
                     individual.xref = Some(line.xref.to_string());
-                    // }
                 }
                 _ => {
                     match line.tag {
                         "NAME" => {
-                            let (_, pn) = PersonalName::parse(&record).unwrap();
-
+                            let pn = PersonalName::parse(record).unwrap();
                             individual.names.push(pn);
+                            parse = false;
                         }
                         "SEX" => {
                             // individual.gender =
@@ -138,9 +143,13 @@ impl Individual {
                     }
                 }
             }
+            // Consume the line
+            if parse {
+                Line::parse(record).unwrap();
+            }
 
             // record = buffer.to_string();
-            record = buffer.to_string();
+            // record = buffer.to_string();
         }
 
         individual
@@ -796,7 +805,10 @@ mod tests {
         ];
 
         let buffer = data.join("\n");
-        let indi = Individual::parse(buffer);
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        // println!("Names: {}", indi.names.len());
 
         assert_eq!(2, indi.names.len());
         assert_eq!(Some("@I1@".to_string()), indi.xref);

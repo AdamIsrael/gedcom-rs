@@ -18,21 +18,20 @@ impl DateTime {
         };
         let mut line: Line;
 
-        (_, line) = Line::peek(buffer).unwrap();
+        line = Line::peek(&mut buffer).unwrap();
 
-        // if line.level == 1 && line.tag == "DATE" {
         if line.tag == "DATE" {
             let parent_level = line.level;
 
             // Consume the line
-            (buffer, line) = Line::parse(buffer).unwrap();
+            line = Line::parse(&mut buffer).unwrap();
             dt.date = Some(line.value.to_string());
 
             // Check to see if we have time as a child of the date record
-            (_, line) = Line::peek(buffer).unwrap();
+            line = Line::peek(&mut buffer).unwrap();
             if line.level == parent_level + 1 && line.tag == "TIME" {
                 // Consume the line
-                (buffer, line) = Line::parse(buffer).unwrap();
+                line = Line::parse(&mut buffer).unwrap();
                 dt.time = Some(line.value.to_string());
             }
         }

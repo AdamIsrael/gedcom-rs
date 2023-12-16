@@ -1,7 +1,7 @@
 // use crate::parse;
 use crate::types::Line;
 
-use nom::IResult;
+use winnow::prelude::*;
 
 // PERSONAL_NAME_PIECES:=
 // n NPFX <NAME_PIECE_PREFIX>
@@ -58,7 +58,7 @@ pub struct Name {
     pub r#type: Option<String>,
 }
 impl Name {
-    fn parse(record: &str) -> IResult<&str, Name> {
+    fn parse(record: &mut &str) -> PResult<Name> {
         let mut name = Name {
             value: None,
             given: None,
@@ -74,7 +74,7 @@ impl Name {
         // We're on level two, so parse until we hit another level two?
         // let min_level: i32 = 2;
 
-        let mut buffer: &str = record;
+        // let mut buffer: &str = record;
 
         // let mut _level: u8;
         // let mut _xref: Option<&str>;
@@ -82,13 +82,16 @@ impl Name {
         // let mut value: Option<&str>;
         let mut line: Line;
 
-        while !buffer.is_empty() {
-            (buffer, line) = Line::parse(buffer).unwrap();
-            // println!("Name::level = {level}, tag = {tag:?}, value={value:?}");
+        while !record.is_empty() {
+            line = Line::parse(record).unwrap();
+
+            // (buffer, line) = Line::parse(buffer).unwrap();
+            // println!("Name::level = {}, tag = {:?}, value={:?}", line.level, line.tag, line.value);
 
             match line.tag {
                 "NAME" => {
                     name.value = Some(line.value.to_string());
+                    println!("name: {:?}", name.value);
                 }
                 "TYPE" => {
                     // type
@@ -120,7 +123,8 @@ impl Name {
 
             // Check if the next line is a new NAME record
             // TODO: a peek_line method so we can check level and tag in one call
-            let (_, line) = Line::parse(buffer).unwrap();
+            // let (_, line) = Line::parse(buffer).unwrap();
+            line = Line::peek(record).unwrap();
 
             // let level = parse::peek_level(buffer).unwrap_or(("", 0_u8)).1;
             // // let tag = Some(parse::peek_tag(buffer).unwrap().1);
@@ -135,7 +139,8 @@ impl Name {
             }
         }
 
-        Ok((buffer, name))
+        // println!("Name: {:?}", name);
+        Ok(name)
     }
 }
 
@@ -197,7 +202,7 @@ pub struct PersonalName {
 // }
 
 impl PersonalName {
-    pub fn parse(record: &str) -> IResult<&str, PersonalName> {
+    pub fn parse(record: &mut &str) -> PResult<PersonalName> {
         let mut pn = PersonalName {
             name: Name {
                 value: None,
@@ -238,7 +243,7 @@ impl PersonalName {
         // We're on level one, so parse until we hit another level one?
         // let min_level = 1;
 
-        let buffer: &str;
+        // let mut buffer: &str;
 
         // TODO: make a Line struct?
         // let mut level: u8 = 0;
@@ -247,18 +252,24 @@ impl PersonalName {
         // let mut value: Option<&str> = None;
 
         // Parse the name out of the record, and switch to a buffer
-        (buffer, pn.name) = Name::parse(record).unwrap();
+        // println!("Before Record: {}", record.len());
+        pn.name = Name::parse(record).unwrap();
+        // println!("After Record: {}", record.len());
 
-        // level = parse::peek_level(&buffer).unwrap().1;
-        // tag = Some(parse::peek_tag(&buffer).unwrap().1);
-        // println!("DEBUG: Level {level}, tag {tag:?}");
-        let (mut buffer, mut line) = Line::parse(buffer).unwrap();
+        // let mut line = Line::parse(&mut buffer).unwrap();
+        let mut line = Line::peek(record).unwrap();
 
-        while line.level > 1 && !buffer.is_empty() {
+        // let (mut buffer, mut line) = Line::parse(buffer).unwrap();
+
+        // while line.level > 1 && !buffer.is_empty() {
+        // println!("1 Line: {:?}", line);
+        while line.level > 1 && !record.is_empty() {
             if line.level == 2 {
                 match line.tag {
                     "ROMN" => {
-                        (buffer, pn.romanized) = Name::parse(buffer).unwrap();
+                        // println!("Before Record: \n'{}", record);
+                        pn.romanized = Name::parse(record).unwrap();
+                        // println!("After Record: \n'{}", record);
                         // if let Some(value) = line.value {
                         if !line.value.is_empty() {
                             pn.romanized.value = Some(line.value.to_string());
@@ -270,7 +281,7 @@ impl PersonalName {
                         }
                     }
                     "FONE" => {
-                        (buffer, pn.phonetic) = Name::parse(buffer).unwrap();
+                        pn.phonetic = Name::parse(record).unwrap();
                         if !line.value.is_empty() {
                             pn.phonetic.value = Some(line.value.to_string());
                         } else {
@@ -281,18 +292,20 @@ impl PersonalName {
                         }
                     }
                     _ => {
-                        // println!("skipping PersonalName tag {:?}", tag);
+                        println!("skipping PersonalName tag {:?}", line.tag);
                     }
                 }
             }
             if line.level == 1 {
                 break;
             } else {
-                (buffer, line) = Line::parse(buffer).unwrap();
+                // (buffer, line) = Line::parse(buffer).unwrap();
+                // line = Line::parse(record).unwrap();
+                line = Line::peek(record).unwrap();
             }
         }
 
-        Ok((buffer, pn))
+        Ok(pn)
     }
 }
 
@@ -934,7 +947,10 @@ mod tests {
         ];
 
         let buffer = data.join("\n");
-        let (_, name) = PersonalName::parse(&buffer).unwrap();
+        let mut record = buffer.as_str();
+        println!("A Record: {}", record.len());
+        let name = PersonalName::parse(&mut record).unwrap();
+        println!("B Record: {}", record.len());
         // println!("{name:#?}");
 
         // Check the name.name
