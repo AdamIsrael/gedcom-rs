@@ -50,6 +50,7 @@ impl Birth {
             match line.tag {
                 "ADDR" => {
                     birth.address = Some(Address::parse(record).unwrap());
+                    parse = false;
                 }
                 "DATE" => {
                     birth.date = Some(line.value.to_string());
@@ -68,7 +69,6 @@ impl Birth {
                 line = Line::parse(record).unwrap();
             }
             if line.level == 1 {
-                println!("BREAK");
                 break;
             }
         }
@@ -134,7 +134,12 @@ mod tests {
 
         let place = birth.place.unwrap();
         assert!(place.name.is_some());
-        // assert!(place.name.unwrap() == "");
 
+        let addr = birth.address.unwrap();
+        assert!(addr.addr1.is_some());
+        assert!(addr.city.is_some());
+        assert!(addr.state.is_some());
+
+        // assert!(place.name.unwrap() == "");
     }
 }

@@ -78,9 +78,7 @@ impl Individual {
                             //     super::Gender::from_str(line.value.unwrap_or("U")).unwrap();
                             individual.gender = super::Gender::from_str(line.value).unwrap();
                         }
-                        "BIRT" => {
-                            
-                        }
+                        "BIRT" => {}
                         "DEAT" => {}
                         "FAMS" => {}
                         "FAMC" => {}

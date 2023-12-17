@@ -57,8 +57,10 @@ impl Place {
                 }
                 "NOTE" => {
                     place.note = Some(Note::parse(record).unwrap());
+                    parse = false;
                 }
-                _ => {}
+                _ => {
+                }
             }
 
             // If we need to, advance our position in the stream

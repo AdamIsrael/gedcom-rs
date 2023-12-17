@@ -246,7 +246,8 @@ mod tests {
             "1 WWW https://www.example.com",
             "1 WWW https://www.example.org",
             "1 WWW https://www.example.net",
-        ].join("\n");
+        ]
+        .join("\n");
 
         let mut record = data.as_str();
         let addr = Address::parse(&mut record).unwrap();
@@ -283,7 +284,8 @@ mod tests {
             "3 PHON +1-801-942-7768",
             "3 PHON +1-801-555-1212",
             "3 PHON +1-801-942-1148",
-        ].join("\n");
+        ]
+        .join("\n");
 
         let mut record = data.as_str();
         let address = Address::parse(&mut record);
@@ -303,7 +305,8 @@ mod tests {
             "3 ADDR 1300 West Traverse Parkway",
             "4 CONT Lehi, UT  84043",
             "4 CONC USA",
-        ].join("\n");
+        ]
+        .join("\n");
 
         let mut record = data.as_str();
         let address = Address::parse(&mut record);
