@@ -37,7 +37,7 @@ impl Corporation {
             line = Line::peek(&mut buffer).unwrap();
 
             if line.level == 3 && line.tag == "ADDR" {
-                (buffer, corp.address) = Address::parse(buffer);
+                corp.address = Some(Address::parse(&mut buffer).unwrap());
             }
         }
 

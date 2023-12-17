@@ -134,10 +134,10 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
                             gedcom.header = Header::parse(input.to_string());
                         }
                         "INDI" => {
-                            // let indi = Individual::parse(buff.to_string());
-                            // // TODO: Remove the if. This is just to clean up the output for debugging.
+                            let indi = Individual::parse(&mut input);
+                            // TODO: Remove the if. This is just to clean up the output for debugging.
                             // if indi.xref.clone().unwrap() == "@I1@" {
-                            //     gedcom.individuals.push(indi);
+                            gedcom.individuals.push(indi);
                             // }
                         }
                         "SOUR" => {}

@@ -58,7 +58,7 @@ impl Submitter {
                             Line::parse(&mut buffer).unwrap();
                         }
                         "ADDR" => {
-                            (buffer, submitter.address) = Address::parse(buffer);
+                            submitter.address = Some(Address::parse(&mut buffer).unwrap());
                         }
                         "OBJE" => {
                             // Parse the object id and add it to the list
@@ -83,7 +83,7 @@ impl Submitter {
                             Line::parse(&mut buffer).unwrap();
                         }
                         "NOTE" => {
-                            (buffer, submitter.note) = Note::parse(buffer);
+                            submitter.note = Some(Note::parse(&mut buffer).unwrap());
                         }
                         "RFN" => {
                             let rfn = line.value;
@@ -223,7 +223,7 @@ mod tests {
 
         // TODO: Implement these once the fields are implemented.
         assert!(s.rfn == Some("123456789".to_string()));
-        println!("Note: '{:?}'", s.note);
+
         let note = s.note.unwrap().note.unwrap();
         assert!(note.starts_with("This is a test note."));
         assert!(note.ends_with("And so is this."));

@@ -91,7 +91,7 @@ impl Name {
             match line.tag {
                 "NAME" => {
                     name.value = Some(line.value.to_string());
-                    println!("name: {:?}", name.value);
+                    // println!("name: {:?}", name.value);
                 }
                 "TYPE" => {
                     // type
@@ -948,9 +948,9 @@ mod tests {
 
         let buffer = data.join("\n");
         let mut record = buffer.as_str();
-        println!("A Record: {}", record.len());
+        // println!("A Record: {}", record.len());
         let name = PersonalName::parse(&mut record).unwrap();
-        println!("B Record: {}", record.len());
+        // println!("B Record: {}", record.len());
         // println!("{name:#?}");
 
         // Check the name.name

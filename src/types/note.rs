@@ -2,6 +2,8 @@
 // use super::Line;
 use crate::parse;
 
+use winnow::prelude::*;
+
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct Note {
     /// The note
@@ -9,12 +11,12 @@ pub struct Note {
 }
 
 impl Note {
-    pub fn parse(mut buffer: &str) -> (&str, Option<Note>) {
+    pub fn parse(buffer: &mut &str) -> PResult<Note> {
         let mut note = Note { note: None };
 
-        note.note = parse::get_tag_value(&mut buffer).unwrap();
+        note.note = parse::get_tag_value(buffer).unwrap();
 
-        (buffer, Some(note))
+        Ok(note)
     }
 }
 
@@ -38,7 +40,9 @@ mod tests {
             "2 CONT This line should be the last line.",
         ];
 
-        let (_, note) = Note::parse(data.join("\n").as_str());
+        let input = data.join("\n");
+        let mut record = input.as_str();
+        let note = Note::parse(&mut record);
         let n = note.unwrap().note.unwrap();
 
         assert!(n.starts_with("This is the first line of a note.\n"));
