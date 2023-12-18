@@ -3,6 +3,7 @@
 mod address;
 mod corporation;
 mod datetime;
+mod event;
 mod gedc;
 mod header;
 mod individual;
@@ -12,11 +13,13 @@ mod note;
 mod object;
 mod place;
 mod source;
+mod source_citation;
 mod sourcedata;
 mod submitter;
 
 pub use address::*;
 pub use datetime::DateTime;
+pub use event::EventTypeCitedFrom;
 pub use gedc::{Form, Gedc};
 pub use header::Header;
 pub use individual::*;
@@ -26,6 +29,7 @@ pub use note::Note;
 pub use object::Object;
 pub use place::Place;
 pub use source::Source;
+pub use source_citation::SourceCitation;
 pub use sourcedata::SourceData;
 pub use submitter::Submitter;
 

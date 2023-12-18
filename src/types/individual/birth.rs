@@ -1,4 +1,7 @@
-use crate::types::{Address, Line, Place, SourceCitation};
+use crate::{
+    parse,
+    types::{Address, EventTypeCitedFrom, Line, Place, SourceCitation},
+};
 
 use winnow::prelude::*;
 
@@ -27,6 +30,11 @@ pub struct Birth {
     pub place: Option<Place>,
     pub sources: Vec<SourceCitation>,
     pub address: Option<Address>,
+    pub agency: Option<String>,
+    pub religion: Option<String>,
+    pub cause: Option<String>,
+    pub note: Option<String>,
+    pub event_type_cited_from: Option<EventTypeCitedFrom>,
 }
 
 impl Birth {
@@ -37,6 +45,11 @@ impl Birth {
             place: None,
             sources: vec![],
             address: None,
+            agency: None,
+            religion: None,
+            cause: None,
+            note: None,
+            event_type_cited_from: None,
         };
 
         let tag = Line::peek(record).unwrap().tag;
@@ -52,12 +65,29 @@ impl Birth {
                     birth.address = Some(Address::parse(record).unwrap());
                     parse = false;
                 }
+                "AGNC" => {
+                    birth.agency = Some(line.value.to_string());
+                }
+                "CAUS" => {
+                    birth.cause = Some(line.value.to_string());
+                }
                 "DATE" => {
                     birth.date = Some(line.value.to_string());
+                }
+                "NOTE" => {
+                    birth.note = parse::get_tag_value(record).unwrap();
+                    parse = false;
                 }
                 "PLAC" => {
                     birth.place = Some(Place::parse(record).unwrap());
                     parse = false;
+                }
+                "RELI" => {
+                    birth.religion = Some(line.value.to_string());
+                }
+                "SOUR" => {
+                    let sc = SourceCitation::parse(record).unwrap();
+                    birth.sources.push(sc);
                 }
                 "TYPE" => {
                     birth.r#type = Some(line.value.to_string());
@@ -97,7 +127,7 @@ mod tests {
             "3 MAP",
             "4 LATI N0",
             "4 LONG E0",
-            "3 NOTE Place note",
+            "3 NOTE Some place notes.",
             "2 ADDR",
             "3 ADR1 St. Marks Hospital",
             "3 CITY Salt Lake City",
@@ -107,7 +137,7 @@ mod tests {
             "2 AGNC none",
             "2 RELI Religion",
             "2 CAUS Conception",
-            "2 NOTE @N8@",
+            "2 NOTE Some notes.",
             "2 SOUR @S1@",
             "3 PAGE 42",
             "3 EVEN BIRT",
@@ -134,11 +164,30 @@ mod tests {
 
         let place = birth.place.unwrap();
         assert!(place.name.is_some());
+        assert!(place.note.is_some());
+        assert!(place.note.unwrap().note.unwrap() == "Some place notes.");
 
         let addr = birth.address.unwrap();
         assert!(addr.addr1.is_some());
         assert!(addr.city.is_some());
         assert!(addr.state.is_some());
+
+        assert!(birth.agency.is_some());
+        assert!(birth.agency.unwrap() == "none");
+
+        assert!(birth.religion.is_some());
+        assert!(birth.religion.unwrap() == "Religion");
+
+        assert!(birth.cause.is_some());
+        assert!(birth.cause.unwrap() == "Conception");
+
+        // assert!(birth.event_type_cited_from.is_some());
+        // let event_type = birth.event_type_cited_from.unwrap();
+        // assert!(event_type.r#type.unwrap() == "BIRT");
+        // assert!(event_type.role.unwrap() == "CHIL");
+
+        assert!(birth.note.is_some());
+        assert!(birth.note.unwrap() == "Some notes.");
 
         // assert!(place.name.unwrap() == "");
     }

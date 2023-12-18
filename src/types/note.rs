@@ -35,7 +35,7 @@ mod tests {
 
         let data = vec![
             "1 NOTE This is the first line of a note.",
-            "2 CONT This is the second line of a note.",
+            "2 CONT This is the second line of a note. ",
             "2 CONC This is also on the second line.",
             "2 CONT This line should be the last line.",
         ];

@@ -303,7 +303,7 @@ mod tests {
     fn parse_addr_conc() {
         let data = vec![
             "3 ADDR 1300 West Traverse Parkway",
-            "4 CONT Lehi, UT  84043",
+            "4 CONT Lehi, UT 84043 ",
             "4 CONC USA",
         ]
         .join("\n");
@@ -311,6 +311,6 @@ mod tests {
         let mut record = data.as_str();
         let address = Address::parse(&mut record);
         let addr = address.unwrap();
-        assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043 USA".to_string()));
+        assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT 84043 USA".to_string()));
     }
 }

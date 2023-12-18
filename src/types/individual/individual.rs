@@ -6,7 +6,7 @@ use crate::types::Line;
 
 use super::Birth;
 use super::Residence;
-use super::SourceCitation;
+// use super::SourceCitation;
 
 // n @XREF:INDI@ INDI
 // +1 RESN <RESTRICTION_NOTICE>
@@ -31,8 +31,8 @@ use super::SourceCitation;
 pub struct Individual {
     pub xref: Option<String>,
     pub names: Vec<PersonalName>,
-    pub sources: Vec<SourceCitation>,
-    pub birth: Vec<Birth>,
+    // pub sources: Vec<SourceCitation>,
+    pub birth: Option<Birth>,
     pub gender: super::Gender,
     pub residences: Vec<Residence>,
 }
@@ -44,20 +44,14 @@ impl Individual {
         let mut individual = Individual {
             xref: None,
             names: vec![],
-            sources: vec![],
-            birth: vec![],
+            // sources: vec![],
+            birth: None,
             residences: vec![],
             gender: super::Gender::Unknown,
         };
 
         while !record.is_empty() {
-            // let mut buffer = record.as_str();
             let line = Line::peek(record).unwrap();
-
-            // let (buffer, line) = Line::parse(&record).unwrap();
-
-            // If we're at the top of the record, get the xref
-            // && level == 0
 
             // Flag to track if we should consume the next line in record
             let mut parse = true;
@@ -66,19 +60,29 @@ impl Individual {
                 0 => {
                     individual.xref = Some(line.xref.to_string());
                 }
-                _ => {
+                1 => {
                     match line.tag {
                         "NAME" => {
+                            // println!("Current line: {:?}", line);
+                            // println!("before record: {}", record.len());
+
                             let pn = PersonalName::parse(record).unwrap();
+                            // println!("after record: {}", record.len());
+                            // println!("{:?}", pn);
                             individual.names.push(pn);
                             parse = false;
+                            // println!("Next line: {:?}", Line::peek(record).unwrap());
                         }
                         "SEX" => {
                             // individual.gender =
                             //     super::Gender::from_str(line.value.unwrap_or("U")).unwrap();
                             individual.gender = super::Gender::from_str(line.value).unwrap();
+                            // println!("Next line: {:?}", Line::peek(record).unwrap());
                         }
-                        "BIRT" => {}
+                        "BIRT" => {
+                            // println!("BIRT");
+                            individual.birth = Some(Birth::parse(record).unwrap());
+                        }
                         "DEAT" => {}
                         "FAMS" => {}
                         "FAMC" => {}
@@ -138,18 +142,18 @@ impl Individual {
                         "RIN" => {}
                         "CHAN" => {}
                         _ => {
-                            // println!("Unknown Individual tag: {tag:?}")
+                            println!("Unknown Individual tag: {:?}", line.tag);
                         }
                     }
+                }
+                _ => {
+                    // println!("Skipping line: {:?}", line);
                 }
             }
             // Consume the line
             if parse {
                 Line::parse(record).unwrap();
             }
-
-            // record = buffer.to_string();
-            // record = buffer.to_string();
         }
 
         individual
@@ -863,5 +867,48 @@ mod tests {
             Some("user defined"),
             indi.names[0].phonetic.r#type.as_deref()
         );
+
+        // Birth
+        // "1 BIRT",
+        // "2 TYPE Normal",
+        // "2 DATE 31 DEC 1965",
+        // "2 PLAC Salt Lake City, UT, USA",
+        // "3 FONE Salt Lake City, UT, USA",
+        // "4 TYPE user defined",
+        // "3 ROMN Salt Lake City, UT, USA",
+        // "4 TYPE user defined",
+        // "3 MAP",
+        // "4 LATI N0",
+        // "4 LONG E0",
+        // "3 NOTE Place note",
+        // "2 ADDR",
+        // "3 ADR1 St. Marks Hospital",
+        // "3 CITY Salt Lake City",
+        // "3 STAE UT",
+        // "3 POST 84121",
+        // "3 CTRY USA",
+        // "2 AGNC none",
+        // "2 RELI Religion",
+        // "2 CAUS Conception",
+        // "2 NOTE @N8@",
+        // "2 SOUR @S1@",
+        // "3 PAGE 42",
+        // "3 EVEN BIRT",
+        // "4 ROLE CHIL",
+        // "3 DATA",
+        // "4 DATE 1 JAN 1900",
+        // "4 TEXT Here is some text from the source specific to this source ",
+        // "5 CONC citation.",
+        // "5 CONT Here is more text but on a new line.",
+        // "3 OBJE @M8@",
+        // "3 NOTE Some notes about this birth source citation which are embedded in the citation ",
+        // "4 CONC structure itself.",
+        // "3 QUAY 2",
+        // "2 OBJE @M15@",
+        // "2 AGE 0y",
+        // "2 FAMC @F2@",
+        let birth = indi.birth.unwrap();
+        assert!(birth.r#type.unwrap() == "Normal");
+        assert!(birth.date.unwrap() == "31 DEC 1965");
     }
 }
