@@ -869,9 +869,6 @@ mod tests {
         );
 
         // Birth
-        // "1 BIRT",
-        // "2 TYPE Normal",
-        // "2 DATE 31 DEC 1965",
         // "2 PLAC Salt Lake City, UT, USA",
         // "3 FONE Salt Lake City, UT, USA",
         // "4 TYPE user defined",
@@ -910,5 +907,8 @@ mod tests {
         let birth = indi.birth.unwrap();
         assert!(birth.r#type.unwrap() == "Normal");
         assert!(birth.date.unwrap() == "31 DEC 1965");
+        let place = birth.place.unwrap();
+        assert!(place.name.unwrap() == "Salt Lake City, UT, USA");
+
     }
 }
