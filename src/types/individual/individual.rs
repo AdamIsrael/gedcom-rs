@@ -869,11 +869,6 @@ mod tests {
         );
 
         // Birth
-        // "2 PLAC Salt Lake City, UT, USA",
-        // "3 FONE Salt Lake City, UT, USA",
-        // "4 TYPE user defined",
-        // "3 ROMN Salt Lake City, UT, USA",
-        // "4 TYPE user defined",
         // "3 MAP",
         // "4 LATI N0",
         // "4 LONG E0",
@@ -907,8 +902,19 @@ mod tests {
         let birth = indi.birth.unwrap();
         assert!(birth.r#type.unwrap() == "Normal");
         assert!(birth.date.unwrap() == "31 DEC 1965");
+
         let place = birth.place.unwrap();
         assert!(place.name.unwrap() == "Salt Lake City, UT, USA");
+        let place_phonetic = place.phonetic.unwrap();
+        assert!(place_phonetic.name.unwrap() == "Salt Lake City, UT, USA");
+        assert!(place_phonetic.r#type.unwrap() == "user defined");
+        let place_roman = place.roman.unwrap();
+        assert!(place_roman.name.unwrap() == "Salt Lake City, UT, USA");
+        assert!(place_roman.r#type.unwrap() == "user defined");
+        let place_map = place.map.unwrap();
+        assert!(place_map.latitude == 0.0);
+        assert!(place_map.longitude == 0.0);
+        
 
     }
 }
