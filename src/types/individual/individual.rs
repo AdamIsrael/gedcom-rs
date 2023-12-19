@@ -914,7 +914,5 @@ mod tests {
         let place_map = place.map.unwrap();
         assert!(place_map.latitude == 0.0);
         assert!(place_map.longitude == 0.0);
-        
-
     }
 }
