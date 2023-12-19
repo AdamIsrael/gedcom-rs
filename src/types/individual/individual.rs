@@ -869,20 +869,8 @@ mod tests {
         );
 
         // Birth
-        // "3 MAP",
-        // "4 LATI N0",
-        // "4 LONG E0",
-        // "3 NOTE Place note",
-        // "2 ADDR",
-        // "3 ADR1 St. Marks Hospital",
-        // "3 CITY Salt Lake City",
-        // "3 STAE UT",
-        // "3 POST 84121",
-        // "3 CTRY USA",
-        // "2 AGNC none",
-        // "2 RELI Religion",
-        // "2 CAUS Conception",
-        // "2 NOTE @N8@",
+        // "2 PLAC Salt Lake City, UT, USA",
+        // ...
         // "2 SOUR @S1@",
         // "3 PAGE 42",
         // "3 EVEN BIRT",
@@ -899,12 +887,14 @@ mod tests {
         // "2 OBJE @M15@",
         // "2 AGE 0y",
         // "2 FAMC @F2@",
-        let birth = indi.birth.unwrap();
+        let mut birth = indi.birth.unwrap();
         assert!(birth.r#type.unwrap() == "Normal");
         assert!(birth.date.unwrap() == "31 DEC 1965");
 
         let place = birth.place.unwrap();
         assert!(place.name.unwrap() == "Salt Lake City, UT, USA");
+        assert!(place.note.unwrap().note.unwrap() == "Place note");
+
         let place_phonetic = place.phonetic.unwrap();
         assert!(place_phonetic.name.unwrap() == "Salt Lake City, UT, USA");
         assert!(place_phonetic.r#type.unwrap() == "user defined");
@@ -914,5 +904,34 @@ mod tests {
         let place_map = place.map.unwrap();
         assert!(place_map.latitude == 0.0);
         assert!(place_map.longitude == 0.0);
+
+        let addr = birth.address.unwrap();
+        assert!(addr.addr1.unwrap() == "St. Marks Hospital");
+        assert!(addr.city.unwrap() == "Salt Lake City");
+        assert!(addr.state.unwrap() == "UT");
+        assert!(addr.postal_code.unwrap() == "84121");
+        assert!(addr.country.unwrap() == "USA");
+
+        assert!(birth.agency.unwrap() == "none");
+        assert!(birth.religion.unwrap() == "Religion");
+        assert!(birth.cause.unwrap() == "Conception");
+
+        // Good to know: notes can be an xref that refer to a top-level note,
+        // i.e, @N8@ -> '0 NOTE @N8@'.
+        // I need to write some kind of resolver
+        // TODO: Convert to a Note (and add xref to Note)
+        assert!(birth.note.unwrap() == "@N8@");
+
+        let source = birth.sources.pop().unwrap();
+        assert!(source.xref.unwrap() == "@S1@");
+        assert!(source.page.unwrap() == 42);
+
+        let sdata = source.data.unwrap();
+        assert!(sdata.date.unwrap() == "1 JAN 1900");
+        assert!(sdata.text.unwrap().note.unwrap() == "Here is some text from the source specific to this source citation.\nHere is more text but on a new line.");
+
+        let sevent = source.event.unwrap();
+        assert!(sevent.role.unwrap() == "CHIL");
+        assert!(sevent.r#type.unwrap() == "BIRT");
     }
 }
