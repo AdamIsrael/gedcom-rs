@@ -1,6 +1,8 @@
+use std::str::FromStr;
+
 use crate::parse;
 
-use super::{EventTypeCitedFrom, Line, Note, Object};
+use super::{EventTypeCitedFrom, Line, Note, Object, Quay};
 
 use winnow::prelude::*;
 
@@ -34,6 +36,8 @@ pub struct SourceCitation {
     pub event: Option<EventTypeCitedFrom>,
     pub data: Option<SourceCitationData>,
     pub media: Vec<Object>,
+    pub note: Option<Note>,
+    pub quay: Option<Quay>,
 }
 
 impl SourceCitation {
@@ -44,6 +48,8 @@ impl SourceCitation {
             event: None,
             data: None,
             media: vec![],
+            note: None,
+            quay: None,
         };
 
         let level = Line::peek(record).unwrap().level;
@@ -60,9 +66,23 @@ impl SourceCitation {
                     sc.event = Some(EventTypeCitedFrom::parse(record).unwrap());
                     consume = false;
                 }
-                "OBJE" => {}
+                "NOTE" => {
+                    let note = parse::get_tag_value(record).unwrap();
+                    sc.note = Some(Note { note });
+                    consume = false;
+                }
+                "OBJE" => {
+                    let obj = Object {
+                        xref: line.value.to_string(),
+                    };
+                    sc.media.push(obj);
+                }
                 "PAGE" => {
                     sc.page = Some(line.value.parse().unwrap());
+                }
+                "QUAY" => {
+                    let quay = Quay::from_str(line.value).unwrap();
+                    sc.quay = Some(quay);
                 }
                 "SOUR" => {
                     sc.xref = Some(line.value.to_string());

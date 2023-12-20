@@ -1,6 +1,6 @@
 use crate::{
     parse,
-    types::{Address, EventTypeCitedFrom, Line, Place, SourceCitation},
+    types::{Address, EventTypeCitedFrom, Family, Line, Object, Place, SourceCitation},
 };
 
 use winnow::prelude::*;
@@ -25,6 +25,7 @@ use winnow::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct Birth {
+    pub age: Option<String>,
     pub date: Option<String>,
     pub r#type: Option<String>,
     pub place: Option<Place>,
@@ -35,21 +36,26 @@ pub struct Birth {
     pub cause: Option<String>,
     pub note: Option<String>,
     pub event_type_cited_from: Option<EventTypeCitedFrom>,
+    pub media: Vec<Object>,
+    pub family: Option<Family>,
 }
 
 impl Birth {
     pub fn parse(record: &mut &str) -> PResult<Birth> {
         let mut birth = Birth {
-            date: None,
-            r#type: None,
-            place: None,
-            sources: vec![],
             address: None,
+            age: None,
             agency: None,
-            religion: None,
             cause: None,
-            note: None,
+            date: None,
             event_type_cited_from: None,
+            family: None,
+            media: vec![],
+            note: None,
+            place: None,
+            religion: None,
+            sources: vec![],
+            r#type: None,
         };
 
         let tag = Line::peek(record).unwrap().tag;
@@ -65,6 +71,9 @@ impl Birth {
                     birth.address = Some(Address::parse(record).unwrap());
                     parse = false;
                 }
+                "AGE" => {
+                    birth.age = Some(line.value.to_string());
+                }
                 "AGNC" => {
                     birth.agency = Some(line.value.to_string());
                 }
@@ -74,9 +83,21 @@ impl Birth {
                 "DATE" => {
                     birth.date = Some(line.value.to_string());
                 }
+                "FAMC" => {
+                    let famc = Family {
+                        xref: line.value.to_string(),
+                    };
+                    birth.family = Some(famc);
+                }
                 "NOTE" => {
                     birth.note = parse::get_tag_value(record).unwrap();
                     parse = false;
+                }
+                "OBJE" => {
+                    let obj = Object {
+                        xref: line.value.to_string(),
+                    };
+                    birth.media.push(obj);
                 }
                 "PLAC" => {
                     birth.place = Some(Place::parse(record).unwrap());
@@ -88,6 +109,7 @@ impl Birth {
                 "SOUR" => {
                     let sc = SourceCitation::parse(record).unwrap();
                     birth.sources.push(sc);
+                    parse = false;
                 }
                 "TYPE" => {
                     birth.r#type = Some(line.value.to_string());
@@ -157,7 +179,7 @@ mod tests {
         ].join("\n");
 
         let mut record = data.as_str();
-        let birth = Birth::parse(&mut record).unwrap();
+        let mut birth = Birth::parse(&mut record).unwrap();
 
         assert!(birth.date.is_some());
         assert!(birth.r#type.is_some());
@@ -190,5 +212,13 @@ mod tests {
         assert!(birth.note.unwrap() == "Some notes.");
 
         // assert!(place.name.unwrap() == "");
+
+        assert!(birth.media.len() == 1);
+        let obje = birth.media.pop().unwrap();
+        assert!(obje.xref == "@M15@");
+
+        assert!(birth.age.unwrap() == "0y");
+
+        assert!(birth.family.unwrap().xref == "@F2@");
     }
 }

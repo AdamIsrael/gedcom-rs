@@ -176,6 +176,7 @@ pub enum NameType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::Quay;
 
     #[test]
     fn parse_indi_complete() {
@@ -871,20 +872,6 @@ mod tests {
         // Birth
         // "2 PLAC Salt Lake City, UT, USA",
         // ...
-        // "2 SOUR @S1@",
-        // "3 PAGE 42",
-        // "3 EVEN BIRT",
-        // "4 ROLE CHIL",
-        // "3 DATA",
-        // "4 DATE 1 JAN 1900",
-        // "4 TEXT Here is some text from the source specific to this source ",
-        // "5 CONC citation.",
-        // "5 CONT Here is more text but on a new line.",
-        // "3 OBJE @M8@",
-        // "3 NOTE Some notes about this birth source citation which are embedded in the citation ",
-        // "4 CONC structure itself.",
-        // "3 QUAY 2",
-        // "2 OBJE @M15@",
         // "2 AGE 0y",
         // "2 FAMC @F2@",
         let mut birth = indi.birth.unwrap();
@@ -922,7 +909,7 @@ mod tests {
         // TODO: Convert to a Note (and add xref to Note)
         assert!(birth.note.unwrap() == "@N8@");
 
-        let source = birth.sources.pop().unwrap();
+        let mut source = birth.sources.pop().unwrap();
         assert!(source.xref.unwrap() == "@S1@");
         assert!(source.page.unwrap() == 42);
 
@@ -933,5 +920,18 @@ mod tests {
         let sevent = source.event.unwrap();
         assert!(sevent.role.unwrap() == "CHIL");
         assert!(sevent.r#type.unwrap() == "BIRT");
+
+        assert!(source.media.len() == 1);
+        let media = source.media.pop().unwrap();
+        assert!(media.xref == "@M8@");
+
+        assert!(source.note.unwrap().note.unwrap() == "Some notes about this birth source citation which are embedded in the citation structure itself.");
+
+        assert!(source.quay.unwrap() == Quay::Secondary);
+
+        let obje = birth.media.pop().unwrap();
+        assert!(obje.xref == "@M15@");
+
+        assert!(birth.age.unwrap() == "0y");
     }
 }
