@@ -35,7 +35,6 @@ pub struct EventDetail {
 }
 
 impl EventDetail {
-
     /// Parse
     pub fn parse(record: &mut &str) -> PResult<EventDetail> {
         let mut event = EventDetail {
@@ -94,8 +93,7 @@ impl EventDetail {
                 "TYPE" => {
                     event.r#type = Some(line.value.to_string());
                 }
-                _ => {
-                }
+                _ => {}
             }
 
             if parse {

@@ -4,8 +4,7 @@ use std::str::FromStr;
 use crate::types::individual::name::*;
 use crate::types::Line;
 
-use super::Birth;
-use super::Residence;
+use super::{Birth, Death, Residence};
 // use super::SourceCitation;
 
 // n @XREF:INDI@ INDI
@@ -33,6 +32,7 @@ pub struct Individual {
     pub names: Vec<PersonalName>,
     // pub sources: Vec<SourceCitation>,
     pub birth: Option<Birth>,
+    pub death: Option<Death>,
     pub gender: super::Gender,
     pub residences: Vec<Residence>,
 }
@@ -46,6 +46,7 @@ impl Individual {
             names: vec![],
             // sources: vec![],
             birth: None,
+            death: None,
             residences: vec![],
             gender: super::Gender::Unknown,
         };
@@ -83,7 +84,9 @@ impl Individual {
                             // println!("BIRT");
                             individual.birth = Some(Birth::parse(record).unwrap());
                         }
-                        "DEAT" => {}
+                        "DEAT" => {
+                            individual.death = Some(Death::parse(record).unwrap());
+                        }
                         "FAMS" => {}
                         "FAMC" => {}
                         "BAPM" => {}
@@ -870,7 +873,7 @@ mod tests {
         );
 
         // Birth
-        let mut birth = indi.birth.unwrap();
+        let birth = indi.birth.unwrap();
         let mut event = birth.event.unwrap();
 
         assert!(event.r#type.unwrap() == "Normal");
@@ -954,6 +957,5 @@ mod tests {
         // "3 QUAY 3",
         // "3 NOTE A death source note.",
         // "2 NOTE A death event note.",
-
     }
 }

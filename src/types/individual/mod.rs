@@ -3,6 +3,7 @@
 #![allow(clippy::module_inception)]
 
 mod birth;
+mod death;
 mod gender;
 mod individual;
 mod name;
@@ -11,6 +12,7 @@ mod residence;
 mod source;
 
 pub use birth::*;
+pub use death::Death;
 pub use gender::*;
 pub use individual::*;
 pub use name::*;
