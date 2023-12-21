@@ -933,5 +933,7 @@ mod tests {
         assert!(obje.xref == "@M15@");
 
         assert!(birth.age.unwrap() == "0y");
+
+        assert!(birth.family.unwrap().xref == "@F2@");
     }
 }
