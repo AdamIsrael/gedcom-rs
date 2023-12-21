@@ -1,54 +1,111 @@
 /// This is a template of a Type
-use crate::types::Line;
+use crate::parse;
+use crate::types::{Address, Line, Object, Place, SourceCitation};
 
 use winnow::prelude::*;
 
 // The GEDCOM specification of this type
 //
-// PLACE_STRUCTURE:=
-// n PLAC <PLACE_NAME> {1:1} p.58
-// +1 FORM <PLACE_HIERARCHY> {0:1} p.58
-// 39
-// +1 FONE <PLACE_PHONETIC_VARIATION> {0:M} p.59
-// +2 TYPE <PHONETIC_TYPE> {1:1} p.57
-// +1 ROMN <PLACE_ROMANIZED_VARIATION> {0:M} p.59
-// +2 TYPE <ROMANIZED_TYPE> {1:1} p.61
-// +1 MAP {0:1}
-// +2 LATI <PLACE_LATITUDE> {1:1} p.58
-// +2 LONG <PLACE_LONGITUDE> {1:1} p.58
-// +1 <<NOTE_STRUCTURE>> {0:M} p.37
+// EVENT_DETAIL:=
+// n TYPE <EVENT_OR_FACT_CLASSIFICATION> {0:1} p.49
+// n DATE <DATE_VALUE> {0:1} p.47, 46
+// n <<PLACE_STRUCTURE>> {0:1} p.38
+// n <<ADDRESS_STRUCTURE>> {0:1} p.31
+// n AGNC <RESPONSIBLE_AGENCY> {0:1} p.60
+// n RELI <RELIGIOUS_AFFILIATION> {0:1} p.60
+// n CAUS <CAUSE_OF_EVENT> {0:1} p.43
+// n RESN <RESTRICTION_NOTICE> {0:1} p.60
+// n <<NOTE_STRUCTURE>> {0:M} p.37
+// n <<SOURCE_CITATION>> {0:M} p.39
+// n <<MULTIMEDIA_LINK>> {0:M} p.37, 26
 
-// #[derive(Debug, Default)]
-// pub struct EventDetail {
-//     pub name: Option<String>,
-// }
+#[derive(Debug, Default)]
+pub struct EventDetail {
+    pub r#type: Option<String>,
+    pub date: Option<String>,
+    pub place: Option<Place>,
+    pub address: Option<Address>,
+    pub agency: Option<String>,
+    pub religion: Option<String>,
+    pub cause: Option<String>,
+    pub restriction_notice: Option<String>,
+    pub note: Option<String>,
+    pub sources: Vec<SourceCitation>,
+    pub media: Vec<Object>,
+}
 
-// impl EventDetail {
-//     /// Parse
-//     pub fn parse(record: &mut &str) -> PResult<EventDetail> {
-//         let mut detail = EventDetail { name: None };
-//         let level = Line::peek(record).unwrap().level;
+impl EventDetail {
 
-//         while !record.is_empty() {
-//             let mut line = Line::parse(record).unwrap();
-//             match line.tag {
-//                 "NAME" => {
-//                     detail.name = Some(line.value.to_string());
-//                 }
-//                 _ => {}
-//             }
+    /// Parse
+    pub fn parse(record: &mut &str) -> PResult<EventDetail> {
+        let mut event = EventDetail {
+            r#type: None,
+            date: None,
+            place: None,
+            address: None,
+            agency: None,
+            religion: None,
+            cause: None,
+            restriction_notice: None,
+            note: None,
+            sources: vec![],
+            media: vec![],
+        };
 
-//             // If the next level matches our initial level, we're done parsing
-//             // this structure.
-//             line = Line::peek(record).unwrap();
-//             if line.level == level {
-//                 break;
-//             }
-//         }
+        while !record.is_empty() {
+            let mut parse = true;
+            let line = Line::peek(record).unwrap();
+            match line.tag {
+                "ADDR" => {
+                    event.address = Some(Address::parse(record).unwrap());
+                    parse = false;
+                }
+                "AGNC" => {
+                    event.agency = Some(line.value.to_string());
+                }
+                "CAUS" => {
+                    event.cause = Some(line.value.to_string());
+                }
+                "DATE" => {
+                    event.date = Some(line.value.to_string());
+                }
+                "NOTE" => {
+                    event.note = parse::get_tag_value(record).unwrap();
+                    parse = false;
+                }
+                "OBJE" => {
+                    let obj = Object {
+                        xref: line.value.to_string(),
+                    };
+                    event.media.push(obj);
+                }
+                "PLAC" => {
+                    event.place = Some(Place::parse(record).unwrap());
+                    parse = false;
+                }
+                "RELI" => {
+                    event.religion = Some(line.value.to_string());
+                }
+                "SOUR" => {
+                    let sc = SourceCitation::parse(record).unwrap();
+                    event.sources.push(sc);
+                    parse = false;
+                }
+                "TYPE" => {
+                    event.r#type = Some(line.value.to_string());
+                }
+                _ => {
+                }
+            }
 
-//         Ok(detail)
-//     }
-// }
+            if parse {
+                Line::parse(record).unwrap();
+            }
+        }
+
+        Ok(event)
+    }
+}
 
 // +1 EVEN <EVENT_TYPE_CITED_FROM>
 // +2 ROLE <ROLE_IN_EVENT>

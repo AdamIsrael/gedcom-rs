@@ -1,7 +1,4 @@
-use crate::{
-    parse,
-    types::{Address, EventTypeCitedFrom, Family, Line, Object, Place, SourceCitation},
-};
+use crate::types::{EventDetail, EventTypeCitedFrom, Family, Line};
 
 use winnow::prelude::*;
 
@@ -26,62 +23,32 @@ use winnow::prelude::*;
 #[derive(Debug, Default)]
 pub struct Birth {
     pub age: Option<String>,
-    pub date: Option<String>,
-    pub r#type: Option<String>,
-    pub place: Option<Place>,
-    pub sources: Vec<SourceCitation>,
-    pub address: Option<Address>,
-    pub agency: Option<String>,
-    pub religion: Option<String>,
-    pub cause: Option<String>,
-    pub note: Option<String>,
+    pub event: Option<EventDetail>,
     pub event_type_cited_from: Option<EventTypeCitedFrom>,
-    pub media: Vec<Object>,
     pub family: Option<Family>,
 }
 
 impl Birth {
     pub fn parse(record: &mut &str) -> PResult<Birth> {
         let mut birth = Birth {
-            address: None,
             age: None,
-            agency: None,
-            cause: None,
-            date: None,
+            event: None,
             event_type_cited_from: None,
             family: None,
-            media: vec![],
-            note: None,
-            place: None,
-            religion: None,
-            sources: vec![],
-            r#type: None,
         };
 
-        let tag = Line::peek(record).unwrap().tag;
-        if tag == "BIRT" {
+        let line = Line::peek(record).unwrap();
+        if line.tag == "BIRT" {
             Line::parse(record).unwrap();
         }
+        let mut events: Vec<String> = vec![];
+        // events.push(line.to_string());
 
         while !record.is_empty() {
-            let mut parse = true;
             let mut line = Line::peek(record).unwrap();
             match line.tag {
-                "ADDR" => {
-                    birth.address = Some(Address::parse(record).unwrap());
-                    parse = false;
-                }
                 "AGE" => {
                     birth.age = Some(line.value.to_string());
-                }
-                "AGNC" => {
-                    birth.agency = Some(line.value.to_string());
-                }
-                "CAUS" => {
-                    birth.cause = Some(line.value.to_string());
-                }
-                "DATE" => {
-                    birth.date = Some(line.value.to_string());
                 }
                 "FAMC" => {
                     let famc = Family {
@@ -89,40 +56,28 @@ impl Birth {
                     };
                     birth.family = Some(famc);
                 }
-                "NOTE" => {
-                    birth.note = parse::get_tag_value(record).unwrap();
-                    parse = false;
+                _ => {
+                    // This works right now, in this use-case, but what if a struct
+                    // composites more than one structure?
+
+                    // add the line to events, so we can parse them all at once
+                    // as part of the Event Detail
+                    events.push(line.to_string());
                 }
-                "OBJE" => {
-                    let obj = Object {
-                        xref: line.value.to_string(),
-                    };
-                    birth.media.push(obj);
-                }
-                "PLAC" => {
-                    birth.place = Some(Place::parse(record).unwrap());
-                    parse = false;
-                }
-                "RELI" => {
-                    birth.religion = Some(line.value.to_string());
-                }
-                "SOUR" => {
-                    let sc = SourceCitation::parse(record).unwrap();
-                    birth.sources.push(sc);
-                    parse = false;
-                }
-                "TYPE" => {
-                    birth.r#type = Some(line.value.to_string());
-                }
-                _ => {}
             }
 
-            if parse {
-                line = Line::parse(record).unwrap();
-            }
+            line = Line::parse(record).unwrap();
             if line.level == 1 {
                 break;
             }
+        }
+
+        // Now parse the events
+        if !events.is_empty() {
+            let event = events.join("\n");
+            let mut event_str = event.as_str();
+            // println!("parsing --\n{}", event_str);
+            birth.event = Some(EventDetail::parse(&mut event_str).unwrap());
         }
 
         Ok(birth)
@@ -179,42 +134,43 @@ mod tests {
         ].join("\n");
 
         let mut record = data.as_str();
-        let mut birth = Birth::parse(&mut record).unwrap();
+        let birth = Birth::parse(&mut record).unwrap();
 
-        assert!(birth.date.is_some());
-        assert!(birth.r#type.is_some());
+        let mut event = birth.event.unwrap();
+        assert!(event.date.is_some());
+        assert!(event.r#type.is_some());
 
-        let place = birth.place.unwrap();
+        let place = event.place.unwrap();
         assert!(place.name.is_some());
         assert!(place.note.is_some());
         assert!(place.note.unwrap().note.unwrap() == "Some place notes.");
 
-        let addr = birth.address.unwrap();
+        let addr = event.address.unwrap();
         assert!(addr.addr1.is_some());
         assert!(addr.city.is_some());
         assert!(addr.state.is_some());
 
-        assert!(birth.agency.is_some());
-        assert!(birth.agency.unwrap() == "none");
+        assert!(event.agency.is_some());
+        assert!(event.agency.unwrap() == "none");
 
-        assert!(birth.religion.is_some());
-        assert!(birth.religion.unwrap() == "Religion");
+        assert!(event.religion.is_some());
+        assert!(event.religion.unwrap() == "Religion");
 
-        assert!(birth.cause.is_some());
-        assert!(birth.cause.unwrap() == "Conception");
+        assert!(event.cause.is_some());
+        assert!(event.cause.unwrap() == "Conception");
 
         // assert!(birth.event_type_cited_from.is_some());
         // let event_type = birth.event_type_cited_from.unwrap();
         // assert!(event_type.r#type.unwrap() == "BIRT");
         // assert!(event_type.role.unwrap() == "CHIL");
 
-        assert!(birth.note.is_some());
-        assert!(birth.note.unwrap() == "Some notes.");
+        assert!(event.note.is_some());
+        assert!(event.note.unwrap() == "Some notes.");
 
         // assert!(place.name.unwrap() == "");
 
-        assert!(birth.media.len() == 1);
-        let obje = birth.media.pop().unwrap();
+        assert!(event.media.len() == 1);
+        let obje = event.media.pop().unwrap();
         assert!(obje.xref == "@M15@");
 
         assert!(birth.age.unwrap() == "0y");

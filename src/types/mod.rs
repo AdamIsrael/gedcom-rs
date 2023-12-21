@@ -21,7 +21,7 @@ mod submitter;
 
 pub use address::*;
 pub use datetime::DateTime;
-pub use event::EventTypeCitedFrom;
+pub use event::{EventDetail, EventTypeCitedFrom};
 pub use family::Family;
 pub use gedc::{Form, Gedc};
 pub use header::Header;

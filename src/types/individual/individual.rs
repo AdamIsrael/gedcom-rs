@@ -870,15 +870,13 @@ mod tests {
         );
 
         // Birth
-        // "2 PLAC Salt Lake City, UT, USA",
-        // ...
-        // "2 AGE 0y",
-        // "2 FAMC @F2@",
         let mut birth = indi.birth.unwrap();
-        assert!(birth.r#type.unwrap() == "Normal");
-        assert!(birth.date.unwrap() == "31 DEC 1965");
+        let mut event = birth.event.unwrap();
 
-        let place = birth.place.unwrap();
+        assert!(event.r#type.unwrap() == "Normal");
+        assert!(event.date.unwrap() == "31 DEC 1965");
+
+        let place = event.place.unwrap();
         assert!(place.name.unwrap() == "Salt Lake City, UT, USA");
         assert!(place.note.unwrap().note.unwrap() == "Place note");
 
@@ -892,24 +890,24 @@ mod tests {
         assert!(place_map.latitude == 0.0);
         assert!(place_map.longitude == 0.0);
 
-        let addr = birth.address.unwrap();
+        let addr = event.address.unwrap();
         assert!(addr.addr1.unwrap() == "St. Marks Hospital");
         assert!(addr.city.unwrap() == "Salt Lake City");
         assert!(addr.state.unwrap() == "UT");
         assert!(addr.postal_code.unwrap() == "84121");
         assert!(addr.country.unwrap() == "USA");
 
-        assert!(birth.agency.unwrap() == "none");
-        assert!(birth.religion.unwrap() == "Religion");
-        assert!(birth.cause.unwrap() == "Conception");
+        assert!(event.agency.unwrap() == "none");
+        assert!(event.religion.unwrap() == "Religion");
+        assert!(event.cause.unwrap() == "Conception");
 
         // Good to know: notes can be an xref that refer to a top-level note,
         // i.e, @N8@ -> '0 NOTE @N8@'.
         // I need to write some kind of resolver
         // TODO: Convert to a Note (and add xref to Note)
-        assert!(birth.note.unwrap() == "@N8@");
+        assert!(event.note.unwrap() == "@N8@");
 
-        let mut source = birth.sources.pop().unwrap();
+        let mut source = event.sources.pop().unwrap();
         assert!(source.xref.unwrap() == "@S1@");
         assert!(source.page.unwrap() == 42);
 
@@ -929,11 +927,33 @@ mod tests {
 
         assert!(source.quay.unwrap() == Quay::Secondary);
 
-        let obje = birth.media.pop().unwrap();
+        let obje = event.media.pop().unwrap();
         assert!(obje.xref == "@M15@");
 
         assert!(birth.age.unwrap() == "0y");
 
         assert!(birth.family.unwrap().xref == "@F2@");
+
+        // Death
+        // "1 DEAT",
+        // "2 DATE ABT 15 JAN 2001",
+        // "2 PLAC New York, New York, USA",
+        // "3 NOTE The place structure has more detail than usually used for places",
+        // "2 AGE 76y",
+        // "2 TYPE slow",
+        // "2 ADDR",
+        // "3 ADR1 at Home",
+        // "2 CAUS Cancer",
+        // "2 AGNC none",
+        // "2 OBJE @M8@",
+        // "2 SOUR @S1@",
+        // "3 PAGE 42",
+        // "3 DATA",
+        // "4 DATE 31 DEC 1900",
+        // "4 TEXT Some death source text.",
+        // "3 QUAY 3",
+        // "3 NOTE A death source note.",
+        // "2 NOTE A death event note.",
+
     }
 }

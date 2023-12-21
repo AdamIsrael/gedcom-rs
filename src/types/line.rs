@@ -1,4 +1,5 @@
 // use std::str::FromStr;
+use std::fmt;
 
 use winnow::ascii::{alphanumeric1, digit1, line_ending, not_line_ending, space0};
 use winnow::combinator::{opt, preceded, separated_pair};
@@ -17,6 +18,16 @@ pub struct Line<'a> {
     pub value: &'a str,
 }
 
+impl<'b> fmt::Display for Line<'b> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if !self.xref.is_empty() {
+            write!(f, "{} {} {} {}", self.level, self.xref, self.tag, self.value)
+        }
+        else {
+            write!(f, "{} {} {}", self.level,self.tag, self.value)
+        }
+    }
+}
 impl<'b> Line<'b> {
     pub fn parse(input: &mut &'b str) -> PResult<Line<'b>> {
         let mut line = Line {
