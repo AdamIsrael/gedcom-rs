@@ -23,7 +23,6 @@ use winnow::prelude::*;
 //     }
 // }
 
-
 /// Read the next tag's value and any continuations
 pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
     let mut line = Line::parse(input).unwrap();

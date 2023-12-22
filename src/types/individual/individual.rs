@@ -974,7 +974,6 @@ mod tests {
         // "3 NOTE A death source note.",
         // "2 NOTE A death event note.",
 
-
         // FAMC
         assert!(indi.famc.len() == 2);
         assert!(indi.famc[0].xref == "@F2@");
@@ -985,6 +984,5 @@ mod tests {
         assert!(indi.fams.len() == 2);
         assert!(indi.fams[0].xref == "@F1@");
         assert!(indi.fams[1].xref == "@F4@");
-
     }
 }
