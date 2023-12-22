@@ -45,7 +45,11 @@ impl Birth {
         // events.push(line.to_string());
 
         while !record.is_empty() {
-            let mut line = Line::peek(record).unwrap();
+            let line = Line::peek(record).unwrap();
+            if line.level == 1 {
+                break;
+            }
+
             match line.tag {
                 "AGE" => {
                     birth.age = Some(line.value.to_string());
@@ -65,15 +69,15 @@ impl Birth {
                     events.push(line.to_string());
                 }
             }
+            // line = Line::parse(record).unwrap();
 
-            line = Line::parse(record).unwrap();
-            if line.level == 1 {
-                break;
-            }
+            Line::parse(record).unwrap();
         }
 
         // Now parse the events
         if !events.is_empty() {
+            // Remove the last line; it belongs to the next record
+            // println!("DELETE: {:?}", events.pop());
             let event = events.join("\n");
             let mut event_str = event.as_str();
             // println!("parsing --\n{}", event_str);

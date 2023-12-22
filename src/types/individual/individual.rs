@@ -2,7 +2,7 @@
 use std::str::FromStr;
 
 use crate::types::individual::name::*;
-use crate::types::Line;
+use crate::types::{Family, Line};
 
 use super::{Birth, Death, Residence};
 // use super::SourceCitation;
@@ -35,6 +35,8 @@ pub struct Individual {
     pub death: Option<Death>,
     pub gender: super::Gender,
     pub residences: Vec<Residence>,
+    pub famc: Vec<Family>,
+    pub fams: Vec<Family>,
 }
 
 // impl<'a> Individual<'a> {
@@ -47,6 +49,8 @@ impl Individual {
             // sources: vec![],
             birth: None,
             death: None,
+            famc: vec![],
+            fams: vec![],
             residences: vec![],
             gender: super::Gender::Unknown,
         };
@@ -62,17 +66,12 @@ impl Individual {
                     individual.xref = Some(line.xref.to_string());
                 }
                 1 => {
+                    // println!("TAG: {}", line.tag);
                     match line.tag {
                         "NAME" => {
-                            // println!("Current line: {:?}", line);
-                            // println!("before record: {}", record.len());
-
                             let pn = PersonalName::parse(record).unwrap();
-                            // println!("after record: {}", record.len());
-                            // println!("{:?}", pn);
                             individual.names.push(pn);
                             parse = false;
-                            // println!("Next line: {:?}", Line::peek(record).unwrap());
                         }
                         "SEX" => {
                             // individual.gender =
@@ -81,14 +80,25 @@ impl Individual {
                             // println!("Next line: {:?}", Line::peek(record).unwrap());
                         }
                         "BIRT" => {
-                            // println!("BIRT");
                             individual.birth = Some(Birth::parse(record).unwrap());
+                            parse = false;
                         }
                         "DEAT" => {
                             individual.death = Some(Death::parse(record).unwrap());
+                            parse = false;
                         }
-                        "FAMS" => {}
-                        "FAMC" => {}
+                        "FAMS" => {
+                            let fams = Family {
+                                xref: line.value.to_string(),
+                            };
+                            individual.fams.push(fams);
+                        }
+                        "FAMC" => {
+                            let famc = Family {
+                                xref: line.value.to_string(),
+                            };
+                            individual.famc.push(famc);
+                        }
                         "BAPM" => {}
                         // christening
                         "CHR" => {}
@@ -939,10 +949,16 @@ mod tests {
 
         // Death
         // "1 DEAT",
+        let death = indi.death.unwrap();
+        let devent = death.event.unwrap();
         // "2 DATE ABT 15 JAN 2001",
+        assert!(devent.date.is_some());
+        assert!(devent.date.unwrap() == "ABT 15 JAN 2001");
+
         // "2 PLAC New York, New York, USA",
         // "3 NOTE The place structure has more detail than usually used for places",
         // "2 AGE 76y",
+        assert!(death.age.unwrap() == "76y");
         // "2 TYPE slow",
         // "2 ADDR",
         // "3 ADR1 at Home",
@@ -957,5 +973,18 @@ mod tests {
         // "3 QUAY 3",
         // "3 NOTE A death source note.",
         // "2 NOTE A death event note.",
+
+
+        // FAMC
+        assert!(indi.famc.len() == 2);
+        assert!(indi.famc[0].xref == "@F2@");
+        assert!(indi.famc[1].xref == "@F3@");
+
+        // FAMS
+        // println!("{:?}", indi.fams);
+        assert!(indi.fams.len() == 2);
+        assert!(indi.fams[0].xref == "@F1@");
+        assert!(indi.fams[1].xref == "@F4@");
+
     }
 }

@@ -44,7 +44,10 @@ impl Death {
         let mut events: Vec<String> = vec![];
 
         while !record.is_empty() {
-            let mut line = Line::peek(record).unwrap();
+            let line = Line::peek(record).unwrap();
+            if line.level == 1 {
+                break;
+            }
             match line.tag {
                 "AGE" => {
                     death.age = Some(line.value.to_string());
@@ -59,10 +62,7 @@ impl Death {
                 }
             }
 
-            line = Line::parse(record).unwrap();
-            if line.level == 1 {
-                break;
-            }
+            Line::parse(record).unwrap();
         }
 
         // Now parse the events

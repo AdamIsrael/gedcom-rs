@@ -23,13 +23,6 @@ use winnow::prelude::*;
 //     }
 // }
 
-/// What did I mean to do with this? gg
-/// I think it takes the input and returns a tuple containing the tag and it's
-/// optional value? I lost the thread, though, and need to retrace my steps.
-// fn get_tag_value(input: &str) -> IResult<&str, (&str, &str)> {
-
-//     Ok((input, ("", "")))
-// }
 
 /// Read the next tag's value and any continuations
 pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
