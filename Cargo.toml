@@ -1,6 +1,5 @@
 [package]
-# TODO: pick a final name
-name = "gedcom-test"
+name = "gedcom-rs"
 version = "0.1.0"
 edition = "2018"
 
