@@ -57,6 +57,7 @@ impl Birth {
                 "FAMC" => {
                     let famc = Family {
                         xref: line.value.to_string(),
+                        note: None,
                     };
                     birth.family = Some(famc);
                 }

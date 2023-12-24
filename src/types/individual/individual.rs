@@ -90,12 +90,14 @@ impl Individual {
                         "FAMS" => {
                             let fams = Family {
                                 xref: line.value.to_string(),
+                                note: None,
                             };
                             individual.fams.push(fams);
                         }
                         "FAMC" => {
                             let famc = Family {
                                 xref: line.value.to_string(),
+                                note: None,
                             };
                             individual.famc.push(famc);
                         }
@@ -950,7 +952,7 @@ mod tests {
         // Death
         // "1 DEAT",
         let death = indi.death.unwrap();
-        let devent = death.event.unwrap();
+        let mut devent = death.event.unwrap();
         // "2 DATE ABT 15 JAN 2001",
         assert!(devent.date.is_some());
         assert!(devent.date.unwrap() == "ABT 15 JAN 2001");
@@ -960,29 +962,75 @@ mod tests {
         // "2 AGE 76y",
         assert!(death.age.unwrap() == "76y");
         // "2 TYPE slow",
+        assert!(devent.r#type.unwrap() == "slow");
+
         // "2 ADDR",
         // "3 ADR1 at Home",
+        assert!(devent.address.is_some());
+        let addr = devent.address.unwrap();
+        assert!(addr.addr1.unwrap() == "at Home");
+
         // "2 CAUS Cancer",
+        assert!(devent.cause.unwrap() == "Cancer");
+
         // "2 AGNC none",
+        assert!(devent.agency.unwrap() == "none");
+
         // "2 OBJE @M8@",
+        assert!(devent.media.len() == 1);
+        let obj = devent.media.pop().unwrap();
+        assert!(obj.xref == "@M8@".to_string());
+
         // "2 SOUR @S1@",
+        assert!(devent.sources.len() == 1);
+        let source = devent.sources.pop().unwrap();
+        assert!(source.xref.unwrap() == "@S1@");
+
         // "3 PAGE 42",
+        assert!(source.page.unwrap() == 42);
+
         // "3 DATA",
+        let sdata = source.data.unwrap();
+
         // "4 DATE 31 DEC 1900",
+        assert!(sdata.date.unwrap() == "31 DEC 1900");
+
         // "4 TEXT Some death source text.",
+        assert!(sdata.text.unwrap().note.unwrap() == "Some death source text.");
+
         // "3 QUAY 3",
+        assert!(source.quay.unwrap() == Quay::Direct);
+
         // "3 NOTE A death source note.",
+        assert!(source.note.unwrap().note.unwrap() == "A death source note.");
+
         // "2 NOTE A death event note.",
+        assert!(devent.note.unwrap() == "A death event note.");
+
+        // Family links
+
+        // "1 FAMS @F1@",
+        // "2 NOTE Note about the link to the family record with his first spouse.",
+        // "2 NOTE Another note about the link to the family record with his first spouse.",
+        // "1 FAMS @F4@",
+        // "1 FAMC @F2@",
+        // "2 NOTE Note about this link to his parents family record.",
+        // "2 NOTE Another note about this link to his parents family record",
+        // "1 FAMC @F3@",
+        // "2 PEDI adopted",
+        // "2 NOTE Note about the link to his adoptive parents family record.",
+
+        // FAMS
+        println!("{:?}", indi.fams);
+        assert!(indi.fams.len() == 2);
+        assert!(indi.fams[0].xref == "@F1@");
+        assert!(indi.fams[1].xref == "@F4@");
 
         // FAMC
         assert!(indi.famc.len() == 2);
         assert!(indi.famc[0].xref == "@F2@");
         assert!(indi.famc[1].xref == "@F3@");
 
-        // FAMS
-        // println!("{:?}", indi.fams);
-        assert!(indi.fams.len() == 2);
-        assert!(indi.fams[0].xref == "@F1@");
-        assert!(indi.fams[1].xref == "@F4@");
+        // Baptism
     }
 }

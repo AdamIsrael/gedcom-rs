@@ -1,3 +1,5 @@
+use crate::types::{Line, Note};
+
 // TODO: implement full parsing of the family record
 // TODO: Need to create a trait? to find_by_xref that can be used in these
 // types of structs, to find the type of object in a vec of the types.
@@ -21,15 +23,51 @@
 // +1 <<SOURCE_CITATION>> {0:M} p.39
 // +1 <<MULTIMEDIA_LINK>> {0:M} p.37, 26
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 /// The Family structure
 pub struct Family {
     pub xref: String,
+    pub note: Option<Note>,
 }
 
 impl Family {
-    pub fn parse(_record: &str) -> Family {
-        // let mut object = Object { xref: "" };
+    pub fn parse(record: &mut &str) -> Family {
+        let mut family = Family {
+            xref: "".to_string(),
+            note: None,
+        };
+
+        let line = Line::peek(record).unwrap();
+        // let level = line.level;
+        let tag = line.tag;
+
+        // If we're at the top of the record, consume the line
+        if tag == "FAMC" || tag == "FAMS" {
+            // Capture the xref
+            family.xref = line.value.to_string();
+            Line::parse(record).unwrap();
+        }
+
+        // "1 FAMS @F1@",
+        // "2 NOTE Note about the link to the family record with his first spouse.",
+        // "2 NOTE Another note about the link to the family record with his first spouse.",
+
+        // while !record.is_empty() {
+        // let mut line = Line::parse(record).unwrap();
+        // match line.tag {
+        //     "NAME" => {
+        //         // fam.name = Some(line.value.to_string());
+        //     }
+        //     _ => {}
+        // }
+
+        // If the next level matches our initial level, we're done parsing
+        // this structure.
+        //     line = Line::peek(record).unwrap();
+        //     if line.level == level {
+        //         break;
+        //     }
+        // }
 
         // while !record.is_empty() {
         //     let (buffer, line) = Line::parse(&record).unwrap();
@@ -45,8 +83,9 @@ impl Family {
         //     }
         // }
         // object
-        Family {
-            xref: "".to_string(),
-        }
+        // Family {
+        //     xref: "".to_string(),
+        // }
+        family
     }
 }
