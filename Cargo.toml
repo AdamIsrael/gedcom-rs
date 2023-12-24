@@ -10,6 +10,9 @@ edition = "2018"
 license-file = "LICENSE"
 keywords = ["gedcom"]
 categories = ["data-structures", "parser-implementations", "parsing"]
+exclude = [
+    ".vscode/*",
+]
 
 [dependencies]
 smallvec = "1.10.0"
