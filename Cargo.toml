@@ -1,10 +1,18 @@
 [package]
-# TODO: pick a final name
-name = "gedcom-test"
+name = "gedcom-rs"
+description = "A Rust library to parse and interact with GEDCOM data."
+homepage = "https://github.com/AdamIsrael/gedcom-rs"
+documentation = "https://github.com/AdamIsrael/gedcom-rs"
+repository = "https://github.com/AdamIsrael/gedcom-rs"
+readme = "README.md"
 version = "0.1.0"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license-file = "LICENSE"
+keywords = ["gedcom"]
+categories = ["data-structures", "parser-implementations", "parsing"]
+exclude = [
+    ".vscode/*",
+]
 
 [dependencies]
 smallvec = "1.10.0"

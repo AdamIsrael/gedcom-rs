@@ -1,6 +1,6 @@
-extern crate gedcom_test;
+extern crate gedcom_rs;
 
-use gedcom_test::parse::parse_gedcom;
+use gedcom_rs::parse::parse_gedcom;
 
 use std::env;
 
