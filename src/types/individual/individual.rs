@@ -1302,9 +1302,6 @@ mod tests {
 
         // "2 NOTE Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, ",
         // "3 CONC also known as \"Bat Mitzvah\").",
-        println!("{:?}", basm.detail.note);
         assert!(basm.detail.note.unwrap() == "Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, also known as \"Bat Mitzvah\").");
-
-
     }
 }
