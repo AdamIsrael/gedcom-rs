@@ -183,9 +183,17 @@ impl Individual {
                             parse = false;
                         }
                         // bar mitzvah
-                        "BARM" => {}
+                        "BARM" => {
+                            let bar = IndividualEventDetail::parse(record).unwrap();
+                            individual.barmitzvah.push(bar);
+                            parse = false;
+                        }
                         // bas mitzvah
-                        "BASM" => {}
+                        "BASM" => {
+                            let bar = IndividualEventDetail::parse(record).unwrap();
+                            individual.basmitzvah.push(bar);
+                            parse = false;
+                        }
                         // blessing
                         "BLES" => {}
 
@@ -1179,6 +1187,8 @@ mod tests {
             .unwrap()
             .starts_with("A baptism event note"));
 
+        // Christening
+
         // "1 CHR",
         let chr = indi.christening.first().unwrap().clone();
 
@@ -1219,5 +1229,82 @@ mod tests {
 
         // "2 FAMC @F3@",
         assert!(chr.family.unwrap().xref == "@F3@".to_string());
+
+        // "1 BARM",
+        let barm = indi.barmitzvah.first().unwrap().clone();
+        // "2 DATE AFT 31 DEC 1997",
+        assert!(barm.detail.date.unwrap() == "AFT 31 DEC 1997");
+
+        // "2 PLAC The place",
+        assert!(barm.detail.place.unwrap().name.unwrap() == "The place");
+
+        // "2 TYPE BARM",
+        assert!(barm.detail.r#type.unwrap() == "BARM");
+
+        let source = barm.detail.sources.first().unwrap().clone();
+        // "2 SOUR @S1@",
+        assert!(source.xref.unwrap() == "@S1@");
+        // "3 PAGE 42",
+        assert!(source.page.unwrap() == 42);
+
+        // "3 DATA",
+        let sdata = source.data.unwrap();
+
+        // "4 DATE 31 DEC 1900",
+        assert!(sdata.date.unwrap() == "31 DEC 1900");
+
+        // "4 TEXT Some Bar Mitzvah source text.",
+        assert!(sdata.text.unwrap().note.unwrap() == "Some Bar Mitzvah source text.");
+
+        // "3 QUAY 3",
+        assert!(source.quay.unwrap() == Quay::Direct);
+
+        // "3 NOTE A Bar Mitzvah source note.",
+        assert!(source.note.unwrap().note.unwrap() == "A Bar Mitzvah source note.");
+
+        // "2 NOTE Bar Mitzvah event note (the ceremonial event held when a Jewish boy reaches age ",
+        // "3 CONC 13).",
+        assert!(barm.detail.note.unwrap() == "Bar Mitzvah event note (the ceremonial event held when a Jewish boy reaches age 13).");
+
+        // Baz Mitzvah
+        // "1 BASM",
+        let basm = indi.basmitzvah.first().unwrap().clone();
+
+        // "2 DATE AFT 31 DEC 1997",
+        assert!(basm.detail.date.unwrap() == "AFT 31 DEC 1997");
+
+        // "2 PLAC The place",
+        assert!(basm.detail.place.unwrap().name.unwrap() == "The place");
+
+        // "2 TYPE BARM",
+        assert!(basm.detail.r#type.unwrap() == "BASM");
+
+        let source = basm.detail.sources.first().unwrap().clone();
+        // "2 SOUR @S1@",
+        assert!(source.xref.unwrap() == "@S1@");
+        // "3 PAGE 42",
+        assert!(source.page.unwrap() == 42);
+
+        // "3 DATA",
+        let sdata = source.data.unwrap();
+
+        // "4 DATE 31 DEC 1900",
+        assert!(sdata.date.unwrap() == "31 DEC 1900");
+
+        // "4 TEXT Some Bar Mitzvah source text.",
+        assert!(sdata.text.unwrap().note.unwrap() == "Some Bas Mitzvah source text.");
+
+        // "3 QUAY 3",
+        assert!(source.quay.unwrap() == Quay::Direct);
+
+        // "3 NOTE A Bar Mitzvah source note.",
+        assert!(source.note.unwrap().note.unwrap() == "A Bas Mitzvah source note.");
+
+        // "2 NOTE Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, ",
+        // "3 CONC also known as \"Bat Mitzvah\").",
+        println!("{:?}", basm.detail.note);
+        assert!(basm.detail.note.unwrap() == "Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, also known as \"Bat Mitzvah\").");
+
+
     }
 }
