@@ -1,6 +1,8 @@
-use crate::types::{EventDetail, EventTypeCitedFrom, Family, Line};
+use crate::types::{EventTypeCitedFrom, Family, Line};
 
 use winnow::prelude::*;
+
+use super::IndividualEventDetail;
 
 // n [ BIRT | CHR ] [Y|<NULL>] {1:1}
 // +1 <<INDIVIDUAL_EVENT_DETAIL>> {0:1}* p.34
@@ -22,8 +24,9 @@ use winnow::prelude::*;
 
 #[derive(Debug, Default)]
 pub struct Birth {
-    pub age: Option<String>,
-    pub event: Option<EventDetail>,
+    // pub age: Option<String>,
+    // pub event: Option<EventDetail>,
+    pub event: Option<IndividualEventDetail>,
     pub event_type_cited_from: Option<EventTypeCitedFrom>,
     pub family: Option<Family>,
 }
@@ -31,7 +34,7 @@ pub struct Birth {
 impl Birth {
     pub fn parse(record: &mut &str) -> PResult<Birth> {
         let mut birth = Birth {
-            age: None,
+            // age: None,
             event: None,
             event_type_cited_from: None,
             family: None,
@@ -54,9 +57,9 @@ impl Birth {
             }
 
             match line.tag {
-                "AGE" => {
-                    birth.age = Some(line.value.to_string());
-                }
+                // "AGE" => {
+                //     birth.age = Some(line.value.to_string());
+                // }
                 "FAMC" => {
                     let famc = Family {
                         xref: line.value.to_string(),
@@ -86,7 +89,7 @@ impl Birth {
             let event = events.join("\n");
             let mut event_str = event.as_str();
             // println!("parsing --\n{}", event_str);
-            birth.event = Some(EventDetail::parse(&mut event_str).unwrap());
+            birth.event = Some(IndividualEventDetail::parse(&mut event_str).unwrap());
         }
 
         Ok(birth)
@@ -146,43 +149,43 @@ mod tests {
         let birth = Birth::parse(&mut record).unwrap();
 
         let mut event = birth.event.unwrap();
-        assert!(event.date.is_some());
-        assert!(event.r#type.is_some());
+        assert!(event.detail.date.is_some());
+        assert!(event.detail.r#type.is_some());
 
-        let place = event.place.unwrap();
+        let place = event.detail.place.unwrap();
         assert!(place.name.is_some());
         assert!(place.note.is_some());
         assert!(place.note.unwrap().note.unwrap() == "Some place notes.");
 
-        let addr = event.address.unwrap();
+        let addr = event.detail.address.unwrap();
         assert!(addr.addr1.is_some());
         assert!(addr.city.is_some());
         assert!(addr.state.is_some());
 
-        assert!(event.agency.is_some());
-        assert!(event.agency.unwrap() == "none");
+        assert!(event.detail.agency.is_some());
+        assert!(event.detail.agency.unwrap() == "none");
 
-        assert!(event.religion.is_some());
-        assert!(event.religion.unwrap() == "Religion");
+        assert!(event.detail.religion.is_some());
+        assert!(event.detail.religion.unwrap() == "Religion");
 
-        assert!(event.cause.is_some());
-        assert!(event.cause.unwrap() == "Conception");
+        assert!(event.detail.cause.is_some());
+        assert!(event.detail.cause.unwrap() == "Conception");
 
         // assert!(birth.event_type_cited_from.is_some());
         // let event_type = birth.event_type_cited_from.unwrap();
         // assert!(event_type.r#type.unwrap() == "BIRT");
         // assert!(event_type.role.unwrap() == "CHIL");
 
-        assert!(event.note.is_some());
-        assert!(event.note.unwrap() == "Some notes.");
+        assert!(event.detail.note.is_some());
+        assert!(event.detail.note.unwrap() == "Some notes.");
 
         // assert!(place.name.unwrap() == "");
 
-        assert!(event.media.len() == 1);
-        let obje = event.media.pop().unwrap();
+        assert!(event.detail.media.len() == 1);
+        let obje = event.detail.media.pop().unwrap();
         assert!(obje.xref == "@M15@");
 
-        assert!(birth.age.unwrap() == "0y");
+        assert!(event.age.unwrap() == "0y");
 
         assert!(birth.family.unwrap().xref == "@F2@");
     }

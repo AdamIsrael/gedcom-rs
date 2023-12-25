@@ -916,10 +916,10 @@ mod tests {
         let birth = indi.birth.unwrap();
         let mut event = birth.event.unwrap();
 
-        assert!(event.r#type.unwrap() == "Normal");
-        assert!(event.date.unwrap() == "31 DEC 1965");
+        assert!(event.detail.r#type.unwrap() == "Normal");
+        assert!(event.detail.date.unwrap() == "31 DEC 1965");
 
-        let place = event.place.unwrap();
+        let place = event.detail.place.unwrap();
         assert!(place.name.unwrap() == "Salt Lake City, UT, USA");
         assert!(place.note.unwrap().note.unwrap() == "Place note");
 
@@ -933,24 +933,24 @@ mod tests {
         assert!(place_map.latitude == 0.0);
         assert!(place_map.longitude == 0.0);
 
-        let addr = event.address.unwrap();
+        let addr = event.detail.address.unwrap();
         assert!(addr.addr1.unwrap() == "St. Marks Hospital");
         assert!(addr.city.unwrap() == "Salt Lake City");
         assert!(addr.state.unwrap() == "UT");
         assert!(addr.postal_code.unwrap() == "84121");
         assert!(addr.country.unwrap() == "USA");
 
-        assert!(event.agency.unwrap() == "none");
-        assert!(event.religion.unwrap() == "Religion");
-        assert!(event.cause.unwrap() == "Conception");
+        assert!(event.detail.agency.unwrap() == "none");
+        assert!(event.detail.religion.unwrap() == "Religion");
+        assert!(event.detail.cause.unwrap() == "Conception");
 
         // Good to know: notes can be an xref that refer to a top-level note,
         // i.e, @N8@ -> '0 NOTE @N8@'.
         // I need to write some kind of resolver
         // TODO: Convert to a Note (and add xref to Note)
-        assert!(event.note.unwrap() == "@N8@");
+        assert!(event.detail.note.unwrap() == "@N8@");
 
-        let mut source = event.sources.pop().unwrap();
+        let mut source = event.detail.sources.pop().unwrap();
         assert!(source.xref.unwrap() == "@S1@");
         assert!(source.page.unwrap() == 42);
 
@@ -970,10 +970,10 @@ mod tests {
 
         assert!(source.quay.unwrap() == Quay::Secondary);
 
-        let obje = event.media.pop().unwrap();
+        let obje = event.detail.media.pop().unwrap();
         assert!(obje.xref == "@M15@");
 
-        assert!(birth.age.unwrap() == "0y");
+        assert!(event.age.unwrap() == "0y");
 
         assert!(birth.family.unwrap().xref == "@F2@");
 
