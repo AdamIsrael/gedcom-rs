@@ -2,9 +2,9 @@
 use std::str::FromStr;
 
 use crate::types::individual::name::*;
-use crate::types::{EventDetail, Family, Line};
+use crate::types::{Family, Line};
 
-use super::{Birth, Death, Residence};
+use super::{Birth, Death, IndividualEventDetail, Residence};
 // use super::SourceCitation;
 
 // n @XREF:INDI@ INDI
@@ -36,13 +36,13 @@ pub struct Individual {
 
     // Baptism-related fields
     /// The event of baptism (not LDS), performed in infancy or later.
-    pub baptism: Option<EventDetail>,
+    pub baptism: Option<IndividualEventDetail>,
     /// The ceremonial event held when a Jewish boy reaches age 13.
-    pub barmitzvah: Option<EventDetail>,
+    pub barmitzvah: Option<IndividualEventDetail>,
     /// The ceremonial event held when a Jewish girl reaches age 13.
-    pub basmitzvah: Option<EventDetail>,
+    pub basmitzvah: Option<IndividualEventDetail>,
     /// A religious event of bestowing divine care or intercession. Sometimes given in connection with anaming ceremony.
-    pub blessing: Option<EventDetail>,
+    pub blessing: Option<IndividualEventDetail>,
 
     pub gender: super::Gender,
     pub residences: Vec<Residence>,
@@ -64,6 +64,7 @@ impl Individual {
             barmitzvah: None,
             basmitzvah: None,
             blessing: None,
+
             famc: vec![],
             fams: vec![],
             residences: vec![],
@@ -115,15 +116,11 @@ impl Individual {
                             let fam = Family::parse(record);
                             individual.famc.push(fam);
                             parse = false;
-                            // let famc = Family {
-                            //     xref: line.value.to_string(),
-                            //     note: vec![],
-                            // };
-                            // individual.famc.push(famc);
                         }
                         // baptism
                         "BAPM" => {
-                            individual.baptism = Some(EventDetail::parse(record).unwrap());
+                            individual.baptism =
+                                Some(IndividualEventDetail::parse(record).unwrap());
                             parse = false;
                         }
                         // christening
@@ -1045,33 +1042,77 @@ mod tests {
         // Baptism
         // "1 BAPM",
         let bapm = indi.baptism.unwrap();
-        println!("{:?}\n\n", bapm);
 
         // "2 DATE ABT 31 DEC 1997",
-        assert!(bapm.date.unwrap() == "ABT 31 DEC 1997");
+        assert!(bapm.detail.date.unwrap() == "ABT 31 DEC 1997");
 
         // "2 PLAC The place",
-        assert!(bapm.place.unwrap().name.unwrap() == "The place");
+        assert!(bapm.detail.place.unwrap().name.unwrap() == "The place");
 
         // "2 AGE 3m",
+        assert!(bapm.age.unwrap() == "3m");
 
         // "2 TYPE BAPM",
+        assert!(bapm.detail.r#type.unwrap() == "BAPM");
+
         // "2 ADDR",
+        let addr = bapm.detail.address.unwrap();
+
         // "3 ADR1 Church Name",
+        assert!(addr.addr1.unwrap() == "Church Name");
+
         // "3 ADR2 Street Address",
+        assert!(addr.addr2.unwrap() == "Street Address");
+
         // "3 CITY City Name",
+        assert!(addr.city.unwrap() == "City Name");
+
         // "3 POST zip",
+        assert!(addr.postal_code.unwrap() == "zip");
+
         // "3 CTRY Country",
+        assert!(addr.country.unwrap() == "Country");
+
         // "2 CAUS Birth",
+        assert!(bapm.detail.cause.unwrap() == "Birth");
+
         // "2 AGNC The Church",
+        assert!(bapm.detail.agency.unwrap() == "The Church");
+
         // "2 OBJE @M8@",
+        let media = bapm.detail.media;
+        assert!(media[0].xref == "@M8@".to_string());
+
+        // Sources
+        let mut sources = bapm.detail.sources;
+        let source = sources.pop().unwrap();
+
         // "2 SOUR @S1@",
+        assert!(source.xref.unwrap() == "@S1@".to_string());
+
         // "3 PAGE 42",
+        assert!(source.page.unwrap() == 42);
+
         // "3 DATA",
+        let sdata = source.data.unwrap();
+
         // "4 DATE 31 DEC 1900",
+        assert!(sdata.date.unwrap() == "31 DEC 1900");
+
         // "4 TEXT Sample baptism Source text.",
+        assert!(sdata.text.unwrap().note.unwrap() == "Sample baptism Source text.");
+
         // "3 QUAY 3",
+        assert!(source.quay.unwrap() == Quay::Direct);
+
         // "3 NOTE A baptism source note.",
+        assert!(source.note.unwrap().note.unwrap() == "A baptism source note.");
+
         // "2 NOTE A baptism event note (the event of baptism (not LDS), performed in infancy or later. See also BAPL and CHR).",
+        assert!(bapm
+            .detail
+            .note
+            .unwrap()
+            .starts_with("A baptism event note"));
     }
 }

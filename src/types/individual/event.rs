@@ -35,11 +35,16 @@ impl IndividualEventDetail {
             },
         };
 
-        let line = Line::peek(record).unwrap();
+        let line = Line::parse(record).unwrap();
         let level = line.level;
-        if line.tag == "BIRT" {
-            Line::parse(record).unwrap();
-        }
+        // [ ADOP | BIRT | BAPM | BARM | BASM |
+        // BLES | BURI | CENS | CHR | CHRA |
+        // CONF | CREM | DEAT | EMIG | FCOM |
+        // GRAD | IMMI | NATU | ORDN |
+        // RETI | PROB | WILL | EVEN ]
+        // if line.tag == "BIRT" || line.tag == "BAPM" {
+        //     Line::parse(record).unwrap();
+        // }
         let mut events: Vec<String> = vec![];
 
         // Add the first line so EventDetails will parse cleanly
@@ -64,8 +69,6 @@ impl IndividualEventDetail {
                     events.push(line.to_string());
                 }
             }
-            // line = Line::parse(record).unwrap();
-
             Line::parse(record).unwrap();
         }
 
