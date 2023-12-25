@@ -12,7 +12,7 @@ use std::str::FromStr;
 // 2 = Secondary evidence, data officially recorded sometime after event
 // 3 = Direct and primary evidence used, or by dominance of the evidence
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq)]
 /// The quantitative eveluation of the credibility of a piece of information
 /// based upon its supporting evidence.
 pub enum Quay {

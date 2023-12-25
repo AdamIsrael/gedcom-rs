@@ -26,7 +26,7 @@ use super::{corporation::Corporation, Line, SourceData};
 // 4 CONT Lehi, UT  84043
 // 4 CONT USA
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Source {
     /// A corporation tag contains the name of the corporation and its address.
     pub corporation: Option<Corporation>,

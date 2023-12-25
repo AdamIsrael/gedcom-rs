@@ -19,7 +19,7 @@ use winnow::prelude::*;
 // n <<SOURCE_CITATION>> {0:M} p.39
 // n <<MULTIMEDIA_LINK>> {0:M} p.37, 26
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct EventDetail {
     pub r#type: Option<String>,
     pub date: Option<String>,
@@ -119,7 +119,7 @@ impl EventDetail {
 // "3 EVEN BIRT",
 // "4 ROLE CHIL",
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct EventTypeCitedFrom {
     pub r#type: Option<String>,
     pub role: Option<String>,

@@ -10,7 +10,7 @@ use crate::types::{EventDetail, Line};
 // n <<EVENT_DETAIL>> {1:1} p.32
 // n AGE <AGE_AT_EVENT> {0:1} p.42
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct IndividualEventDetail {
     pub age: Option<String>,
     pub detail: EventDetail,

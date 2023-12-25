@@ -22,13 +22,12 @@ use super::IndividualEventDetail;
 // n <<MULTIMEDIA_LINK>> {0:M} p.37, 26
 // FAMILY
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Birth {
-    // pub age: Option<String>,
-    // pub event: Option<EventDetail>,
     pub event: Option<IndividualEventDetail>,
     pub event_type_cited_from: Option<EventTypeCitedFrom>,
     pub family: Option<Family>,
+    pub preferred: bool,
 }
 
 impl Birth {
@@ -38,6 +37,7 @@ impl Birth {
             event: None,
             event_type_cited_from: None,
             family: None,
+            preferred: false,
         };
 
         let line = Line::peek(record).unwrap();

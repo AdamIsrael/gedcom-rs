@@ -26,6 +26,7 @@ pub struct Death {
     pub event: Option<EventDetail>,
     pub event_type_cited_from: Option<EventTypeCitedFrom>,
     pub family: Option<Family>,
+    pub preferred: bool,
 }
 
 impl Death {
@@ -35,9 +36,15 @@ impl Death {
             event: None,
             event_type_cited_from: None,
             family: None,
+            preferred: false,
         };
 
         let line = Line::peek(record).unwrap();
+        // TODO: This implies a death is known but the date is not.
+        // Is this effective as-is? It'll create an empty death record, so
+        // we have Some() in place, where if there is no death tag we would
+        // have None()
+        // 1 DEAT Y
         if line.tag == "DEAT" {
             Line::parse(record).unwrap();
         }

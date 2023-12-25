@@ -29,7 +29,7 @@ use winnow::prelude::*;
 // +1 QUAY <CERTAINTY_ASSESSMENT> {0:1} p.43
 // ]
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct SourceCitation {
     pub xref: Option<String>,
     pub page: Option<i32>,
@@ -105,7 +105,7 @@ impl SourceCitation {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct SourceCitationData {
     pub date: Option<String>,
     pub text: Option<Note>,

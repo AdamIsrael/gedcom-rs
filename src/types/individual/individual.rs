@@ -30,24 +30,57 @@ use super::{Birth, Death, IndividualEventDetail, Residence};
 pub struct Individual {
     pub xref: Option<String>,
     pub names: Vec<PersonalName>,
-    // pub sources: Vec<SourceCitation>,
-    pub birth: Option<Birth>,
-    pub death: Option<Death>,
+
+    pub adoption: Vec<IndividualEventDetail>,
+
+    pub birth: Vec<Birth>,
+    pub death: Vec<Death>,
 
     // Baptism-related fields
     /// The event of baptism (not LDS), performed in infancy or later.
-    pub baptism: Option<IndividualEventDetail>,
+    pub baptism: Vec<IndividualEventDetail>,
     /// The ceremonial event held when a Jewish boy reaches age 13.
-    pub barmitzvah: Option<IndividualEventDetail>,
+    pub barmitzvah: Vec<IndividualEventDetail>,
     /// The ceremonial event held when a Jewish girl reaches age 13.
-    pub basmitzvah: Option<IndividualEventDetail>,
+    pub basmitzvah: Vec<IndividualEventDetail>,
     /// A religious event of bestowing divine care or intercession. Sometimes given in connection with anaming ceremony.
-    pub blessing: Option<IndividualEventDetail>,
+    pub blessing: Vec<IndividualEventDetail>,
+
+    pub burial: Vec<IndividualEventDetail>,
+
+    /// The religious event (not LDS) of baptizing and/or naming a child.
+    pub christening: Vec<IndividualEventDetail>,
+
+    /// The religious event (not LDS) of baptizing and/or naming an adult person.
+    pub christening_adult: Vec<IndividualEventDetail>,
+
+    /// The religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership.
+    pub confirmation: Vec<IndividualEventDetail>,
+
+    pub cremation: Vec<IndividualEventDetail>,
+
+    pub emigration: Vec<IndividualEventDetail>,
+
+    /// Generic events not covered by a specific type
+    pub events: Vec<IndividualEventDetail>,
 
     pub gender: super::Gender,
+
+    pub graduation: Vec<IndividualEventDetail>,
+
+    pub immigration: Vec<IndividualEventDetail>,
+
     pub residences: Vec<Residence>,
     pub famc: Vec<Family>,
     pub fams: Vec<Family>,
+
+    pub naturalization: Vec<IndividualEventDetail>,
+
+    pub probate: Vec<IndividualEventDetail>,
+
+    pub will: Vec<IndividualEventDetail>,
+
+
 }
 
 // impl<'a> Individual<'a> {
@@ -58,17 +91,29 @@ impl Individual {
             xref: None,
             names: vec![],
             // sources: vec![],
-            birth: None,
-            death: None,
-            baptism: None,
-            barmitzvah: None,
-            basmitzvah: None,
-            blessing: None,
-
+            adoption: vec![],
+            birth: vec![],
+            burial: vec![],
+            death: vec![],
+            baptism: vec![],
+            barmitzvah: vec![],
+            basmitzvah: vec![],
+            blessing: vec![],
+            christening: vec![],
+            christening_adult: vec![],
+            confirmation: vec![],
+            cremation: vec![],
+            emigration: vec![],
+            events: vec![],
             famc: vec![],
             fams: vec![],
-            residences: vec![],
             gender: super::Gender::Unknown,
+            graduation: vec![],
+            immigration: vec![],
+            naturalization: vec![],
+            probate: vec![],
+            residences: vec![],
+            will: vec![],
         };
 
         while !record.is_empty() {
@@ -96,15 +141,21 @@ impl Individual {
                             // println!("Next line: {:?}", Line::peek(record).unwrap());
                         }
                         "BIRT" => {
-                            // println!("RECORD: \n{}", &record[..100]);
-                            individual.birth = Some(Birth::parse(record).unwrap());
-                            // println!("RECORD2: \n{}", &record[..100]);
-                            // println!("{:?}", individual.birth);
-
+                            let mut birth = Birth::parse(record).unwrap();
+                            // The first record found is the preferred record
+                            if individual.birth.is_empty() {
+                                birth.preferred = true;
+                            }
+                            individual.birth.push(birth);
                             parse = false;
                         }
                         "DEAT" => {
-                            individual.death = Some(Death::parse(record).unwrap());
+                            // TODO: Support 1 DEAT Y
+                            let mut death = Death::parse(record).unwrap();
+                            if individual.death.is_empty() {
+                                death.preferred = true;
+                            }
+                            individual.death.push(death);
                             parse = false;
                         }
                         "FAMS" => {
@@ -119,8 +170,8 @@ impl Individual {
                         }
                         // baptism
                         "BAPM" => {
-                            individual.baptism =
-                                Some(IndividualEventDetail::parse(record).unwrap());
+                            let baptism = IndividualEventDetail::parse(record).unwrap();
+                            individual.baptism.push(baptism);
                             parse = false;
                         }
                         // christening
@@ -336,6 +387,9 @@ mod tests {
             "2 OBJE @M15@",
             "2 AGE 0y",
             "2 FAMC @F2@",
+            "1 BIRT",
+            "2 TYPE Normal",
+            "2 DATE ABT. DEC 1965",
             "1 DEAT",
             "2 DATE ABT 15 JAN 2001",
             "2 PLAC New York, New York, USA",
@@ -851,7 +905,7 @@ mod tests {
 
         let buffer = data.join("\n");
         let mut record = buffer.as_str();
-        let indi = Individual::parse(&mut record);
+        let mut indi = Individual::parse(&mut record);
 
         // println!("Names: {}", indi.names.len());
 
@@ -910,8 +964,10 @@ mod tests {
         );
 
         // Birth
-        let birth = indi.birth.unwrap();
-        let mut event = birth.event.unwrap();
+        let birth = indi.birth.first().unwrap();
+        assert!(birth.preferred);
+
+        let mut event = birth.event.clone().unwrap();
 
         assert!(event.detail.r#type.unwrap() == "Normal");
         assert!(event.detail.date.unwrap() == "31 DEC 1965");
@@ -972,12 +1028,14 @@ mod tests {
 
         assert!(event.age.unwrap() == "0y");
 
-        assert!(birth.family.unwrap().xref == "@F2@");
+        assert!(birth.family.clone().unwrap().xref == "@F2@");
 
         // Death
         // "1 DEAT",
-        let death = indi.death.unwrap();
-        let mut devent = death.event.unwrap();
+        let death = indi.death.first().unwrap();
+        assert!(death.preferred);
+
+        let mut devent = death.event.clone().unwrap();
         // "2 DATE ABT 15 JAN 2001",
         assert!(devent.date.is_some());
         assert!(devent.date.unwrap() == "ABT 15 JAN 2001");
@@ -985,7 +1043,7 @@ mod tests {
         // "2 PLAC New York, New York, USA",
         // "3 NOTE The place structure has more detail than usually used for places",
         // "2 AGE 76y",
-        assert!(death.age.unwrap() == "76y");
+        assert!(death.age.clone().unwrap() == "76y");
         // "2 TYPE slow",
         assert!(devent.r#type.unwrap() == "slow");
 
@@ -1041,7 +1099,7 @@ mod tests {
 
         // Baptism
         // "1 BAPM",
-        let bapm = indi.baptism.unwrap();
+        let bapm = indi.baptism.pop().unwrap();
 
         // "2 DATE ABT 31 DEC 1997",
         assert!(bapm.detail.date.unwrap() == "ABT 31 DEC 1997");
