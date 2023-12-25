@@ -1,4 +1,4 @@
-use crate::types::{EventTypeCitedFrom, Family, Line};
+use crate::types::{Family, Line};
 
 use winnow::prelude::*;
 
@@ -24,8 +24,8 @@ use super::IndividualEventDetail;
 
 #[derive(Clone, Debug, Default)]
 pub struct Birth {
-    pub event: Option<IndividualEventDetail>,
-    pub event_type_cited_from: Option<EventTypeCitedFrom>,
+    pub event: IndividualEventDetail,
+    // pub event_type_cited_from: Option<EventTypeCitedFrom>,
     pub family: Option<Family>,
     pub preferred: bool,
 }
@@ -33,18 +33,14 @@ pub struct Birth {
 impl Birth {
     pub fn parse(record: &mut &str) -> PResult<Birth> {
         let mut birth = Birth {
-            // age: None,
-            event: None,
-            event_type_cited_from: None,
+            event: IndividualEventDetail::new(),
+            // event_type_cited_from: None,
             family: None,
             preferred: false,
         };
 
-        let line = Line::peek(record).unwrap();
+        let line = Line::parse(record).unwrap();
         let level = line.level;
-        if line.tag == "BIRT" {
-            Line::parse(record).unwrap();
-        }
         let mut events: Vec<String> = vec![];
 
         // Add the first line so EventDetails will parse cleanly
@@ -89,7 +85,7 @@ impl Birth {
             let event = events.join("\n");
             let mut event_str = event.as_str();
             // println!("parsing --\n{}", event_str);
-            birth.event = Some(IndividualEventDetail::parse(&mut event_str).unwrap());
+            birth.event = IndividualEventDetail::parse(&mut event_str).unwrap();
         }
 
         Ok(birth)
@@ -148,7 +144,7 @@ mod tests {
         let mut record = data.as_str();
         let birth = Birth::parse(&mut record).unwrap();
 
-        let mut event = birth.event.unwrap();
+        let mut event = birth.event;
         assert!(event.detail.date.is_some());
         assert!(event.detail.r#type.is_some());
 

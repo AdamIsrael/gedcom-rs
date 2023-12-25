@@ -4,7 +4,7 @@ use std::str::FromStr;
 use crate::types::individual::name::*;
 use crate::types::{Family, Line};
 
-use super::{Birth, Death, IndividualEventDetail, Residence};
+use super::{Birth, Christening, Death, IndividualEventDetail, Residence};
 // use super::SourceCitation;
 
 // n @XREF:INDI@ INDI
@@ -28,9 +28,6 @@ use super::{Birth, Death, IndividualEventDetail, Residence};
 // +1 <<SOURCE_CITATION>> +1 <<MULTIMEDIA_LINK>>
 #[derive(Debug, Default)]
 pub struct Individual {
-    pub xref: Option<String>,
-    pub names: Vec<PersonalName>,
-
     pub adoption: Vec<IndividualEventDetail>,
 
     pub birth: Vec<Birth>,
@@ -49,7 +46,7 @@ pub struct Individual {
     pub burial: Vec<IndividualEventDetail>,
 
     /// The religious event (not LDS) of baptizing and/or naming a child.
-    pub christening: Vec<IndividualEventDetail>,
+    pub christening: Vec<Christening>,
 
     /// The religious event (not LDS) of baptizing and/or naming an adult person.
     pub christening_adult: Vec<IndividualEventDetail>,
@@ -74,13 +71,16 @@ pub struct Individual {
     pub famc: Vec<Family>,
     pub fams: Vec<Family>,
 
+    pub names: Vec<PersonalName>,
+
     pub naturalization: Vec<IndividualEventDetail>,
 
     pub probate: Vec<IndividualEventDetail>,
 
     pub will: Vec<IndividualEventDetail>,
 
-
+    /// The XRef pointer associated with this individual
+    pub xref: Option<String>,
 }
 
 // impl<'a> Individual<'a> {
@@ -88,8 +88,6 @@ impl Individual {
     pub fn parse(record: &mut &str) -> Individual {
         // pub fn parse(mut record: String) -> Individual {
         let mut individual = Individual {
-            xref: None,
-            names: vec![],
             // sources: vec![],
             adoption: vec![],
             birth: vec![],
@@ -110,10 +108,14 @@ impl Individual {
             gender: super::Gender::Unknown,
             graduation: vec![],
             immigration: vec![],
+            names: vec![],
+
             naturalization: vec![],
             probate: vec![],
             residences: vec![],
             will: vec![],
+
+            xref: None,
         };
 
         while !record.is_empty() {
@@ -175,7 +177,11 @@ impl Individual {
                             parse = false;
                         }
                         // christening
-                        "CHR" => {}
+                        "CHR" => {
+                            let christening = Christening::parse(record).unwrap();
+                            individual.christening.push(christening);
+                            parse = false;
+                        }
                         // bar mitzvah
                         "BARM" => {}
                         // bas mitzvah
@@ -967,7 +973,7 @@ mod tests {
         let birth = indi.birth.first().unwrap();
         assert!(birth.preferred);
 
-        let mut event = birth.event.clone().unwrap();
+        let mut event = birth.event.clone();
 
         assert!(event.detail.r#type.unwrap() == "Normal");
         assert!(event.detail.date.unwrap() == "31 DEC 1965");
@@ -1172,5 +1178,46 @@ mod tests {
             .note
             .unwrap()
             .starts_with("A baptism event note"));
+
+        // "1 CHR",
+        let chr = indi.christening.first().unwrap().clone();
+
+        // "2 DATE CAL 31 DEC 1997",
+        assert!(chr.event.detail.date.unwrap() == "CAL 31 DEC 1997");
+
+        // "2 PLAC The place",
+        assert!(chr.event.detail.place.unwrap().name.unwrap() == "The place");
+
+        // "2 TYPE CHR",
+        assert!(chr.event.detail.r#type.unwrap() == "CHR");
+
+        let source = chr.event.detail.sources.first().unwrap().clone();
+
+        // "2 SOUR @S1@",
+        assert!(source.xref.unwrap() == "@S1@");
+
+        // "3 PAGE 42",
+        assert!(source.page.unwrap() == 42);
+
+        // "3 DATA",
+        let data = source.data.unwrap();
+        // "4 DATE 31 DEC 1900",
+        assert!(data.date.unwrap() == "31 DEC 1900");
+
+        // "4 TEXT Sample CHR Source text.",
+        assert!(data.text.unwrap().note.unwrap() == "Sample CHR Source text.");
+
+        // "3 QUAY 3",
+        assert!(source.quay.unwrap() == Quay::Direct);
+
+        // "3 NOTE A christening Source note.",
+        assert!(source.note.unwrap().note.unwrap() == "A christening Source note.");
+
+        // "2 NOTE Christening event note (the religious event (not LDS) of baptizing and/or naming a ",
+        // "3 CONC child).",
+        assert!(chr.event.detail.note.unwrap() == "Christening event note (the religious event (not LDS) of baptizing and/or naming a child).");
+
+        // "2 FAMC @F3@",
+        assert!(chr.family.unwrap().xref == "@F3@".to_string());
     }
 }

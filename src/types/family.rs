@@ -30,7 +30,7 @@ use crate::{
 // +1 <<SOURCE_CITATION>> {0:M} p.39
 // +1 <<MULTIMEDIA_LINK>> {0:M} p.37, 26
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// The Family structure
 pub struct Family {
     pub xref: String,

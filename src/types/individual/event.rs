@@ -17,6 +17,26 @@ pub struct IndividualEventDetail {
 }
 
 impl IndividualEventDetail {
+    /// Initialize an empty Individual Event Detail
+    pub fn new() -> IndividualEventDetail {
+        IndividualEventDetail {
+            age: None,
+            detail: EventDetail {
+                r#type: None,
+                date: None,
+                place: None,
+                address: None,
+                agency: None,
+                religion: None,
+                cause: None,
+                restriction_notice: None,
+                note: None,
+                sources: vec![],
+                media: vec![],
+            },
+        }
+    }
+
     pub fn parse(record: &mut &str) -> PResult<IndividualEventDetail> {
         let mut event = IndividualEventDetail {
             age: None,
