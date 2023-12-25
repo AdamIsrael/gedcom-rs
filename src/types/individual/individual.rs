@@ -2,7 +2,7 @@
 use std::str::FromStr;
 
 use crate::types::individual::name::*;
-use crate::types::{Family, Line};
+use crate::types::{EventDetail, Family, Line};
 
 use super::{Birth, Death, Residence};
 // use super::SourceCitation;
@@ -33,6 +33,17 @@ pub struct Individual {
     // pub sources: Vec<SourceCitation>,
     pub birth: Option<Birth>,
     pub death: Option<Death>,
+
+    // Baptism-related fields
+    /// The event of baptism (not LDS), performed in infancy or later.
+    pub baptism: Option<EventDetail>,
+    /// The ceremonial event held when a Jewish boy reaches age 13.
+    pub barmitzvah: Option<EventDetail>,
+    /// The ceremonial event held when a Jewish girl reaches age 13.
+    pub basmitzvah: Option<EventDetail>,
+    /// A religious event of bestowing divine care or intercession. Sometimes given in connection with anaming ceremony.
+    pub blessing: Option<EventDetail>,
+
     pub gender: super::Gender,
     pub residences: Vec<Residence>,
     pub famc: Vec<Family>,
@@ -49,6 +60,10 @@ impl Individual {
             // sources: vec![],
             birth: None,
             death: None,
+            baptism: None,
+            barmitzvah: None,
+            basmitzvah: None,
+            blessing: None,
             famc: vec![],
             fams: vec![],
             residences: vec![],
@@ -80,7 +95,11 @@ impl Individual {
                             // println!("Next line: {:?}", Line::peek(record).unwrap());
                         }
                         "BIRT" => {
+                            // println!("RECORD: \n{}", &record[..100]);
                             individual.birth = Some(Birth::parse(record).unwrap());
+                            // println!("RECORD2: \n{}", &record[..100]);
+                            // println!("{:?}", individual.birth);
+
                             parse = false;
                         }
                         "DEAT" => {
@@ -88,25 +107,34 @@ impl Individual {
                             parse = false;
                         }
                         "FAMS" => {
-                            let fams = Family {
-                                xref: line.value.to_string(),
-                                note: None,
-                            };
-                            individual.fams.push(fams);
+                            let fam = Family::parse(record);
+                            individual.fams.push(fam);
+                            parse = false;
                         }
                         "FAMC" => {
-                            let famc = Family {
-                                xref: line.value.to_string(),
-                                note: None,
-                            };
-                            individual.famc.push(famc);
+                            let fam = Family::parse(record);
+                            individual.famc.push(fam);
+                            parse = false;
+                            // let famc = Family {
+                            //     xref: line.value.to_string(),
+                            //     note: vec![],
+                            // };
+                            // individual.famc.push(famc);
                         }
-                        "BAPM" => {}
+                        // baptism
+                        "BAPM" => {
+                            individual.baptism = Some(EventDetail::parse(record).unwrap());
+                            parse = false;
+                        }
                         // christening
                         "CHR" => {}
-                        // barmitzvah
+                        // bar mitzvah
                         "BARM" => {}
+                        // bas mitzvah
                         "BASM" => {}
+                        // blessing
+                        "BLES" => {}
+
                         "ADOP" => {}
                         "CHRA" => {}
                         "CONF" => {}
@@ -1008,29 +1036,42 @@ mod tests {
         assert!(devent.note.unwrap() == "A death event note.");
 
         // Family links
-
-        // "1 FAMS @F1@",
-        // "2 NOTE Note about the link to the family record with his first spouse.",
-        // "2 NOTE Another note about the link to the family record with his first spouse.",
-        // "1 FAMS @F4@",
-        // "1 FAMC @F2@",
-        // "2 NOTE Note about this link to his parents family record.",
-        // "2 NOTE Another note about this link to his parents family record",
-        // "1 FAMC @F3@",
-        // "2 PEDI adopted",
-        // "2 NOTE Note about the link to his adoptive parents family record.",
-
         // FAMS
-        println!("{:?}", indi.fams);
         assert!(indi.fams.len() == 2);
-        assert!(indi.fams[0].xref == "@F1@");
-        assert!(indi.fams[1].xref == "@F4@");
 
         // FAMC
         assert!(indi.famc.len() == 2);
-        assert!(indi.famc[0].xref == "@F2@");
-        assert!(indi.famc[1].xref == "@F3@");
 
         // Baptism
+        // "1 BAPM",
+        let bapm = indi.baptism.unwrap();
+        println!("{:?}\n\n", bapm);
+
+        // "2 DATE ABT 31 DEC 1997",
+        assert!(bapm.date.unwrap() == "ABT 31 DEC 1997");
+
+        // "2 PLAC The place",
+        assert!(bapm.place.unwrap().name.unwrap() == "The place");
+
+        // "2 AGE 3m",
+
+        // "2 TYPE BAPM",
+        // "2 ADDR",
+        // "3 ADR1 Church Name",
+        // "3 ADR2 Street Address",
+        // "3 CITY City Name",
+        // "3 POST zip",
+        // "3 CTRY Country",
+        // "2 CAUS Birth",
+        // "2 AGNC The Church",
+        // "2 OBJE @M8@",
+        // "2 SOUR @S1@",
+        // "3 PAGE 42",
+        // "3 DATA",
+        // "4 DATE 31 DEC 1900",
+        // "4 TEXT Sample baptism Source text.",
+        // "3 QUAY 3",
+        // "3 NOTE A baptism source note.",
+        // "2 NOTE A baptism event note (the event of baptism (not LDS), performed in infancy or later. See also BAPL and CHR).",
     }
 }

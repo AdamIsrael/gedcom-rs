@@ -51,9 +51,17 @@ impl EventDetail {
             media: vec![],
         };
 
+        // Parse the first line, i.e., "1 BAPM",
+        let line = Line::parse(record).unwrap();
+        let level = line.level;
+
         while !record.is_empty() {
             let mut parse = true;
             let line = Line::peek(record).unwrap();
+            if line.level <= level {
+                break;
+            }
+
             match line.tag {
                 "ADDR" => {
                     event.address = Some(Address::parse(record).unwrap());
@@ -154,16 +162,52 @@ impl EventTypeCitedFrom {
 mod tests {
     use super::*;
 
-    // #[test]
-    // fn parse_event_detail() {
-    //     let data = vec!["1 NAME This is a name."];
+    #[test]
+    fn parse_event_detail() {
+        let data = vec![
+            "1 BAPM",
+            "2 DATE ABT 31 DEC 1997",
+            "2 PLAC The place",
+            "2 AGE 3m",
+            "2 TYPE BAPM",
+            "2 ADDR",
+            "3 ADR1 Church Name",
+            "3 ADR2 Street Address",
+            "3 CITY City Name",
+            "3 POST zip",
+            "3 CTRY Country",
+            "2 CAUS Birth",
+            "2 AGNC The Church",
+            "2 OBJE @M8@",
+            "2 SOUR @S1@",
+            "3 PAGE 42",
+            "3 DATA",
+            "4 DATE 31 DEC 1900",
+            "4 TEXT Sample baptism Source text.",
+            "3 QUAY 3",
+            "3 NOTE A baptism source note.",
+            "2 NOTE A baptism event note (the event of baptism (not LDS), performed in infancy or later. See also BAPL and CHR).",
+            "1 CHR",
+            "2 DATE CAL 31 DEC 1997",
+            "2 PLAC The place",
+            "2 TYPE CHR",
+            "2 SOUR @S1@",
+            "3 PAGE 42",
+            "3 DATA",
+            "4 DATE 31 DEC 1900",
+            "4 TEXT Sample CHR Source text.",
+            "3 QUAY 3",
+            "3 NOTE A christening Source note.",
+            "2 NOTE Christening event note (the religious event (not LDS) of baptizing and/or naming a ",
+            "3 CONC child).",
+            "2 FAMC @F3@",
+        ].join("\n");
+        let mut record = data.as_str();
+        let detail = EventDetail::parse(&mut record).unwrap();
 
-    //     let input = data.join("\n");
-    //     let mut record = input.as_str();
-    //     let detail = EventDetail::parse(&mut record).unwrap();
-
-    //     assert!(detail.name.is_some());
-    // }
+        assert!(detail.date.is_some());
+        assert!(detail.date.unwrap() == "ABT 31 DEC 1997");
+    }
 
     #[test]
     fn parse_event_type_cited_from() {

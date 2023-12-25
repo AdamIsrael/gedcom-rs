@@ -43,6 +43,9 @@ impl Death {
         }
         let mut events: Vec<String> = vec![];
 
+        // Add the first line so EventDetails will parse cleanly
+        events.push(line.to_string());
+
         while !record.is_empty() {
             let line = Line::peek(record).unwrap();
             if line.level == 1 {

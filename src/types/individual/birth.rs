@@ -38,15 +38,18 @@ impl Birth {
         };
 
         let line = Line::peek(record).unwrap();
+        let level = line.level;
         if line.tag == "BIRT" {
             Line::parse(record).unwrap();
         }
         let mut events: Vec<String> = vec![];
-        // events.push(line.to_string());
+
+        // Add the first line so EventDetails will parse cleanly
+        events.push(line.to_string());
 
         while !record.is_empty() {
             let line = Line::peek(record).unwrap();
-            if line.level == 1 {
+            if line.level <= level {
                 break;
             }
 
@@ -57,7 +60,8 @@ impl Birth {
                 "FAMC" => {
                     let famc = Family {
                         xref: line.value.to_string(),
-                        note: None,
+                        notes: vec![],
+                        pedigree: None,
                     };
                     birth.family = Some(famc);
                 }

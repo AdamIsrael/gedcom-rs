@@ -4,6 +4,7 @@
 
 mod birth;
 mod death;
+mod event;
 mod gender;
 mod individual;
 mod name;
@@ -13,6 +14,7 @@ mod source;
 
 pub use birth::*;
 pub use death::Death;
+pub use event::IndividualEventDetail;
 pub use gender::*;
 pub use individual::*;
 pub use name::*;

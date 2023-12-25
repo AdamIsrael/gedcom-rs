@@ -1,4 +1,11 @@
-use crate::types::{Line, Note};
+use std::str::FromStr;
+
+use crate::{
+    parse,
+    types::{Line, Note, Pedigree},
+};
+
+// use super::pedigree;
 
 // TODO: implement full parsing of the family record
 // TODO: Need to create a trait? to find_by_xref that can be used in these
@@ -27,18 +34,20 @@ use crate::types::{Line, Note};
 /// The Family structure
 pub struct Family {
     pub xref: String,
-    pub note: Option<Note>,
+    pub notes: Vec<Note>,
+    pub pedigree: Option<Pedigree>,
 }
 
 impl Family {
     pub fn parse(record: &mut &str) -> Family {
         let mut family = Family {
             xref: "".to_string(),
-            note: None,
+            notes: vec![],
+            pedigree: None,
         };
 
         let line = Line::peek(record).unwrap();
-        // let level = line.level;
+        let level = line.level;
         let tag = line.tag;
 
         // If we're at the top of the record, consume the line
@@ -48,44 +57,85 @@ impl Family {
             Line::parse(record).unwrap();
         }
 
-        // "1 FAMS @F1@",
-        // "2 NOTE Note about the link to the family record with his first spouse.",
-        // "2 NOTE Another note about the link to the family record with his first spouse.",
+        while !record.is_empty() {
+            let mut consume = true;
+            let line = Line::peek(record).unwrap();
 
-        // while !record.is_empty() {
-        // let mut line = Line::parse(record).unwrap();
-        // match line.tag {
-        //     "NAME" => {
-        //         // fam.name = Some(line.value.to_string());
-        //     }
-        //     _ => {}
-        // }
+            // If the next level matches our initial level, we're done parsing
+            // this structure.
+            if line.level == level {
+                break;
+            }
 
-        // If the next level matches our initial level, we're done parsing
-        // this structure.
-        //     line = Line::peek(record).unwrap();
-        //     if line.level == level {
-        //         break;
-        //     }
-        // }
+            match line.tag {
+                "NOTE" => {
+                    if let Some(note) = parse::get_tag_value(record).unwrap() {
+                        family.notes.push(Note { note: Some(note) });
+                    }
+                    consume = false;
+                }
+                "PEDI" => {
+                    let pedigree = Pedigree::from_str(line.value).unwrap();
+                    family.pedigree = Some(pedigree);
+                }
+                _ => {}
+            }
 
-        // while !record.is_empty() {
-        //     let (buffer, line) = Line::parse(&record).unwrap();
+            if consume {
+                Line::parse(record).unwrap();
+            }
+        }
 
-        //     // If we're at the top of the record, get the xref
-        //     // && level == 0
-        //     match line.level {
-        //         0 => {
-        //             object.xref = line.xref;
-        //         }
-        //         _ => {
-        //         }
-        //     }
-        // }
-        // object
-        // Family {
-        //     xref: "".to_string(),
-        // }
         family
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
+    /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
+    fn parse_family() {
+        let data = vec![
+            "1 FAMS @F4@",
+            "1 FAMC @F2@",
+            "2 NOTE Note about this link to his parents family record.",
+            "2 NOTE Another note about this link to his parents family record",
+            "1 FAMC @F3@",
+            "2 PEDI adopted",
+            "2 NOTE Note about the link to his adoptive parents family record.",
+        ]
+        .join("\n");
+        let mut record = data.as_str();
+
+        // First family
+        let family = Family::parse(&mut record);
+        assert!(family.xref == "@F4@");
+
+        // Second family
+        let family = Family::parse(&mut record);
+        assert!(family.xref == "@F2@");
+
+        let notes = family.notes;
+        assert!(
+            notes[0].note.as_ref().unwrap() == "Note about this link to his parents family record."
+        );
+        assert!(
+            notes[1].note.as_ref().unwrap()
+                == "Another note about this link to his parents family record"
+        );
+
+        // Third family
+        let family = Family::parse(&mut record);
+        assert!(family.xref == "@F3@");
+        assert!(family.pedigree.unwrap() == Pedigree::Adopted);
+
+        let notes = family.notes;
+        assert!(
+            notes[0].note.as_ref().unwrap()
+                == "Note about the link to his adoptive parents family record."
+        );
     }
 }
