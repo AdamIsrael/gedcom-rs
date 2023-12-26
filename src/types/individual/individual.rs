@@ -195,9 +195,18 @@ impl Individual {
                             parse = false;
                         }
                         // blessing
-                        "BLES" => {}
+                        "BLES" => {
+                            // TODO: Need to add tests for this
+                            let blessing = IndividualEventDetail::parse(record).unwrap();
+                            individual.blessing.push(blessing);
+                            parse = false;
+                        }
 
-                        "ADOP" => {}
+                        "ADOP" => {
+                            let adoption = IndividualEventDetail::parse(record).unwrap();
+                            individual.adoption.push(adoption);
+                            parse = false;
+                        }
                         "CHRA" => {}
                         "CONF" => {}
                         "FCOM" => {}
@@ -1303,5 +1312,30 @@ mod tests {
         // "2 NOTE Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, ",
         // "3 CONC also known as \"Bat Mitzvah\").",
         assert!(basm.detail.note.unwrap() == "Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, also known as \"Bat Mitzvah\").");
+
+        // "1 ADOP",
+        let adoption = indi.adoption.pop().unwrap().clone();
+
+        // "2 DATE BEF 31 DEC 1997",
+        assert!(adoption.detail.date.unwrap() == "BEF 31 DEC 1997");
+
+        // "2 PLAC The place",
+        assert!(adoption.detail.place.unwrap().name.unwrap() == "The place");
+
+        // "2 TYPE ADOP",
+        assert!(adoption.detail.r#type.unwrap() == "ADOP");
+        
+        // "2 SOUR @S1@",
+        // "3 PAGE 42",
+        // "3 DATA",
+        // "4 DATE 31 DEC 1900",
+        // "4 TEXT Some adoption source text.",
+        // "3 QUAY 3",
+        // "3 NOTE An adoption source note.",
+        // "2 NOTE Adoption event note (pertaining to creation of a child-parent relationship that does ",
+        // "3 CONC not exist biologically).",
+        // "2 FAMC @F3@",
+        // "3 ADOP BOTH",
+
     }
 }
