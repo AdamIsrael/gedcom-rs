@@ -1,5 +1,5 @@
 // use crate::parse;
-use crate::types::Line;
+use crate::{parse, types::Line, types::Note};
 
 use winnow::prelude::*;
 
@@ -52,7 +52,7 @@ pub struct Name {
     /// would be "de, la".
     pub surname_prefix: Option<String>,
 
-    pub note: Option<crate::types::NoteStructure>,
+    pub note: Option<crate::types::Note>,
 
     // TODO: do we need a specific struct for type or is it just a string?
     pub r#type: Option<String>,
@@ -83,7 +83,9 @@ impl Name {
         let mut line: Line;
 
         while !record.is_empty() {
-            line = Line::parse(record).unwrap();
+            let mut consume = true;
+            // line = Line::parse(record).unwrap();
+            line = Line::peek(record).unwrap();
 
             // (buffer, line) = Line::parse(buffer).unwrap();
             // println!("Name::level = {}, tag = {:?}, value={:?}", line.level, line.tag, line.value);
@@ -91,7 +93,7 @@ impl Name {
             match line.tag {
                 "NAME" => {
                     name.value = Some(line.value.to_string());
-                    println!("name: {:?}", name.value);
+                    // println!("name: {:?}", name.value);
                 }
                 "TYPE" => {
                     // type
@@ -106,7 +108,11 @@ impl Name {
                 "NICK" => {
                     name.nickname = Some(line.value.to_string());
                 }
-                "NOTE" => {}
+                "NOTE" => {
+                    let note = parse::get_tag_value(record).unwrap();
+                    name.note = Some(Note { note });
+                    consume = false;
+                }
                 "NPFX" => {
                     name.prefix = Some(line.value.to_string());
                 }
@@ -121,6 +127,9 @@ impl Name {
                 }
             }
 
+            if consume {
+                Line::parse(record).unwrap();
+            }
             // Check if the next line is a new NAME record
             // TODO: a peek_line method so we can check level and tag in one call
             // let (_, line) = Line::parse(buffer).unwrap();
@@ -130,12 +139,18 @@ impl Name {
             // // let tag = Some(parse::peek_tag(buffer).unwrap().1);
             // let tag = parse::peek_tag(buffer).unwrap().1;
 
-            if line.level == 1 && line.tag == "NAME" {
+            if line.level == 1 {
                 break;
             }
+            // if line.level == 1 && line.tag == "NAME" {
+            //     break;
+            // }
 
             if line.level == 2 && (line.tag == "ROMN" || line.tag == "FONE") {
                 break;
+            }
+            if line.tag == "BIRT" {
+                println!("DEBUG: {:?}", line);
             }
         }
 
@@ -241,20 +256,10 @@ impl PersonalName {
         };
 
         // We're on level one, so parse until we hit another level one?
-        // let min_level = 1;
-
-        // let mut buffer: &str;
-
-        // TODO: make a Line struct?
-        // let mut level: u8 = 0;
-        // let mut _xref: Option<&str>;
-        // let mut tag: Option<&str>;
-        // let mut value: Option<&str> = None;
+        let level = Line::peek(record).unwrap().level;
 
         // Parse the name out of the record, and switch to a buffer
-        // println!("Before Record: {}", record.len());
         pn.name = Name::parse(record).unwrap();
-        // println!("After Record: {}", record.len());
 
         // let mut line = Line::parse(&mut buffer).unwrap();
         let mut line = Line::peek(record).unwrap();
@@ -263,14 +268,11 @@ impl PersonalName {
 
         // while line.level > 1 && !buffer.is_empty() {
         // println!("1 Line: {:?}", line);
-        while line.level > 1 && !record.is_empty() {
-            if line.level == 2 {
+        while line.level > level && !record.is_empty() {
+            if line.level == level + 1 {
                 match line.tag {
                     "ROMN" => {
-                        // println!("Before Record: \n'{}", record);
                         pn.romanized = Name::parse(record).unwrap();
-                        // println!("After Record: \n'{}", record);
-                        // if let Some(value) = line.value {
                         if !line.value.is_empty() {
                             pn.romanized.value = Some(line.value.to_string());
                         } else {
@@ -296,7 +298,7 @@ impl PersonalName {
                     }
                 }
             }
-            if line.level == 1 {
+            if line.level == level {
                 break;
             } else {
                 // (buffer, line) = Line::parse(buffer).unwrap();
@@ -948,9 +950,9 @@ mod tests {
 
         let buffer = data.join("\n");
         let mut record = buffer.as_str();
-        println!("A Record: {}", record.len());
+        // println!("A Record: {}", record.len());
         let name = PersonalName::parse(&mut record).unwrap();
-        println!("B Record: {}", record.len());
+        // println!("B Record: {}", record.len());
         // println!("{name:#?}");
 
         // Check the name.name
@@ -986,32 +988,4 @@ mod tests {
         assert_eq!(Some("Jr."), name.phonetic.surname_prefix.as_deref());
         assert_eq!(Some("user defined"), name.phonetic.r#type.as_deref());
     }
-
-    // #[test]
-    // fn parse_addr() {
-    //     let data = vec![
-    //         "3 ADDR",
-    //         "4 ADR1 RSAC Software",
-    //         "4 ADR2 7108 South Pine Cone Street",
-    //         "4 ADR3 Ste 1",
-    //         "4 CITY Salt Lake City",
-    //         "4 STAE UT",
-    //         "4 POST 84121",
-    //         "4 CTRY USA",
-    //         "3 PHON +1-801-942-7768",
-    //         "3 PHON +1-801-555-1212",
-    //         "3 PHON +1-801-942-1148",
-    //         "3 EMAIL a@@example.com",
-    //         "3 EMAIL b@@example.com",
-    //         "3 EMAIL c@@example.com",
-    //         "3 FAX +1-801-942-7768",
-    //         "3 FAX +1-801-555-1212",
-    //         "3 FAX +1-801-942-1148",
-    //         "3 WWW https://www.example.com",
-    //         "3 WWW https://www.example.org",
-    //         "3 WWW https://www.example.net",
-    //     ];
-    //     addr = header::parse_address(data);
-
-    // }
 }

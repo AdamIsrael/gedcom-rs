@@ -1,4 +1,5 @@
 // use std::str::FromStr;
+use std::fmt;
 
 use winnow::ascii::{alphanumeric1, digit1, line_ending, not_line_ending, space0};
 use winnow::combinator::{opt, preceded, separated_pair};
@@ -17,15 +18,19 @@ pub struct Line<'a> {
     pub value: &'a str,
 }
 
-// impl std::str::FromStr for Line {
-//     // The error must be owned
-//     type Err = String;
-
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         hex_color.parse(s).map_err(|e| e.to_string())
-//     }
-// }
-
+impl<'b> fmt::Display for Line<'b> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if !self.xref.is_empty() {
+            write!(
+                f,
+                "{} {} {} {}",
+                self.level, self.xref, self.tag, self.value
+            )
+        } else {
+            write!(f, "{} {} {}", self.level, self.tag, self.value)
+        }
+    }
+}
 impl<'b> Line<'b> {
     pub fn parse(input: &mut &'b str) -> PResult<Line<'b>> {
         let mut line = Line {
@@ -54,7 +59,6 @@ impl<'b> Line<'b> {
                 Ok(lvl) => {
                     line.level = lvl;
                     let _ = Self::delim(input);
-                    // println!("Input after level: '{}'", input);
                     match Self::xref(input) {
                         Ok(xref) => {
                             line.xref = xref;
@@ -69,19 +73,12 @@ impl<'b> Line<'b> {
                     line.tag = Self::tag(input)?;
                     let _ = Self::delim(input);
 
-                    // println!("Input: '{}'", input);
                     let is_eol = Self::peek_eol(input)?;
-                    // println!("EOL: {}", is_eol);
                     if is_eol {
-                        // println!("Eating eol");
                         Self::eol(input).unwrap();
-                        // let _ = Self::delim(input);
                     } else {
-                        // println!("eating delim");
-                        // Self::eol(input).unwrap();
                         Self::delim(input).unwrap();
                         line.value = Self::value(input)?;
-                        // println!("Input after value: '{}'", input);
 
                         let is_eol = Self::peek_eol(input)?;
                         if is_eol {
@@ -118,9 +115,11 @@ impl<'b> Line<'b> {
                     // to handle it.
                 }
             }
+        } else {
+            // There's a few instances where we're passed an empty input.
+            // This might be a parsing error, but might not be. More testing!
+            // println!("Empty input");
         }
-        // println!("ending input: '{}'", input);
-        // println!("done. {:?}", line);
         Ok(line)
     }
 

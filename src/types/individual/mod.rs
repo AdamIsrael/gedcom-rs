@@ -3,6 +3,9 @@
 #![allow(clippy::module_inception)]
 
 mod birth;
+mod christening;
+mod death;
+mod event;
 mod gender;
 mod individual;
 mod name;
@@ -10,7 +13,10 @@ mod note;
 mod residence;
 mod source;
 
-pub use birth::*;
+pub use birth::Birth;
+pub use christening::Christening;
+pub use death::Death;
+pub use event::IndividualEventDetail;
 pub use gender::*;
 pub use individual::*;
 pub use name::*;

@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use gedcom_test::parse::parse_gedcom;
+use gedcom_rs::parse::parse_gedcom;
 
 use std::time::Duration;
 

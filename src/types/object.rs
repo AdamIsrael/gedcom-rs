@@ -17,12 +17,12 @@
 // 2 DATE 14 JAN 2001
 // 3 TIME 14:10:31
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
-pub struct Object<'a> {
-    pub xref: &'a str,
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct Object {
+    pub xref: String,
 }
 
-impl<'b> Object<'b> {
+impl Object {
     pub fn parse(_record: &str) -> Object {
         // let mut object = Object { xref: "" };
 
@@ -40,6 +40,8 @@ impl<'b> Object<'b> {
         //     }
         // }
         // object
-        Object { xref: "" }
+        Object {
+            xref: "".to_string(),
+        }
     }
 }

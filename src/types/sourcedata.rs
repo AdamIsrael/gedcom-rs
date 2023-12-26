@@ -5,7 +5,7 @@ use crate::parse;
 //         +3 DATE <PUBLICATION_DATE>
 //         +3 COPR <COPYRIGHT_SOURCE_DATA>
 //         +4 [CONT|CONC]<COPYRIGHT_SOURCE_DATA>
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SourceData {
     pub name: Option<String>,
     pub date: Option<DateTime>,

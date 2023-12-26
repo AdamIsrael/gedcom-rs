@@ -1,2 +1,2 @@
-#[derive(Debug, Default)]
-pub struct SourceCitation {}
+// #[derive(Debug, Default)]
+// pub struct SourceCitation {}

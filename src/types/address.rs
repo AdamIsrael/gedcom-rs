@@ -1,6 +1,8 @@
 use super::Line;
 use crate::parse;
 
+use winnow::prelude::*;
+
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct Address {
     pub addr1: Option<String>,
@@ -17,8 +19,7 @@ pub struct Address {
 }
 
 impl Address {
-    pub fn parse(mut buffer: &str) -> (&str, Option<Address>) {
-        // println!("DEBUG: {:?}", buffer);
+    pub fn parse(buffer: &mut &str) -> PResult<Address> {
         let mut address = Address {
             addr1: None,
             addr2: None,
@@ -33,17 +34,17 @@ impl Address {
             www: vec![],
         };
 
-        let mut line = Line::peek(&mut buffer).unwrap();
+        let mut line = Line::peek(buffer).unwrap();
         let min_level = line.level;
 
         // Only iterate through the ADDR records
         while line.level >= min_level {
-            line = Line::peek(&mut buffer).unwrap();
+            line = Line::peek(buffer).unwrap();
 
             let mut consume = true;
             match line.tag {
                 "ADDR" => {
-                    address.addr1 = parse::get_tag_value(&mut buffer).unwrap();
+                    address.addr1 = parse::get_tag_value(buffer).unwrap();
                     // println!("Input after get_tag_value: \n'{}'", buffer);
                     consume = false;
                 }
@@ -89,16 +90,16 @@ impl Address {
             }
             // println!("Buffer before: {}", buffer.len());
             if consume {
-                Line::parse(&mut buffer).unwrap();
+                Line::parse(buffer).unwrap();
             }
             // println!("Buffer after: {}", buffer.len());
             // (buffer, _) = Line::parse(buffer).unwrap();
 
             // Grab the next line, if there is one, or short-circuit the loop
-            line = Line::peek(&mut buffer).unwrap();
+            line = Line::peek(buffer).unwrap();
             // (_, line) = Line::peek(buffer).unwrap();
         }
-        (buffer, Some(address))
+        Ok(address)
     }
 }
 
@@ -196,8 +197,10 @@ mod tests {
             "3 WWW https://www.example.net",
         ];
 
-        let (_data, address) = Address::parse(data.join("\n").as_str());
-        let addr = address.unwrap();
+        let input = data.join("\n");
+        let mut record = input.as_str();
+
+        let addr = Address::parse(&mut record).unwrap();
 
         assert!(addr.addr1 == Some("RSAC Software".to_string()));
         assert!(addr.addr2 == Some("7108 South Pine Cone Street".to_string()));
@@ -243,10 +246,11 @@ mod tests {
             "1 WWW https://www.example.com",
             "1 WWW https://www.example.org",
             "1 WWW https://www.example.net",
-        ];
+        ]
+        .join("\n");
 
-        let (_data, address) = Address::parse(data.join("\n").as_str());
-        let addr = address.unwrap();
+        let mut record = data.as_str();
+        let addr = Address::parse(&mut record).unwrap();
 
         // println!("addr1: {:?}", addr.addr1);
         assert!(addr.addr1 == Some("RSAC Software".to_string()));
@@ -280,13 +284,15 @@ mod tests {
             "3 PHON +1-801-942-7768",
             "3 PHON +1-801-555-1212",
             "3 PHON +1-801-942-1148",
-        ];
+        ]
+        .join("\n");
 
-        let (_data, address) = Address::parse(data.join("\n").as_str());
+        let mut record = data.as_str();
+        let address = Address::parse(&mut record);
         let addr = address.unwrap();
 
         assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043\nUSA".to_string()));
-        println!("PHON: {:?}", addr.phone);
+
         assert!(addr.phone.contains(&"+1-801-942-7768".to_string()));
         assert!(addr.phone.contains(&"+1-801-555-1212".to_string()));
         assert!(addr.phone.contains(&"+1-801-942-1148".to_string()));
@@ -297,15 +303,14 @@ mod tests {
     fn parse_addr_conc() {
         let data = vec![
             "3 ADDR 1300 West Traverse Parkway",
-            "4 CONT Lehi, UT  84043",
+            "4 CONT Lehi, UT 84043 ",
             "4 CONC USA",
-        ];
+        ]
+        .join("\n");
 
-        println!("Parsing Address...('{}')", data.join("\n"));
-        let (_data, address) = Address::parse(data.join("\n").as_str());
-        println!("done parsing address.");
+        let mut record = data.as_str();
+        let address = Address::parse(&mut record);
         let addr = address.unwrap();
-        println!("Addr: {:?}", addr);
-        assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT  84043 USA".to_string()));
+        assert!(addr.addr1 == Some("1300 West Traverse Parkway\nLehi, UT 84043 USA".to_string()));
     }
 }

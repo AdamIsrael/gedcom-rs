@@ -23,14 +23,6 @@ use winnow::prelude::*;
 //     }
 // }
 
-/// What did I mean to do with this? gg
-/// I think it takes the input and returns a tuple containing the tag and it's
-/// optional value? I lost the thread, though, and need to retrace my steps.
-// fn get_tag_value(input: &str) -> IResult<&str, (&str, &str)> {
-
-//     Ok((input, ("", "")))
-// }
-
 /// Read the next tag's value and any continuations
 pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
     let mut line = Line::parse(input).unwrap();
@@ -45,8 +37,6 @@ pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
 
         if line.tag == "CONT" {
             text += "\n";
-        } else {
-            text += " ";
         }
         text += line.value;
 
@@ -134,10 +124,10 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
                             gedcom.header = Header::parse(input.to_string());
                         }
                         "INDI" => {
-                            // let indi = Individual::parse(buff.to_string());
-                            // // TODO: Remove the if. This is just to clean up the output for debugging.
+                            let indi = Individual::parse(&mut input);
+                            // TODO: Remove the if. This is just to clean up the output for debugging.
                             // if indi.xref.clone().unwrap() == "@I1@" {
-                            //     gedcom.individuals.push(indi);
+                            gedcom.individuals.push(indi);
                             // }
                         }
                         "SOUR" => {}
@@ -163,106 +153,7 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
                     record.clear();
                 }
                 record = record + &buffer.clone() + "\n";
-                // println!("Record: {:?}", record);
             }
-
-            // match Line::peek(&mut linebuff) {
-            //     Ok(line) => {
-            //         if line.level == 0 && line.tag == "HEAD" {
-            //             // Consume the line
-            //             Line::parse(&mut linebuff).unwrap();
-            //         } else if line.level == 1 {
-            //             // println!("Found an inner tag: {}", line.tag);
-            //             match line.tag {
-            //                 "CHAR" => {
-            //                     gedcom.header.encoding = Some(line.value.to_string());
-            //                     Line::parse(&mut linebuff).unwrap();
-            //                 }
-            //                 "INDI" => {
-            //                     let indi = Individual::parse(buff.to_string());
-            //                     // TODO: Remove the if. This is just to clean up the output for debugging.
-            //                     if indi.xref.clone().unwrap() == "@I1@" {
-            //                         gedcom.individuals.push(indi);
-            //                     }
-            //                 }
-            //                 "SOUR" => {}
-            //                 "REPO" => {}
-            //                 "OBJE" => {
-            //                     let obj = Object::parse(buff);
-            //                     println!("{:?}", obj);
-            //                 }
-            //                 "FAM" => {}
-            //                 "SUBM" => {
-            //                     // The record of the submitter of the family tree
-            //                     // Not always present (it exists in complete.ged)
-            //                     if let Some(ref subm) = gedcom.header.submitter {
-            //                         if let Some(xref) = &subm.xref {
-            //                             gedcom.header.submitter =
-            //                                 Submitter::find_by_xref(buff, xref.to_string());
-            //                         }
-            //                     }
-            //                 }
-            //                 _ => {
-            //                     // println!("Unhandled header tag: {}", line.tag);
-            //                     // (_, _) = Line::parse(&buffer).unwrap();
-            //                 }
-            //             };
-            //         // } else {
-            //         //     (_, _) = Line::parse(&buffer).unwrap();
-            //         }
-
-            //         // println!("line: {:?}", line);
-
-            //     }
-            //     Err(_e) => {
-            //         println!("Error parsing line: '{}'", buffer);
-            //     }
-            // }
-
-            // if let Some(ch) = buffer.chars().next() {
-            //     if ch == '0' && !record.is_empty() {
-            //         // We found a new record, beginning with buffer, so
-            //         // process the data in `record` before continuing
-
-            //         // Peek at the next line to see where we're at.
-            //         // let (buff, line) = Line::peek(&record).unwrap();
-            //         let line = Line::peek(record).unwrap();
-
-            //         match line.tag {
-            //             "HEAD" => {
-            //                 gedcom.header = Header::parse(buff.to_string());
-            //             }
-            //             "INDI" => {
-            //                 let indi = Individual::parse(buff.to_string());
-            //                 // TODO: Remove the if. This is just to clean up the output for debugging.
-            //                 if indi.xref.clone().unwrap() == "@I1@" {
-            //                     gedcom.individuals.push(indi);
-            //                 }
-            //             }
-            //             "SOUR" => {}
-            //             "REPO" => {}
-            //             "OBJE" => {
-            //                 let obj = Object::parse(buff);
-            //                 println!("{:?}", obj);
-            //             }
-            //             "FAM" => {}
-            //             "SUBM" => {
-            //                 // The record of the submitter of the family tree
-            //                 // Not always present (it exists in complete.ged)
-            //                 if let Some(ref subm) = gedcom.header.submitter {
-            //                     if let Some(xref) = &subm.xref {
-            //                         gedcom.header.submitter =
-            //                             Submitter::find_by_xref(buff, xref.to_string());
-            //                     }
-            //                 }
-            //             }
-            //             _ => {}
-            //         };
-
-            //         record.clear();
-            //     }
-            // }
-            // record = record + &buffer.clone() + "\n";
         }
         // TODO: families
         // TODO: repositories
@@ -289,7 +180,7 @@ mod tests {
 
     #[test]
     fn parse_get_tag_value() {
-        let mut input = "3 ADDR 1300 West Traverse Parkway\n4 CONT Lehi, UT 84043\n4 CONC USA";
+        let mut input = "3 ADDR 1300 West Traverse Parkway\n4 CONT Lehi, UT 84043 \n4 CONC USA";
         let output = "1300 West Traverse Parkway\nLehi, UT 84043 USA";
 
         let res = get_tag_value(&mut input).unwrap();

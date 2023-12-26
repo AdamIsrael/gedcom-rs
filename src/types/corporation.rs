@@ -11,7 +11,7 @@ use crate::types::Address;
 //         +3 COPR <COPYRIGHT_SOURCE_DATA>
 //         +4 [CONT|CONC]<COPYRIGHT_SOURCE_DATA>
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Corporation {
     pub name: Option<String>,
     pub address: Option<Address>,
@@ -37,7 +37,7 @@ impl Corporation {
             line = Line::peek(&mut buffer).unwrap();
 
             if line.level == 3 && line.tag == "ADDR" {
-                (buffer, corp.address) = Address::parse(buffer);
+                corp.address = Some(Address::parse(&mut buffer).unwrap());
             }
         }
 

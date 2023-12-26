@@ -8,35 +8,17 @@ use super::IndividualEventDetail;
 // +1 <<INDIVIDUAL_EVENT_DETAIL>> {0:1}* p.34
 // +1 FAMC @<XREF:FAM>@
 
-// EVENT_DETAIL:=
-// n TYPE <EVENT_OR_FACT_CLASSIFICATION> {0:1} p.49
-// n DATE <DATE_VALUE> {0:1} p.47, 46
-// n <<PLACE_STRUCTURE>> {0:1} p.38
-// n <<ADDRESS_STRUCTURE>> {0:1} p.31
-// n AGNC <RESPONSIBLE_AGENCY> {0:1} p.60
-// n RELI <RELIGIOUS_AFFILIATION> {0:1} p.60
-// n CAUS <CAUSE_OF_EVENT> {0:1} p.43
-// n RESN <RESTRICTION_NOTICE> {0:1} p.60
-// n <<NOTE_STRUCTURE>> {0:M} p.37
-// n <<SOURCE_CITATION>> {0:M} p.39
-// n <<MULTIMEDIA_LINK>> {0:M} p.37, 26
-// FAMILY
-
 #[derive(Clone, Debug, Default)]
-pub struct Birth {
+pub struct Christening {
     pub event: IndividualEventDetail,
-    // pub event_type_cited_from: Option<EventTypeCitedFrom>,
     pub family: Option<Family>,
-    pub preferred: bool,
 }
 
-impl Birth {
-    pub fn parse(record: &mut &str) -> PResult<Birth> {
-        let mut birth = Birth {
+impl Christening {
+    pub fn parse(record: &mut &str) -> PResult<Christening> {
+        let mut christening = Christening {
             event: IndividualEventDetail::new(),
-            // event_type_cited_from: None,
             family: None,
-            preferred: false,
         };
 
         let line = Line::parse(record).unwrap();
@@ -53,16 +35,13 @@ impl Birth {
             }
 
             match line.tag {
-                // "AGE" => {
-                //     birth.age = Some(line.value.to_string());
-                // }
                 "FAMC" => {
                     let famc = Family {
                         xref: line.value.to_string(),
                         notes: vec![],
                         pedigree: None,
                     };
-                    birth.family = Some(famc);
+                    christening.family = Some(famc);
                 }
                 _ => {
                     // This works right now, in this use-case, but what if a struct
@@ -85,10 +64,10 @@ impl Birth {
             let event = events.join("\n");
             let mut event_str = event.as_str();
             // println!("parsing --\n{}", event_str);
-            birth.event = IndividualEventDetail::parse(&mut event_str).unwrap();
+            christening.event = IndividualEventDetail::parse(&mut event_str).unwrap();
         }
 
-        Ok(birth)
+        Ok(christening)
     }
 }
 
@@ -99,7 +78,7 @@ mod tests {
     #[test]
     /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
     /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
-    fn parse_birth() {
+    fn parse_christening() {
         let data = vec![
             "1 BIRT",
             "2 TYPE Normal",
@@ -133,7 +112,7 @@ mod tests {
             "5 CONC citation.",
             "5 CONT Here is more text but on a new line.",
             "3 OBJE @M8@",
-            "3 NOTE Some notes about this birth source citation which are embedded in the citation ",
+            "3 NOTE Some notes about this christening source citation which are embedded in the citation ",
             "4 CONC structure itself.",
             "3 QUAY 2",
             "2 OBJE @M15@",
@@ -142,9 +121,9 @@ mod tests {
         ].join("\n");
 
         let mut record = data.as_str();
-        let birth = Birth::parse(&mut record).unwrap();
+        let christening = Christening::parse(&mut record).unwrap();
 
-        let mut event = birth.event;
+        let mut event = christening.event;
         assert!(event.detail.date.is_some());
         assert!(event.detail.r#type.is_some());
 
@@ -167,8 +146,8 @@ mod tests {
         assert!(event.detail.cause.is_some());
         assert!(event.detail.cause.unwrap() == "Conception");
 
-        // assert!(birth.event_type_cited_from.is_some());
-        // let event_type = birth.event_type_cited_from.unwrap();
+        // assert!(christening.event_type_cited_from.is_some());
+        // let event_type = christening.event_type_cited_from.unwrap();
         // assert!(event_type.r#type.unwrap() == "BIRT");
         // assert!(event_type.role.unwrap() == "CHIL");
 
@@ -183,6 +162,6 @@ mod tests {
 
         assert!(event.age.unwrap() == "0y");
 
-        assert!(birth.family.unwrap().xref == "@F2@");
+        assert!(christening.family.unwrap().xref == "@F2@");
     }
 }
