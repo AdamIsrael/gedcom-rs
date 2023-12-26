@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::{
     parse,
-    types::{Line, Note, Pedigree},
+    types::{AdoptedBy, Line, Note, Pedigree},
 };
 
 // use super::pedigree;
@@ -33,6 +33,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq)]
 /// The Family structure
 pub struct Family {
+    pub adopted_by: Option<AdoptedBy>,
     pub xref: String,
     pub notes: Vec<Note>,
     pub pedigree: Option<Pedigree>,
@@ -41,6 +42,7 @@ pub struct Family {
 impl Family {
     pub fn parse(record: &mut &str) -> Family {
         let mut family = Family {
+            adopted_by: None,
             xref: "".to_string(),
             notes: vec![],
             pedigree: None,
@@ -63,7 +65,7 @@ impl Family {
 
             // If the next level matches our initial level, we're done parsing
             // this structure.
-            if line.level == level {
+            if line.level <= level {
                 break;
             }
 
@@ -77,6 +79,10 @@ impl Family {
                 "PEDI" => {
                     let pedigree = Pedigree::from_str(line.value).unwrap();
                     family.pedigree = Some(pedigree);
+                }
+                "ADOP" => {
+                    let adopted_by = AdoptedBy::from_str(line.value).unwrap();
+                    family.adopted_by = Some(adopted_by);
                 }
                 _ => {}
             }

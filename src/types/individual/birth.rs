@@ -58,6 +58,7 @@ impl Birth {
                 // }
                 "FAMC" => {
                     let famc = Family {
+                        adopted_by: None,
                         xref: line.value.to_string(),
                         notes: vec![],
                         pedigree: None,

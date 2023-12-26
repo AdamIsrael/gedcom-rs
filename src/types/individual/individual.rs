@@ -4,7 +4,7 @@ use std::str::FromStr;
 use crate::types::individual::name::*;
 use crate::types::{Family, Line};
 
-use super::{Birth, Christening, Death, IndividualEventDetail, Residence};
+use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residence};
 // use super::SourceCitation;
 
 // n @XREF:INDI@ INDI
@@ -28,7 +28,7 @@ use super::{Birth, Christening, Death, IndividualEventDetail, Residence};
 // +1 <<SOURCE_CITATION>> +1 <<MULTIMEDIA_LINK>>
 #[derive(Debug, Default)]
 pub struct Individual {
-    pub adoption: Vec<IndividualEventDetail>,
+    pub adoption: Vec<Adoption>,
 
     pub birth: Vec<Birth>,
     pub death: Vec<Death>,
@@ -203,7 +203,7 @@ impl Individual {
                         }
 
                         "ADOP" => {
-                            let adoption = IndividualEventDetail::parse(record).unwrap();
+                            let adoption = Adoption::parse(record).unwrap();
                             individual.adoption.push(adoption);
                             parse = false;
                         }
@@ -290,7 +290,7 @@ pub enum NameType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Quay;
+    use crate::types::{AdoptedBy, Quay};
 
     #[test]
     fn parse_indi_complete() {
@@ -1314,27 +1314,48 @@ mod tests {
         assert!(basm.detail.note.unwrap() == "Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, also known as \"Bat Mitzvah\").");
 
         // "1 ADOP",
-        let adoption = indi.adoption.pop().unwrap().clone();
+        let mut adoption = indi.adoption.pop().unwrap().clone();
 
         // "2 DATE BEF 31 DEC 1997",
-        assert!(adoption.detail.date.unwrap() == "BEF 31 DEC 1997");
+        assert!(adoption.event.detail.date.unwrap() == "BEF 31 DEC 1997");
 
         // "2 PLAC The place",
-        assert!(adoption.detail.place.unwrap().name.unwrap() == "The place");
+        assert!(adoption.event.detail.place.unwrap().name.unwrap() == "The place");
 
         // "2 TYPE ADOP",
-        assert!(adoption.detail.r#type.unwrap() == "ADOP");
+        assert!(adoption.event.detail.r#type.unwrap() == "ADOP");
 
         // "2 SOUR @S1@",
+        let source = adoption.event.detail.sources.pop().unwrap();
+        assert!(source.xref.unwrap() == "@S1@");
+
         // "3 PAGE 42",
+        assert!(source.page.unwrap() == 42);
+
         // "3 DATA",
+        let sdata = source.data.unwrap();
+
         // "4 DATE 31 DEC 1900",
+        assert!(sdata.date.unwrap() == "31 DEC 1900");
+
         // "4 TEXT Some adoption source text.",
+        assert!(sdata.text.unwrap().note.unwrap() == "Some adoption source text.");
+
         // "3 QUAY 3",
+        assert!(source.quay.unwrap() == Quay::Direct);
+
         // "3 NOTE An adoption source note.",
+        assert!(source.note.unwrap().note.unwrap() == "An adoption source note.");
+
         // "2 NOTE Adoption event note (pertaining to creation of a child-parent relationship that does ",
         // "3 CONC not exist biologically).",
+        assert!(adoption.event.detail.note.unwrap() == "Adoption event note (pertaining to creation of a child-parent relationship that does not exist biologically).");
+
         // "2 FAMC @F3@",
+        let family = adoption.family.unwrap();
+        assert!(family.xref == "@F3@");
         // "3 ADOP BOTH",
+        assert!(family.adopted_by.is_some());
+        assert!(family.adopted_by.unwrap() == AdoptedBy::Both);
     }
 }

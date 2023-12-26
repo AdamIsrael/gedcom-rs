@@ -1,6 +1,7 @@
 /// mod.rs
 // top-level record types
 mod address;
+mod adopted_by;
 mod corporation;
 mod datetime;
 mod event;
@@ -21,6 +22,7 @@ mod sourcedata;
 mod submitter;
 
 pub use address::*;
+pub use adopted_by::AdoptedBy;
 pub use datetime::DateTime;
 pub use event::{EventDetail, EventTypeCitedFrom};
 pub use family::Family;

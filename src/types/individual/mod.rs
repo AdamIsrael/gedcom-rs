@@ -2,6 +2,7 @@
 // and child modules (individual.Individual) have the same name.
 #![allow(clippy::module_inception)]
 
+mod adoption;
 mod birth;
 mod christening;
 mod death;
@@ -13,6 +14,7 @@ mod note;
 mod residence;
 mod source;
 
+pub use adoption::Adoption;
 pub use birth::Birth;
 pub use christening::Christening;
 pub use death::Death;

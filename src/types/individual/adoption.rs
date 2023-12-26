@@ -4,19 +4,20 @@ use winnow::prelude::*;
 
 use super::IndividualEventDetail;
 
-// n [ BIRT | CHR ] [Y|<NULL>] {1:1}
+// n ADOP {1:1}
 // +1 <<INDIVIDUAL_EVENT_DETAIL>> {0:1}* p.34
-// +1 FAMC @<XREF:FAM>@
+// +1 FAMC @<XREF:FAM>@ {0:1} p.24
+//    +2 ADOP <ADOPTED_BY_WHICH_PARENT> {0:1} p.42
 
 #[derive(Clone, Debug, Default)]
-pub struct Christening {
+pub struct Adoption {
     pub event: IndividualEventDetail,
     pub family: Option<Family>,
 }
 
-impl Christening {
-    pub fn parse(record: &mut &str) -> PResult<Christening> {
-        let mut christening = Christening {
+impl Adoption {
+    pub fn parse(record: &mut &str) -> PResult<Adoption> {
+        let mut adoption = Adoption {
             event: IndividualEventDetail::new(),
             family: None,
         };
@@ -33,16 +34,12 @@ impl Christening {
             if line.level <= level {
                 break;
             }
-
+            let mut consume = true;
             match line.tag {
                 "FAMC" => {
-                    let famc = Family {
-                        adopted_by: None,
-                        xref: line.value.to_string(),
-                        notes: vec![],
-                        pedigree: None,
-                    };
-                    christening.family = Some(famc);
+                    let famc = Family::parse(record);
+                    adoption.family = Some(famc);
+                    consume = false;
                 }
                 _ => {
                     // This works right now, in this use-case, but what if a struct
@@ -54,8 +51,9 @@ impl Christening {
                 }
             }
             // line = Line::parse(record).unwrap();
-
-            Line::parse(record).unwrap();
+            if consume {
+                Line::parse(record).unwrap();
+            }
         }
 
         // Now parse the events
@@ -65,10 +63,10 @@ impl Christening {
             let event = events.join("\n");
             let mut event_str = event.as_str();
             // println!("parsing --\n{}", event_str);
-            christening.event = IndividualEventDetail::parse(&mut event_str).unwrap();
+            adoption.event = IndividualEventDetail::parse(&mut event_str).unwrap();
         }
 
-        Ok(christening)
+        Ok(adoption)
     }
 }
 
@@ -79,7 +77,7 @@ mod tests {
     #[test]
     /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
     /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
-    fn parse_christening() {
+    fn parse_adoption() {
         let data = vec![
             "1 BIRT",
             "2 TYPE Normal",
@@ -113,7 +111,7 @@ mod tests {
             "5 CONC citation.",
             "5 CONT Here is more text but on a new line.",
             "3 OBJE @M8@",
-            "3 NOTE Some notes about this christening source citation which are embedded in the citation ",
+            "3 NOTE Some notes about this adoption source citation which are embedded in the citation ",
             "4 CONC structure itself.",
             "3 QUAY 2",
             "2 OBJE @M15@",
@@ -122,9 +120,9 @@ mod tests {
         ].join("\n");
 
         let mut record = data.as_str();
-        let christening = Christening::parse(&mut record).unwrap();
+        let adoption = Adoption::parse(&mut record).unwrap();
 
-        let mut event = christening.event;
+        let mut event = adoption.event;
         assert!(event.detail.date.is_some());
         assert!(event.detail.r#type.is_some());
 
@@ -147,8 +145,8 @@ mod tests {
         assert!(event.detail.cause.is_some());
         assert!(event.detail.cause.unwrap() == "Conception");
 
-        // assert!(christening.event_type_cited_from.is_some());
-        // let event_type = christening.event_type_cited_from.unwrap();
+        // assert!(adoption.event_type_cited_from.is_some());
+        // let event_type = adoption.event_type_cited_from.unwrap();
         // assert!(event_type.r#type.unwrap() == "BIRT");
         // assert!(event_type.role.unwrap() == "CHIL");
 
@@ -163,6 +161,6 @@ mod tests {
 
         assert!(event.age.unwrap() == "0y");
 
-        assert!(christening.family.unwrap().xref == "@F2@");
+        assert!(adoption.family.unwrap().xref == "@F2@");
     }
 }
