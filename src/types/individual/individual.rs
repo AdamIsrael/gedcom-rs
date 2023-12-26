@@ -49,7 +49,7 @@ pub struct Individual {
     pub christening: Vec<Christening>,
 
     /// The religious event (not LDS) of baptizing and/or naming an adult person.
-    pub christening_adult: Vec<IndividualEventDetail>,
+    pub christening_adult: Vec<Christening>,
 
     /// The religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership.
     pub confirmation: Vec<IndividualEventDetail>,
@@ -201,13 +201,17 @@ impl Individual {
                             individual.blessing.push(blessing);
                             parse = false;
                         }
-
+                        // Adoption
                         "ADOP" => {
                             let adoption = Adoption::parse(record).unwrap();
                             individual.adoption.push(adoption);
                             parse = false;
                         }
-                        "CHRA" => {}
+                        "CHRA" => {
+                            let christening = Christening::parse(record).unwrap();
+                            individual.christening_adult.push(christening);
+                            parse = false;
+                        }
                         "CONF" => {}
                         "FCOM" => {}
                         "GRAD" => {}
@@ -1357,5 +1361,39 @@ mod tests {
         // "3 ADOP BOTH",
         assert!(family.adopted_by.is_some());
         assert!(family.adopted_by.unwrap() == AdoptedBy::Both);
+
+        // Adult Christening
+        // "1 CHRA",
+        let chr = indi.christening_adult.first().unwrap().clone();
+
+        // "2 DATE BET 31 DEC 1997 AND 1 FEB 1998",
+        assert!(chr.event.detail.date.unwrap() == "BET 31 DEC 1997 AND 1 FEB 1998");
+
+        // "2 PLAC The place",
+        assert!(chr.event.detail.place.unwrap().name.unwrap() == "The place");
+        // "2 TYPE CHRA",
+        assert!(chr.event.detail.r#type.unwrap() == "CHRA");
+
+        let source = chr.event.detail.sources.first().unwrap().clone();
+        // "2 SOUR @S1@",
+        assert!(source.xref.unwrap() == "@S1@");
+
+        // "3 PAGE 42",
+        assert!(source.page.unwrap() == 42);
+
+        // "3 DATA",
+        let data = source.data.unwrap();
+        // "4 DATE 31 DEC 1900",
+        assert!(data.date.unwrap() == "31 DEC 1900");
+        // "4 TEXT Some christening source text.",
+        assert!(data.text.unwrap().note.unwrap() == "Some christening source text.");
+        // "3 QUAY 3",
+        assert!(source.quay.unwrap() == Quay::Direct);
+        // "3 NOTE A christening source note.",
+        assert!(source.note.unwrap().note.unwrap() == "A christening source note.");
+
+        // "2 NOTE Adult christening event note (the religious event (not LDS) of baptizing and/or ",
+        // "3 CONC naming an adult person).",
+        assert!(chr.event.detail.note.unwrap() == "Adult christening event note (the religious event (not LDS) of baptizing and/or naming an adult person).");
     }
 }
