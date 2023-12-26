@@ -1324,7 +1324,7 @@ mod tests {
 
         // "2 TYPE ADOP",
         assert!(adoption.detail.r#type.unwrap() == "ADOP");
-        
+
         // "2 SOUR @S1@",
         // "3 PAGE 42",
         // "3 DATA",
@@ -1336,6 +1336,5 @@ mod tests {
         // "3 CONC not exist biologically).",
         // "2 FAMC @F3@",
         // "3 ADOP BOTH",
-
     }
 }
