@@ -207,12 +207,18 @@ impl Individual {
                             individual.adoption.push(adoption);
                             parse = false;
                         }
+                        // Adult Christening
                         "CHRA" => {
                             let christening = Christening::parse(record).unwrap();
                             individual.christening_adult.push(christening);
                             parse = false;
                         }
-                        "CONF" => {}
+                        // Confirmation
+                        "CONF" => {
+                            let confirmation = IndividualEventDetail::parse(record).unwrap();
+                            individual.confirmation.push(confirmation);
+                            parse = false;
+                        }
                         "FCOM" => {}
                         "GRAD" => {}
                         "EMIG" => {}
@@ -1395,5 +1401,45 @@ mod tests {
         // "2 NOTE Adult christening event note (the religious event (not LDS) of baptizing and/or ",
         // "3 CONC naming an adult person).",
         assert!(chr.event.detail.note.unwrap() == "Adult christening event note (the religious event (not LDS) of baptizing and/or naming an adult person).");
+
+        // CONFIRMATION
+        // "1 CONF",
+        assert!(indi.confirmation.len() == 1);
+        let confirmation = indi.confirmation.first().unwrap().clone();
+
+        // "2 DATE BET 31 DEC 1997 AND 2 JAN 1998",
+        assert!(confirmation.detail.date.unwrap() == "BET 31 DEC 1997 AND 2 JAN 1998");
+
+        // "2 PLAC The place",
+        assert!(confirmation.detail.place.unwrap().name.unwrap() == "The place");
+
+        // "2 TYPE CONF",
+        assert!(confirmation.detail.r#type.unwrap() == "CONF");
+
+        let source = confirmation.detail.sources.first().unwrap().clone();
+
+        // "2 SOUR @S1@",
+        assert!(source.xref.unwrap() == "@S1@");
+
+        // "3 PAGE 42",
+        assert!(source.page.unwrap() == 42);
+
+        // "3 DATA",
+        let sdata = source.data.unwrap();
+
+        // "4 DATE 31 DEC 1900",
+        assert!(sdata.date.unwrap() == "31 DEC 1900");
+
+        // "4 TEXT Some CONF Source text.",
+        assert!(sdata.text.unwrap().note.unwrap() == "Some CONF Source text.");
+
+        // "3 QUAY 3",
+        assert!(source.quay.unwrap() == Quay::Direct);
+
+        // "3 NOTE A CONF Source note.",
+        assert!(source.note.unwrap().note.unwrap() == "A CONF Source note.");
+
+        // "2 NOTE CONFIRMATION event note (the religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership).",
+        assert!(confirmation.detail.note.unwrap() == "CONFIRMATION event note (the religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership).");
     }
 }
