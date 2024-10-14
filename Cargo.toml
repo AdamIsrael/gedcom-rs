@@ -16,7 +16,7 @@ exclude = [
 
 [dependencies]
 smallvec = "1.10.0"
-winnow = "0.5.28"
+winnow = "0.5.40"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }

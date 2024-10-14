@@ -105,9 +105,7 @@ mod tests {
 
     #[test]
     fn parse_corp_invalid_level() {
-        let data = vec![
-            "3 CORP RSAC Software",
-        ];
+        let data = vec!["3 CORP RSAC Software"];
         let (_data, _corp) = Corporation::parse(data.join("\n").as_str());
         let corp: Corporation = _corp.unwrap();
         assert!(corp.name.is_none());

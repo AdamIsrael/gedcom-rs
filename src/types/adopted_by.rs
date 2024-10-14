@@ -33,7 +33,6 @@ impl FromStr for AdoptedBy {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::AdoptedBy;

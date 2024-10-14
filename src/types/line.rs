@@ -1,12 +1,12 @@
 // use std::str::FromStr;
 use std::fmt;
 
-use winnow::ascii::{alphanumeric1, digit1, line_ending, not_line_ending, space0};
+use winnow::ascii::{alphanumeric1, digit1, line_ending, till_line_ending, space0};
 use winnow::combinator::{opt, preceded, separated_pair};
 use winnow::error::StrContext;
 use winnow::prelude::*;
 use winnow::stream::Stream;
-use winnow::token::{tag, take_till};
+use winnow::token::{literal, take_till};
 
 /// A GEDCOM line
 /// level + delim (space) + [optional_xref_ID] + tag + [optional_line_value] + terminator
@@ -193,7 +193,7 @@ impl<'b> Line<'b> {
 
     fn tag(input: &mut &'b str) -> PResult<&'b str> {
         // one of: a-zA-Z_
-        let parser = preceded(opt(tag("_")), alphanumeric1)
+        let parser = preceded(opt(literal("_")), alphanumeric1)
             .recognize()
             .verify(|o: &str| o.len() <= 31);
 
@@ -201,7 +201,7 @@ impl<'b> Line<'b> {
     }
 
     fn value(input: &mut &'b str) -> PResult<&'b str> {
-        not_line_ending
+        till_line_ending
             .context(StrContext::Label("value"))
             .parse_next(input)
     }
@@ -212,7 +212,7 @@ impl<'b> Line<'b> {
     fn xref(input: &mut &'b str) -> PResult<&'b str> {
         if input.starts_with('@') {
             let mut parser =
-                separated_pair(tag("@"), take_till(0.., |c| c == '@'), tag("@")).recognize();
+                separated_pair(literal("@"), take_till(0.., |c| c == '@'), literal("@")).recognize();
             return parser.parse_next(input);
 
             // println!("Parsing xref: '{}'", input);
