@@ -1,7 +1,7 @@
 // use std::str::FromStr;
 use std::fmt;
 
-use winnow::ascii::{alphanumeric1, digit1, line_ending, till_line_ending, space0};
+use winnow::ascii::{alphanumeric1, digit1, line_ending, space0, till_line_ending};
 use winnow::combinator::{opt, preceded, separated_pair};
 use winnow::error::StrContext;
 use winnow::prelude::*;
@@ -212,7 +212,8 @@ impl<'b> Line<'b> {
     fn xref(input: &mut &'b str) -> PResult<&'b str> {
         if input.starts_with('@') {
             let mut parser =
-                separated_pair(literal("@"), take_till(0.., |c| c == '@'), literal("@")).recognize();
+                separated_pair(literal("@"), take_till(0.., |c| c == '@'), literal("@"))
+                    .recognize();
             return parser.parse_next(input);
 
             // println!("Parsing xref: '{}'", input);
