@@ -82,7 +82,7 @@ impl EventDetail {
                 }
                 "OBJE" => {
                     let obj = Object {
-                        xref: line.value.to_string(),
+                        xref: Some(line.value.to_string()),
                     };
                     event.media.push(obj);
                 }

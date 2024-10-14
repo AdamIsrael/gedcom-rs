@@ -73,7 +73,7 @@ impl SourceCitation {
                 }
                 "OBJE" => {
                     let obj = Object {
-                        xref: line.value.to_string(),
+                        xref: Some(line.value.to_string()),
                     };
                     sc.media.push(obj);
                 }

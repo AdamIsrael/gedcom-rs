@@ -147,7 +147,7 @@ mod tests {
 
         assert!(event.media.len() == 1);
         let obje = event.media.pop().unwrap();
-        assert!(obje.xref == "@M8@");
+        assert!(obje.xref == Some("@M8@".to_string()));
 
         assert!(death.age.unwrap() == "76y");
 

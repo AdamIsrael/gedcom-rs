@@ -102,7 +102,8 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
         // record into a struct.
         let mut record: String = String::new();
 
-        for mut buffer in lines.flatten() {
+        // Use `map_while` because we could loop on an Err value
+        for mut buffer in lines.map_while(Result::ok) {
             // Strip off any leading Zero Width No-Break Space
             if buffer.strip_prefix('\u{FEFF}').is_some() {
                 buffer.remove(0);

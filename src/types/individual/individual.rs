@@ -1050,14 +1050,14 @@ mod tests {
 
         assert!(source.media.len() == 1);
         let media = source.media.pop().unwrap();
-        assert!(media.xref == "@M8@");
+        assert!(media.xref == Some("@M8@".to_string()));
 
         assert!(source.note.unwrap().note.unwrap() == "Some notes about this birth source citation which are embedded in the citation structure itself.");
 
         assert!(source.quay.unwrap() == Quay::Secondary);
 
         let obje = event.detail.media.pop().unwrap();
-        assert!(obje.xref == "@M15@");
+        assert!(obje.xref == Some("@M15@".to_string()));
 
         assert!(event.age.unwrap() == "0y");
 
@@ -1095,7 +1095,7 @@ mod tests {
         // "2 OBJE @M8@",
         assert!(devent.media.len() == 1);
         let obj = devent.media.pop().unwrap();
-        assert!(obj.xref == "@M8@".to_string());
+        assert!(obj.xref == Some("@M8@".to_string()));
 
         // "2 SOUR @S1@",
         assert!(devent.sources.len() == 1);
@@ -1172,7 +1172,7 @@ mod tests {
 
         // "2 OBJE @M8@",
         let media = bapm.detail.media;
-        assert!(media[0].xref == "@M8@".to_string());
+        assert!(media[0].xref == Some("@M8@".to_string()));
 
         // Sources
         let mut sources = bapm.detail.sources;

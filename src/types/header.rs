@@ -35,7 +35,7 @@ HEADER:= n HEAD
 */
 
 #[derive(Debug, Default)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+// #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Header {
     pub encoding: Option<String>,
     pub copyright: Option<String>,

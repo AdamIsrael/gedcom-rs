@@ -1,4 +1,7 @@
 // use crate::types::Line;
+use crate::parse;
+
+use winnow::prelude::*;
 
 // use nom::{bytes::complete::is_not, IResult};
 
@@ -19,29 +22,34 @@
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Object {
-    pub xref: String,
+    pub xref: Option<String>,
 }
 
 impl Object {
-    pub fn parse(_record: &str) -> Object {
-        // let mut object = Object { xref: "" };
+    pub fn parse(buffer: &mut &str) -> PResult<Object> {
+        let mut obje = Object { xref: None };
 
-        // while !record.is_empty() {
-        //     let (buffer, line) = Line::parse(&record).unwrap();
+        obje.xref = parse::get_tag_value(buffer).unwrap();
 
-        //     // If we're at the top of the record, get the xref
-        //     // && level == 0
-        //     match line.level {
-        //         0 => {
-        //             object.xref = line.xref;
-        //         }
-        //         _ => {
-        //         }
-        //     }
-        // }
-        // object
-        Object {
-            xref: "".to_string(),
-        }
+        Ok(obje)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Object;
+
+    #[test]
+    fn parse_obje() {
+        // 1 OBJE @M7@
+
+        let data = vec!["1 OBJE @M7@"];
+
+        let input = data.join("\n");
+        let mut record = input.as_str();
+        let obje = Object::parse(&mut record);
+        let o = obje.unwrap().xref.unwrap();
+
+        assert!(o == "@M7@");
     }
 }
