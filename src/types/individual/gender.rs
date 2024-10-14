@@ -23,3 +23,19 @@ impl FromStr for Gender {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::Gender;
+    use std::str::FromStr;
+
+    #[test]
+    fn parse_gender() {
+        assert!(Gender::from_str("M").unwrap() == Gender::Male);
+        assert!(Gender::from_str("F").unwrap() == Gender::Female);
+        assert!(Gender::from_str("N").unwrap() == Gender::Nonbinary);
+        assert!(Gender::from_str("U").unwrap() == Gender::Unknown);
+        assert!(Gender::from_str("X").is_err());
+    }
+}
