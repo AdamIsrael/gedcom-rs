@@ -32,3 +32,18 @@ impl FromStr for AdoptedBy {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::AdoptedBy;
+    use std::str::FromStr;
+
+    #[test]
+    fn parse_adopted_by() {
+        assert!(AdoptedBy::from_str("BOTH").unwrap() == AdoptedBy::Both);
+        assert!(AdoptedBy::from_str("HUSB").unwrap() == AdoptedBy::Husband);
+        assert!(AdoptedBy::from_str("WIFE").unwrap() == AdoptedBy::Wife);
+        assert!(AdoptedBy::from_str("OTHE").is_err());
+    }
+}

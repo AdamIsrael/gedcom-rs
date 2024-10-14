@@ -76,7 +76,7 @@ mod tests {
         ];
 
         let (_data, _corp) = Corporation::parse(data.join("\n").as_str());
-        let corp = _corp.unwrap();
+        let corp: Corporation = _corp.unwrap();
 
         assert!(Some("RSAC Software".to_string()) == corp.name);
 
@@ -101,5 +101,16 @@ mod tests {
         assert!(addr.www.contains(&"https://www.example.com".to_string()));
         assert!(addr.www.contains(&"https://www.example.org".to_string()));
         assert!(addr.www.contains(&"https://www.example.net".to_string()));
+    }
+
+    #[test]
+    fn parse_corp_invalid_level() {
+        let data = vec![
+            "3 CORP RSAC Software",
+        ];
+        let (_data, _corp) = Corporation::parse(data.join("\n").as_str());
+        let corp: Corporation = _corp.unwrap();
+        assert!(corp.name.is_none());
+        assert!(corp.address.is_none());
     }
 }

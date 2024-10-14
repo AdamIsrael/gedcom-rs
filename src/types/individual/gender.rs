@@ -24,7 +24,6 @@ impl FromStr for Gender {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::Gender;

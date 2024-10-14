@@ -37,3 +37,18 @@ impl FromStr for Pedigree {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Pedigree;
+    use std::str::FromStr;
+
+    #[test]
+    fn parse_pedigree() {
+        assert!(Pedigree::from_str("adopted").unwrap() == Pedigree::Adopted);
+        assert!(Pedigree::from_str("birth").unwrap() == Pedigree::Birth);
+        assert!(Pedigree::from_str("foster").unwrap() == Pedigree::Foster);
+        assert!(Pedigree::from_str("sealing").unwrap() == Pedigree::Sealing);
+        assert!(Pedigree::from_str("other").is_err());
+    }
+}

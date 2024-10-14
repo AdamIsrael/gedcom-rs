@@ -36,3 +36,18 @@ impl FromStr for Quay {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Quay;
+    use std::str::FromStr;
+
+    #[test]
+    fn parse_quay() {
+        assert!(Quay::from_str("0").unwrap() == Quay::Unreliable);
+        assert!(Quay::from_str("1").unwrap() == Quay::Questionable);
+        assert!(Quay::from_str("2").unwrap() == Quay::Secondary);
+        assert!(Quay::from_str("3").unwrap() == Quay::Direct);
+        assert!(Quay::from_str("4").is_err());
+    }
+}
