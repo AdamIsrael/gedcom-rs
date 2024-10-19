@@ -7,7 +7,7 @@ This is a **work-in-progress** library to parse a [GEDCOM 5.5.1](https://gedcom.
 ## TODO
 
 - [ ] HEADER
-  - [ ] HEAD
+  - [x] HEAD
     - [x] SOUR
       - [x] VERS
       - [x] NAME
@@ -16,7 +16,7 @@ This is a **work-in-progress** library to parse a [GEDCOM 5.5.1](https://gedcom.
       - [x] DATA
         - [x] DATE
         - [x] COPR
-    - [ ] DEST
+    - [x] DEST
     - [x] DATE
       - [x] TIME
     - [x] SUBM
@@ -29,17 +29,17 @@ This is a **work-in-progress** library to parse a [GEDCOM 5.5.1](https://gedcom.
       - [x] RIN
       - [x] NOTE_STRUCTURE
       - [x] CHANGE_DATE
-    - [ ] SUBN
+    - [x] SUBN
     - [x] FILE
     - [x] COPR
     - [x] GEDC
       - [x] VERS
       - [x] FORM
     - [X] CHAR
-      - [ ] VERS
+      - [x] VERS
     - [x] LANG
     - [x] PLAC
-      - [ ] FORM
+      - [x] FORM
     - [x] NOTE
 - [ ] FAM_RECORD
   - [ ] XREF

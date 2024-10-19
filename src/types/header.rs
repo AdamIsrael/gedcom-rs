@@ -2,7 +2,7 @@ use crate::parse;
 // use crate::types::corporation;
 // use crate::types::Copyright;
 // use crate::types::Note;
-use crate::types::{Source, Submitter};
+use crate::types::{CharacterSet, Source, Submission, Submitter};
 
 use super::Gedc;
 use super::Line;
@@ -41,7 +41,7 @@ HEADER:= n HEAD
 #[derive(Debug, Default)]
 // #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Header {
-    pub encoding: Option<String>,
+    pub character_set: Option<CharacterSet>,
     pub copyright: Option<String>,
     pub date: Option<DateTime>,
     pub destination: Option<String>,
@@ -52,13 +52,13 @@ pub struct Header {
     pub place: Option<Place>,
     pub source: Option<Source>,
     pub submitter: Option<Submitter>,
-    pub submission: Option<String>,
+    pub submission: Option<Submission>,
 }
 
 impl Header {
     pub fn parse(mut record: String) -> Header {
         let mut header = Header {
-            encoding: None,
+            character_set: None,
             copyright: None,
             // corporation: None,
             date: None,
@@ -85,12 +85,9 @@ impl Header {
                 // (buffer, _) = Line::parse(&record).unwrap();
                 Line::parse(&mut buffer).unwrap();
             } else if line.level == 1 {
-                // println!("Found an inner tag: {}", line.tag);
                 match line.tag {
                     "CHAR" => {
-                        header.encoding = Some(line.value.to_string());
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        (buffer, header.character_set) = CharacterSet::parse(&record);
                     }
                     "COPR" => {
                         header.copyright = parse::get_tag_value(&mut buffer).unwrap();
@@ -133,10 +130,7 @@ impl Header {
                     }
                     "PLAC" => {
                         if let Ok(place) = Place::parse(&mut buffer) {
-                            println!("Got a place");
                             header.place = Some(place);
-                        } else {
-                            println!("No place found.");
                         }
                     }
                     "SOUR" => {
@@ -144,6 +138,9 @@ impl Header {
                     }
                     "SUBM" => {
                         (buffer, header.submitter) = Submitter::parse(&record);
+                    }
+                    "SUBN" => {
+                        (buffer, header.submission) = Submission::parse(&record);
                     }
                     _ => {
                         // println!("Unhandled header tag: {}", line.tag);
@@ -173,6 +170,8 @@ mod tests {
         let data = vec![
             "0 HEAD",
             "1 CHAR UTF-8",
+            "2 VERS 5.5.5",
+            "1 DEST ANSTFILE",
             "1 SOUR Ancestry.com Family Trees",
             "2 DATA Name of source data",
             "3 DATE 1 JAN 1998",
@@ -201,6 +200,7 @@ mod tests {
             "3 WWW https://www.example.org",
             "3 WWW https://www.example.net",
             "1 SUBM @U1@",
+            "1 SUBN @U1@",
             "1 GEDC",
             "2 VERS 5.5",
             "2 FORM LINEAGE-LINKED",
@@ -242,9 +242,15 @@ mod tests {
 
         let header = Header::parse(data.join("\n"));
 
-        // encoding
-        assert!(header.encoding.is_some());
-        assert!(header.encoding == Some("UTF-8".to_string()));
+        // Character encoding
+        assert!(header.character_set.is_some());
+        if let Some(character_set) = header.character_set {
+            assert!(character_set.encoding.is_some());
+            assert!(character_set.version.is_some());
+
+            assert!(character_set.encoding == Some("UTF-8".to_string()));
+            assert!(character_set.version == Some("5.5.5".to_string()));
+        }
 
         // copyright
         assert!(header.copyright.is_some());
@@ -317,8 +323,9 @@ mod tests {
                 })
         );
 
-        // Character encoding
-        assert!(header.encoding == Some("UTF-8".to_string()));
+        // Destination
+        assert!(header.destination.is_some());
+        assert!(header.destination == Some("ANSTFILE".to_string()));
 
         // Version
         assert!(
@@ -349,5 +356,8 @@ mod tests {
 
         // submitter
         assert!(header.submitter.is_some());
+
+        // submission
+        assert!(header.submission.is_some());
     }
 }

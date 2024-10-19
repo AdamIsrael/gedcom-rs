@@ -75,7 +75,7 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
     // Initialize an empty gedcom
     let mut gedcom = Gedcom {
         header: Header {
-            encoding: None,
+            character_set: None,
             copyright: None,
             date: None,
             destination: None,

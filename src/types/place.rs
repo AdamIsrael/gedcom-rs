@@ -18,6 +18,7 @@ use winnow::prelude::*;
 #[derive(Clone, Debug, Default)]
 pub struct Place {
     pub name: Option<String>,
+    pub form: Vec<String>,
     pub phonetic: Option<PlaceVariation>,
     pub roman: Option<PlaceVariation>,
     pub map: Option<Map>,
@@ -28,6 +29,7 @@ impl Place {
     pub fn parse(record: &mut &str) -> PResult<Place> {
         let mut place = Place {
             name: None,
+            form: vec![],
             phonetic: None,
             roman: None,
             map: None,
@@ -43,6 +45,9 @@ impl Place {
                     // TODO: implement this
                     // Per the spec, "This usage is not common and, therefore, not encouraged.
                     // It should only be used when a system has over-structured its place-names."
+
+                    // Parse the value of the line as a comma-delimited list
+                    place.form = line.value.split(',').map(|s| s.to_string()).collect();
                 }
                 "PLAC" => {
                     place.name = Some(line.value.to_string());
@@ -130,6 +135,7 @@ mod tests {
     fn parse_place() {
         let data = vec![
             "2 PLAC Salt Lake City, UT, USA",
+            "3 FORM parish, county, country",
             "3 FONE Salt Lake City, UT, USA",
             "4 TYPE user defined",
             "3 ROMN Salt Lake City, UT, USA",
@@ -146,6 +152,8 @@ mod tests {
 
         assert!(place.name.is_some());
         assert!(place.name.unwrap() == "Salt Lake City, UT, USA");
+
+        assert!(place.form.len() == 3);
 
         let phonetic = place.phonetic.unwrap();
         assert!(phonetic.name == Some("Salt Lake City, UT, USA".to_string()));
