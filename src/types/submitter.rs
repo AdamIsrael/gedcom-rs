@@ -107,27 +107,19 @@ impl Submitter {
 
     /// Parses a SUBM block
     pub fn parse(mut buffer: &str) -> (&str, Option<Submitter>) {
-        let mut submitter = Submitter {
-            xref: None,
-            name: None,
-            address: None,
-            media: vec![],
-            lang: vec![],
-            rfn: None,
-            rin: None,
-            note: None,
-            change_date: None,
-        };
+        let mut submitter: Option<Submitter> = None;
         let mut line = Line::peek(&mut buffer).unwrap();
         if line.level == 1 && line.tag == "SUBM" {
             // advance our position in the buffer
             line = Line::parse(&mut buffer).unwrap();
             // This is a temporary hack, because parse::xref strips @ from the id
             let xref = line.value;
-            submitter.xref = Some(xref.to_owned());
+
+            // Find by xref
+            submitter = Submitter::find_by_xref(buffer, xref.to_string());
         }
 
-        (buffer, Some(submitter))
+        (buffer, submitter)
     }
 }
 
@@ -177,11 +169,11 @@ mod tests {
             "1 LANG German",
         ];
 
-        let (_, mut submitter) = Submitter::parse(data.join("\n").as_str());
-        let xref = submitter.unwrap().xref;
+        let (_, submitter) = Submitter::parse(data.join("\n").as_str());
+        // let xref = submitter.unwrap().xref;
 
         // Now, find the xref
-        submitter = Submitter::find_by_xref(data.join("\n").as_str(), xref.unwrap());
+        // submitter = Submitter::find_by_xref(data.join("\n").as_str(), xref.unwrap());
         let s = submitter.unwrap();
 
         assert!(s.xref == Some("@U1@".to_string()));

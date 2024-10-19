@@ -6,7 +6,6 @@ use winnow::prelude::*;
 // PLACE_STRUCTURE:=
 // n PLAC <PLACE_NAME> {1:1} p.58
 // +1 FORM <PLACE_HIERARCHY> {0:1} p.58
-// 39
 // +1 FONE <PLACE_PHONETIC_VARIATION> {0:M} p.59
 // +2 TYPE <PHONETIC_TYPE> {1:1} p.57
 // +1 ROMN <PLACE_ROMANIZED_VARIATION> {0:M} p.59
@@ -40,6 +39,11 @@ impl Place {
             let mut parse = true;
             let mut line = Line::peek(record).unwrap();
             match line.tag {
+                "FORM" => {
+                    // TODO: implement this
+                    // Per the spec, "This usage is not common and, therefore, not encouraged.
+                    // It should only be used when a system has over-structured its place-names."
+                }
                 "PLAC" => {
                     place.name = Some(line.value.to_string());
                 }

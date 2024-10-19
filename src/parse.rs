@@ -83,6 +83,7 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
             language: None,
             filename: None,
             note: None,
+            place: None,
             source: None,
             submitter: None,
             submission: None,
@@ -141,12 +142,12 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
                         "SUBM" => {
                             // // The record of the submitter of the family tree
                             // // Not always present (it exists in complete.ged)
-                            // if let Some(ref subm) = gedcom.header.submitter {
-                            //     if let Some(xref) = &subm.xref {
-                            //         gedcom.header.submitter =
-                            //             Submitter::find_by_xref(buff, xref.to_string());
-                            //     }
-                            // }
+                            if let Some(ref subm) = gedcom.header.submitter {
+                                if let Some(xref) = &subm.xref {
+                                    gedcom.header.submitter =
+                                        Submitter::find_by_xref(input, xref.to_string());
+                                }
+                            }
                         }
                         _ => {}
                     };

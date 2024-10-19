@@ -4,9 +4,9 @@ use crate::parse;
 // use crate::types::Note;
 use crate::types::{Source, Submitter};
 
-use super::DateTime;
 use super::Gedc;
 use super::Line;
+use super::{DateTime, Place};
 
 /*
 HEADER:= n HEAD
@@ -25,10 +25,14 @@ HEADER:= n HEAD
 +1 SUBM @<XREF:SUBM>@
 +1 SUBN @<XREF:SUBN>@
 +1 FILE <FILE_NAME>
-+1 COPR <COPYRIGHT_GEDCOM_FILE> +1 GEDC
++1 COPR <COPYRIGHT_GEDCOM_FILE>
++1 GEDC
     +2 VERS <VERSION_NUMBER>
-    +2 FORM <GEDCOM_FORM> +1 CHAR <CHARACTER_SET>
-    +2 VERS <VERSION_NUMBER> +1 LANG <LANGUAGE_OF_TEXT> +1 PLAC
+    +2 FORM <GEDCOM_FORM>
++1 CHAR <CHARACTER_SET>
+    +2 VERS <VERSION_NUMBER>
++1 LANG <LANGUAGE_OF_TEXT>
++1 PLAC
     +2 FORM <PLACE_HIERARCHY>
 +1 NOTE <GEDCOM_CONTENT_DESCRIPTION>
     +2 [CONC|CONT] <GEDCOM_CONTENT_DESCRIPTION>
@@ -45,6 +49,7 @@ pub struct Header {
     pub language: Option<String>,
     pub filename: Option<String>,
     pub note: Option<String>,
+    pub place: Option<Place>,
     pub source: Option<Source>,
     pub submitter: Option<Submitter>,
     pub submission: Option<String>,
@@ -62,6 +67,7 @@ impl Header {
             language: None,
             filename: None,
             note: None,
+            place: None,
             source: None,
             submitter: None,
             submission: None,
@@ -87,14 +93,7 @@ impl Header {
                         Line::parse(&mut buffer).unwrap();
                     }
                     "COPR" => {
-                        // println!("Input before copyright: '{}'", buffer);
                         header.copyright = parse::get_tag_value(&mut buffer).unwrap();
-                        // println!("Input after copyright: '{}'", buffer);
-                        // (buffer, header.copyright) = parse::get_tag_value(&record).unwrap();
-
-                        // header.copyright = Some(line.value.unwrap_or("").to_string());
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        // (buffer, header.copyright) = Copyright::parse(&record);
                     }
                     // "CORP" => {
                     //     println!("parsing CORP");
@@ -131,6 +130,14 @@ impl Header {
                         // let note: Option<Note>;
                         // (buffer, note) = Note::parse(&record);
                         // header.note = note;
+                    }
+                    "PLAC" => {
+                        if let Ok(place) = Place::parse(&mut buffer) {
+                            println!("Got a place");
+                            header.place = Some(place);
+                        } else {
+                            println!("No place found.");
+                        }
                     }
                     "SOUR" => {
                         (buffer, header.source) = Source::parse(&record);
@@ -202,6 +209,7 @@ mod tests {
             "1 LANG English",
             "1 DATE 1 JAN 2023",
             "2 TIME 12:13:14.15",
+            "1 PLAC Salt Lake City, UT, USA",
             // The submitter record
             "0 @U1@ SUBM",
             "1 NAME Adam Israel",
@@ -309,6 +317,9 @@ mod tests {
                 })
         );
 
+        // Character encoding
+        assert!(header.encoding == Some("UTF-8".to_string()));
+
         // Version
         assert!(
             header.gedcom_version.as_ref().unwrap().form
@@ -322,6 +333,9 @@ mod tests {
         // language
         assert!(header.language.is_some());
         assert!(header.language == Some("English".to_string()));
+
+        // place
+        assert!(header.place.is_some());
 
         // datetime
         assert!(header.date.is_some());
