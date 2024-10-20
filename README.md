@@ -6,7 +6,7 @@ This is a **work-in-progress** library to parse a [GEDCOM 5.5.1](https://gedcom.
 
 ## TODO
 
-- [ ] HEADER
+- [x] HEADER
   - [x] HEAD
     - [x] SOUR
       - [x] VERS
