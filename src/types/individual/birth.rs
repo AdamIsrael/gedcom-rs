@@ -25,18 +25,14 @@ use super::IndividualEventDetail;
 #[derive(Clone, Debug, Default)]
 pub struct Birth {
     pub event: IndividualEventDetail,
-    // pub event_type_cited_from: Option<EventTypeCitedFrom>,
     pub family: Option<Family>,
-    pub preferred: bool,
 }
 
 impl Birth {
     pub fn parse(record: &mut &str) -> PResult<Birth> {
         let mut birth = Birth {
             event: IndividualEventDetail::new(),
-            // event_type_cited_from: None,
             family: None,
-            preferred: false,
         };
 
         let line = Line::parse(record).unwrap();
@@ -53,9 +49,6 @@ impl Birth {
             }
 
             match line.tag {
-                // "AGE" => {
-                //     birth.age = Some(line.value.to_string());
-                // }
                 "FAMC" => {
                     let famc = Family {
                         adopted_by: None,
@@ -74,7 +67,6 @@ impl Birth {
                     events.push(line.to_string());
                 }
             }
-            // line = Line::parse(record).unwrap();
 
             Line::parse(record).unwrap();
         }
@@ -82,10 +74,8 @@ impl Birth {
         // Now parse the events
         if !events.is_empty() {
             // Remove the last line; it belongs to the next record
-            // println!("DELETE: {:?}", events.pop());
             let event = events.join("\n");
             let mut event_str = event.as_str();
-            // println!("parsing --\n{}", event_str);
             birth.event = IndividualEventDetail::parse(&mut event_str).unwrap();
         }
 
@@ -168,15 +158,8 @@ mod tests {
         assert!(event.detail.cause.is_some());
         assert!(event.detail.cause.unwrap() == "Conception");
 
-        // assert!(birth.event_type_cited_from.is_some());
-        // let event_type = birth.event_type_cited_from.unwrap();
-        // assert!(event_type.r#type.unwrap() == "BIRT");
-        // assert!(event_type.role.unwrap() == "CHIL");
-
         assert!(event.detail.note.is_some());
         assert!(event.detail.note.unwrap() == "Some notes.");
-
-        // assert!(place.name.unwrap() == "");
 
         assert!(event.detail.media.len() == 1);
         let obje = event.detail.media.pop().unwrap();

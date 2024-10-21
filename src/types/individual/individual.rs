@@ -137,17 +137,10 @@ impl Individual {
                             parse = false;
                         }
                         "SEX" => {
-                            // individual.gender =
-                            //     super::Gender::from_str(line.value.unwrap_or("U")).unwrap();
                             individual.gender = super::Gender::from_str(line.value).unwrap();
-                            // println!("Next line: {:?}", Line::peek(record).unwrap());
                         }
                         "BIRT" => {
-                            let mut birth = Birth::parse(record).unwrap();
-                            // The first record found is the preferred record
-                            if individual.birth.is_empty() {
-                                birth.preferred = true;
-                            }
+                            let birth = Birth::parse(record).unwrap();
                             individual.birth.push(birth);
                             parse = false;
                         }
@@ -997,8 +990,8 @@ mod tests {
         );
 
         // Birth
+        assert!(indi.birth.len() == 2);
         let birth = indi.birth.first().unwrap();
-        assert!(birth.preferred);
 
         let mut event = birth.event.clone();
 
