@@ -95,3 +95,96 @@ impl IndividualEventDetail {
         Ok(event)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    // use super::*;
+    use super::IndividualEventDetail;
+
+    #[test]
+    // Parse a Individual Event Detail that's not part of an ADOP record
+    fn parse_individual_event_detail() {
+        let data = vec![
+            "1 BIRT",
+            "2 TYPE Normal",
+            "2 DATE 31 DEC 1965",
+            "2 PLAC Salt Lake City, UT, USA",
+            "3 FONE Salt Lake City, UT, USA",
+            "4 TYPE user defined",
+            "3 ROMN Salt Lake City, UT, USA",
+            "4 TYPE user defined",
+            "3 MAP",
+            "4 LATI N0",
+            "4 LONG E0",
+            "3 NOTE Some place notes.",
+            "2 ADDR",
+            "3 ADR1 St. Marks Hospital",
+            "3 CITY Salt Lake City",
+            "3 STAE UT",
+            "3 POST 84121",
+            "3 CTRY USA",
+            "2 AGNC none",
+            "2 RELI Religion",
+            "2 CAUS Conception",
+            "2 NOTE Some notes.",
+            "2 SOUR @S1@",
+            "3 PAGE 42",
+            "3 EVEN BIRT",
+            "4 ROLE CHIL",
+            "3 DATA",
+            "4 DATE 1 JAN 1900",
+            "4 TEXT Here is some text from the source specific to this source ",
+            "5 CONC citation.",
+            "5 CONT Here is more text but on a new line.",
+            "3 OBJE @M8@",
+            "3 NOTE Some notes about this adoption source citation which are embedded in the citation ",
+            "4 CONC structure itself.",
+            "3 QUAY 2",
+            "2 OBJE @M15@",
+            "2 AGE 0y",
+            "2 FAMC @F2@",
+        ].join("\n");
+
+        let mut record = data.as_str();
+
+        let e = IndividualEventDetail::parse(&mut record);
+
+        assert!(e.is_ok());
+        let event = e.unwrap();
+
+        assert!(event.age == Some("0y".to_string()));
+
+        let mut detail = event.detail;
+
+        assert!(detail.r#type.is_some());
+        assert!(detail.r#type.unwrap() == "Normal");
+
+        assert!(detail.date.is_some());
+        assert!(detail.date.unwrap() == "31 DEC 1965");
+
+        assert!(detail.place.is_some());
+        assert!(detail.place.unwrap().name == Some("Salt Lake City, UT, USA".to_string()));
+
+        let addr = detail.address.unwrap();
+        assert!(addr.addr1.is_some());
+        assert!(addr.city.is_some());
+        assert!(addr.state.is_some());
+
+        assert!(detail.agency.is_some());
+        assert!(detail.agency.unwrap() == "none");
+
+        assert!(detail.religion.is_some());
+        assert!(detail.religion.unwrap() == "Religion");
+
+        assert!(detail.cause.is_some());
+        assert!(detail.cause.unwrap() == "Conception");
+
+        assert!(detail.note.is_some());
+        assert!(detail.note == Some("Some notes.".to_string()));
+
+        assert!(detail.media.len() == 1);
+        let obje = detail.media.pop().unwrap();
+        assert!(obje.xref == Some("@M15@".to_string()));
+
+    }
+}
