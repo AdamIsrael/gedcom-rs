@@ -57,14 +57,6 @@ impl IndividualEventDetail {
 
         let line = Line::parse(record).unwrap();
         let level = line.level;
-        // [ ADOP | BIRT | BAPM | BARM | BASM |
-        // BLES | BURI | CENS | CHR | CHRA |
-        // CONF | CREM | DEAT | EMIG | FCOM |
-        // GRAD | IMMI | NATU | ORDN |
-        // RETI | PROB | WILL | EVEN ]
-        // if line.tag == "BIRT" || line.tag == "BAPM" {
-        //     Line::parse(record).unwrap();
-        // }
         let mut events: Vec<String> = vec![];
 
         // Add the first line so EventDetails will parse cleanly
@@ -95,10 +87,8 @@ impl IndividualEventDetail {
         // Now parse the events
         if !events.is_empty() {
             // Remove the last line; it belongs to the next record
-            // println!("DELETE: {:?}", events.pop());
             let event_s = events.join("\n");
             let mut event_str = event_s.as_str();
-            // println!("parsing --\n{}", event_str);
             event.detail = EventDetail::parse(&mut event_str).unwrap();
         }
 
