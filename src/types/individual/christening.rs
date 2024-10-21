@@ -73,8 +73,6 @@ mod tests {
     use super::*;
 
     #[test]
-    /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
-    /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
     fn parse_christening() {
         let data = vec![
             "1 BIRT",

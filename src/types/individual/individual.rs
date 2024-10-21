@@ -1,11 +1,9 @@
-// use std::num::ParseIntError;
 use std::str::FromStr;
 
 use crate::types::individual::name::*;
 use crate::types::{Family, Line};
 
 use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residence};
-// use super::SourceCitation;
 
 // n @XREF:INDI@ INDI
 // +1 RESN <RESTRICTION_NOTICE>
@@ -146,10 +144,7 @@ impl Individual {
                         }
                         "DEAT" => {
                             // TODO: Support 1 DEAT Y
-                            let mut death = Death::parse(record).unwrap();
-                            if individual.death.is_empty() {
-                                death.preferred = true;
-                            }
+                            let death = Death::parse(record).unwrap();
                             individual.death.push(death);
                             parse = false;
                         }
@@ -1059,7 +1054,6 @@ mod tests {
         // Death
         // "1 DEAT",
         let death = indi.death.first().unwrap();
-        assert!(death.preferred);
 
         let mut devent = death.event.clone().unwrap();
         // "2 DATE ABT 15 JAN 2001",

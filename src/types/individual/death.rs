@@ -1,4 +1,4 @@
-use crate::types::{EventDetail, EventTypeCitedFrom, Family, Line};
+use crate::types::{EventDetail, Family, Line};
 
 use winnow::prelude::*;
 
@@ -24,9 +24,7 @@ use winnow::prelude::*;
 pub struct Death {
     pub age: Option<String>,
     pub event: Option<EventDetail>,
-    pub event_type_cited_from: Option<EventTypeCitedFrom>,
     pub family: Option<Family>,
-    pub preferred: bool,
 }
 
 impl Death {
@@ -34,9 +32,7 @@ impl Death {
         let mut death = Death {
             age: None,
             event: None,
-            event_type_cited_from: None,
             family: None,
-            preferred: false,
         };
 
         let line = Line::parse(record).unwrap();
