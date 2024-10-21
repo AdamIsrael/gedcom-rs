@@ -53,18 +53,14 @@ impl Christening {
                     events.push(line.to_string());
                 }
             }
-            // line = Line::parse(record).unwrap();
-
             Line::parse(record).unwrap();
         }
 
         // Now parse the events
         if !events.is_empty() {
             // Remove the last line; it belongs to the next record
-            // println!("DELETE: {:?}", events.pop());
             let event = events.join("\n");
             let mut event_str = event.as_str();
-            // println!("parsing --\n{}", event_str);
             christening.event = IndividualEventDetail::parse(&mut event_str).unwrap();
         }
 
@@ -147,15 +143,8 @@ mod tests {
         assert!(event.detail.cause.is_some());
         assert!(event.detail.cause.unwrap() == "Conception");
 
-        // assert!(christening.event_type_cited_from.is_some());
-        // let event_type = christening.event_type_cited_from.unwrap();
-        // assert!(event_type.r#type.unwrap() == "BIRT");
-        // assert!(event_type.role.unwrap() == "CHIL");
-
         assert!(event.detail.note.is_some());
         assert!(event.detail.note.unwrap() == "Some notes.");
-
-        // assert!(place.name.unwrap() == "");
 
         assert!(event.detail.media.len() == 1);
         let obje = event.detail.media.pop().unwrap();
