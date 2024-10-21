@@ -1,5 +1,8 @@
 use crate::types::{Family, Line};
 
+use winnow::error::ErrMode;
+use winnow::error::ErrorKind;
+use winnow::error::ParserError;
 use winnow::prelude::*;
 
 use super::IndividualEventDetail;
@@ -23,6 +26,12 @@ impl Adoption {
         };
 
         let line = Line::parse(record).unwrap();
+
+        // Make sure we have an ADOP record to start with!
+        if line.tag != "ADOP" {
+            return Err(ErrMode::from_error_kind(record, ErrorKind::Verify));
+        }
+
         let level = line.level;
         let mut events: Vec<String> = vec![];
 
@@ -50,19 +59,16 @@ impl Adoption {
                     events.push(line.to_string());
                 }
             }
-            // line = Line::parse(record).unwrap();
             if consume {
                 Line::parse(record).unwrap();
             }
         }
 
-        // Now parse the events
+        // Now parse the Individual Event Detail
         if !events.is_empty() {
             // Remove the last line; it belongs to the next record
-            // println!("DELETE: {:?}", events.pop());
             let event = events.join("\n");
             let mut event_str = event.as_str();
-            // println!("parsing --\n{}", event_str);
             adoption.event = IndividualEventDetail::parse(&mut event_str).unwrap();
         }
 
@@ -75,9 +81,8 @@ mod tests {
     use super::*;
 
     #[test]
-    /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
-    /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
-    fn parse_adoption() {
+    // Parse a Individual Event Detail that's not part of an ADOP record
+    fn parse_nonadoption() {
         let data = vec![
             "1 BIRT",
             "2 TYPE Normal",
@@ -120,47 +125,53 @@ mod tests {
         ].join("\n");
 
         let mut record = data.as_str();
+
+        let adoption = Adoption::parse(&mut record);
+        assert!(adoption.is_err());
+    }
+
+    #[test]
+    fn parse_adoption() {
+        let data = vec![
+            // TODO: Make this adoption record be full-featured
+            "1 ADOP",
+            "2 AGE 0y",
+            "2 AGNC none",
+            "2 DATE BEF 31 DEC 1997",
+            "2 PLAC The place",
+            "2 TYPE ADOP",
+            "2 SOUR @S1@",
+            "3 PAGE 42",
+            "3 DATA",
+            "4 DATE 31 DEC 1900",
+            "4 TEXT Some adoption source text.",
+            "3 QUAY 3",
+            "3 NOTE An adoption source note.",
+            "2 NOTE Adoption event note (pertaining to creation of a child-parent relationship that does",
+            "3 CONC not exist biologically).",
+            "2 FAMC @F3@",
+            "3 ADOP BOTH",
+        ].join("\n");
+
+        let mut record = data.as_str();
         let adoption = Adoption::parse(&mut record).unwrap();
 
-        let mut event = adoption.event;
+        let event = adoption.event;
+        assert!(event.age == Some("0y".to_string()));
+
         assert!(event.detail.date.is_some());
         assert!(event.detail.r#type.is_some());
 
         let place = event.detail.place.unwrap();
         assert!(place.name.is_some());
-        assert!(place.note.is_some());
-        assert!(place.note.unwrap().note.unwrap() == "Some place notes.");
-
-        let addr = event.detail.address.unwrap();
-        assert!(addr.addr1.is_some());
-        assert!(addr.city.is_some());
-        assert!(addr.state.is_some());
 
         assert!(event.detail.agency.is_some());
         assert!(event.detail.agency.unwrap() == "none");
-
-        assert!(event.detail.religion.is_some());
-        assert!(event.detail.religion.unwrap() == "Religion");
-
-        assert!(event.detail.cause.is_some());
-        assert!(event.detail.cause.unwrap() == "Conception");
-
-        // assert!(adoption.event_type_cited_from.is_some());
-        // let event_type = adoption.event_type_cited_from.unwrap();
-        // assert!(event_type.r#type.unwrap() == "BIRT");
-        // assert!(event_type.role.unwrap() == "CHIL");
-
         assert!(event.detail.note.is_some());
-        assert!(event.detail.note.unwrap() == "Some notes.");
 
-        // assert!(place.name.unwrap() == "");
-
-        assert!(event.detail.media.len() == 1);
-        let obje = event.detail.media.pop().unwrap();
-        assert!(obje.xref == Some("@M15@".to_string()));
-
+        assert!(event.age.is_some());
         assert!(event.age.unwrap() == "0y");
 
-        assert!(adoption.family.unwrap().xref == "@F2@");
+        assert!(adoption.family.unwrap().xref == "@F3@");
     }
 }
