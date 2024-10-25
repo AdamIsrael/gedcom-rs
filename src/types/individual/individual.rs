@@ -10,7 +10,8 @@ use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residenc
 // +1 <<PERSONAL_NAME_STRUCTURE>>
 // +1 SEX <SEX_VALUE>
 // +1 <<INDIVIDUAL_EVENT_STRUCTURE>>
-// +1 <<INDIVIDUAL_ATTRIBUTE_STRUCTURE>> +1 <<LDS_INDIVIDUAL_ORDINANCE>>
+// +1 <<INDIVIDUAL_ATTRIBUTE_STRUCTURE>>
+// +1 <<LDS_INDIVIDUAL_ORDINANCE>>
 // +1 <<CHILD_TO_FAMILY_LINK>>
 // +1 <<SPOUSE_TO_FAMILY_LINK>>
 // +1 SUBM @<XREF:SUBM>@
@@ -18,9 +19,11 @@ use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residenc
 // +1 ALIA @<XREF:INDI>@
 // +1 ANCI @<XREF:SUBM>@
 // +1 DESI @<XREF:SUBM>@
-// +1 RFN <PERMANENT_RECORD_FILE_NUMBER> +1 AFN <ANCESTRAL_FILE_NUMBER>
+// +1 RFN <PERMANENT_RECORD_FILE_NUMBER>
+// +1 AFN <ANCESTRAL_FILE_NUMBER>
 // +1 REFN <USER_REFERENCE_NUMBER>
-// +2 TYPE <USER_REFERENCE_TYPE> +1 RIN <AUTOMATED_RECORD_ID>
+// +2 TYPE <USER_REFERENCE_TYPE>
+// +1 RIN <AUTOMATED_RECORD_ID>
 // +1 <<CHANGE_DATE>>
 // +1 <<NOTE_STRUCTURE>>
 // +1 <<SOURCE_CITATION>> +1 <<MULTIMEDIA_LINK>>
@@ -43,6 +46,9 @@ pub struct Individual {
 
     pub burial: Vec<IndividualEventDetail>,
 
+    /// Census
+    pub census: Vec<IndividualEventDetail>,
+
     /// The religious event (not LDS) of baptizing and/or naming a child.
     pub christening: Vec<Christening>,
 
@@ -51,6 +57,9 @@ pub struct Individual {
 
     /// The religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership.
     pub confirmation: Vec<IndividualEventDetail>,
+
+    /// First Communion
+    pub first_communion: Option<IndividualEventDetail>,
 
     pub cremation: Vec<IndividualEventDetail>,
 
@@ -75,6 +84,9 @@ pub struct Individual {
 
     pub probate: Vec<IndividualEventDetail>,
 
+    // RETI: Retirement
+    pub retirement: Vec<IndividualEventDetail>,
+
     pub will: Vec<IndividualEventDetail>,
 
     /// The XRef pointer associated with this individual
@@ -95,6 +107,7 @@ impl Individual {
             barmitzvah: vec![],
             basmitzvah: vec![],
             blessing: vec![],
+            census: vec![],
             christening: vec![],
             christening_adult: vec![],
             confirmation: vec![],
@@ -103,6 +116,7 @@ impl Individual {
             events: vec![],
             famc: vec![],
             fams: vec![],
+            first_communion: None,
             gender: super::Gender::Unknown,
             graduation: vec![],
             immigration: vec![],
@@ -111,6 +125,7 @@ impl Individual {
             naturalization: vec![],
             probate: vec![],
             residences: vec![],
+            retirement: vec![],
             will: vec![],
 
             xref: None,
@@ -127,7 +142,6 @@ impl Individual {
                     individual.xref = Some(line.xref.to_string());
                 }
                 1 => {
-                    // println!("TAG: {}", line.tag);
                     match line.tag {
                         "NAME" => {
                             let pn = PersonalName::parse(record).unwrap();
@@ -207,24 +221,83 @@ impl Individual {
                             individual.confirmation.push(confirmation);
                             parse = false;
                         }
-                        "FCOM" => {}
-                        "GRAD" => {}
-                        "EMIG" => {}
-                        "IMMI" => {}
-                        "NATU" => {}
-                        "CENS" => {}
-                        "RETI" => {}
+                        "FCOM" => {
+                            let first_communion = IndividualEventDetail::parse(record).unwrap();
+                            individual.first_communion = Some(first_communion);
+                            parse = false;
+                        }
+                        "GRAD" => {
+                            let grad = IndividualEventDetail::parse(record).unwrap();
+                            individual.graduation.push(grad);
+                            parse = false;
+                        }
+                        "EMIG" => {
+                            let emig = IndividualEventDetail::parse(record).unwrap();
+                            individual.emigration.push(emig);
+                            parse = false;
+                        }
+                        "IMMI" => {
+                            let immi = IndividualEventDetail::parse(record).unwrap();
+                            individual.immigration.push(immi);
+                            parse = false;
+                        }
+                        "NATU" => {
+                            let natu = IndividualEventDetail::parse(record).unwrap();
+                            individual.naturalization.push(natu);
+                            parse = false;
+                        }
+                        "CENS" => {
+                            let census = IndividualEventDetail::parse(record).unwrap();
+                            individual.census.push(census);
+                            parse = false;
+                        }
+                        "RETI" => {
+                            let reti = IndividualEventDetail::parse(record).unwrap();
+                            individual.retirement.push(reti);
+                            parse = false;
+                        }
                         // probate
-                        "PROB" => {}
-                        "BURI" => {}
-                        "WILL" => {}
-                        "CREM" => {}
+                        "PROB" => {
+                            let probate = IndividualEventDetail::parse(record).unwrap();
+                            individual.probate.push(probate);
+                            parse = false;
+                        }
+                        // burial
+                        "BURI" => {
+                            let burial = IndividualEventDetail::parse(record).unwrap();
+                            individual.burial.push(burial);
+                            parse = false;
+                        }
+                        // Will
+                        "WILL" => {
+                            let will = IndividualEventDetail::parse(record).unwrap();
+                            individual.will.push(will);
+                            parse = false;
+                        }
+                        // Cremation
+                        "CREM" => {
+                            let cremation = IndividualEventDetail::parse(record).unwrap();
+                            individual.cremation.push(cremation);
+                            parse = false;
+                        }
                         // generic event
-                        "EVEN" => {}
+                        "EVEN" => {
+                            let event = IndividualEventDetail::parse(record).unwrap();
+                            individual.events.push(event);
+                            parse = false;
+                        }
                         // residence
-                        "RESI" => {}
+                        "RESI" => {
+                            let residence = Residence::parse(record).unwrap();
+                            individual.residences.push(residence);
+                            parse = false;
+                        }
                         // occupation
-                        "OCCU" => {}
+                        "OCCU" => {
+                            let occupation = IndividualEventDetail::parse(record).unwrap();
+                            individual.events.push(occupation);
+                            parse = false;
+                        }
                         "EDUC" => {}
                         // physical description
                         "DSCR" => {}
@@ -258,9 +331,7 @@ impl Individual {
                         }
                     }
                 }
-                _ => {
-                    // println!("Skipping line: {:?}", line);
-                }
+                _ => {}
             }
             // Consume the line
             if parse {
@@ -288,11 +359,78 @@ pub enum NameType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{AdoptedBy, Quay};
+    use crate::types::{place, AdoptedBy, Quay};
+
+    #[test]
+    fn parse_indi_baptism() {
+        let data: Vec<&str> = vec![
+            "1 BAPS",
+            "2 DATE ABT 31 DEC 1997",
+            "2 PLAC The place",
+            "2 AGE 3m",
+            "2 TYPE BAPM",
+            "2 ADDR",
+            "3 ADR1 Church Name",
+            "3 ADR2 Street Address",
+            "3 CITY City Name",
+            "3 POST zip",
+            "3 CTRY Country",
+            "2 CAUS Birth",
+            "2 AGNC The Church",
+            "2 OBJE @M8@",
+            "2 SOUR @S1@",
+            "3 PAGE 42",
+            "3 DATA",
+            "4 DATE 31 DEC 1900",
+            "4 TEXT Sample baptism Source text.",
+            "3 QUAY 3",
+            "3 NOTE A baptism source note.",
+            "2 NOTE A baptism event note (the event of baptism (not LDS), performed in infancy or later. See also BAPL and CHR).",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let baptism = IndividualEventDetail::parse(&mut record).unwrap();
+        let detail = baptism.detail;
+
+        assert!(detail.date.is_some());
+        assert!(detail.date.unwrap() == "ABT 31 DEC 1997");
+
+        assert!(detail.place.is_some());
+        let place = detail.place.unwrap();
+        assert!(place.name.is_some());
+        assert!(place.name.unwrap() == "The place");
+
+        assert!(detail.address.is_some());
+        let addr = detail.address.unwrap();
+        assert!(addr.addr1.is_some());
+        assert!(addr.addr1.unwrap() == "Church Name");
+        assert!(addr.addr2.is_some());
+        assert!(addr.addr2.unwrap() == "Street Address");
+        assert!(addr.city.is_some());
+        assert!(addr.city.unwrap() == "City Name");
+        assert!(addr.postal_code.is_some());
+        assert!(addr.postal_code.unwrap() == "zip");
+        assert!(addr.country.is_some());
+        assert!(addr.country.unwrap() == "Country");
+
+        assert!(detail.cause.is_some());
+        assert!(detail.cause.unwrap() == "Birth");
+
+        assert!(detail.agency.is_some());
+        assert!(detail.agency.unwrap() == "The Church");
+
+        assert!(detail.media.len() == 1);
+
+        assert!(detail.sources.len() == 1);
+
+        assert!(detail.note.is_some());
+        assert!(detail.note.unwrap().starts_with("A baptism event note"));
+    }
 
     #[test]
     fn parse_indi_complete() {
-        let data = vec![
+        let data: Vec<&str> = vec![
             "0 @I1@ INDI",
             "1 NAME Joseph Tag /Torture/",
             "2 TYPE birth",
@@ -928,8 +1066,6 @@ mod tests {
         let mut record = buffer.as_str();
         let mut indi = Individual::parse(&mut record);
 
-        // println!("Names: {}", indi.names.len());
-
         assert_eq!(2, indi.names.len());
         assert_eq!(Some("@I1@".to_string()), indi.xref);
 
@@ -1428,5 +1564,8 @@ mod tests {
 
         // "2 NOTE CONFIRMATION event note (the religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership).",
         assert!(confirmation.detail.note.unwrap() == "CONFIRMATION event note (the religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership).");
+
+        // First Communion
+        assert!(indi.first_communion.is_some());
     }
 }

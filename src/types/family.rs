@@ -2,10 +2,8 @@ use std::str::FromStr;
 
 use crate::{
     parse,
-    types::{AdoptedBy, Line, Note, Pedigree},
+    types::{AdoptedBy, Line, Note, Pedigree, Spouse},
 };
-
-// use super::pedigree;
 
 // TODO: implement full parsing of the family record
 // TODO: Need to create a trait? to find_by_xref that can be used in these
@@ -34,6 +32,10 @@ use crate::{
 /// The Family structure
 pub struct Family {
     pub adopted_by: Option<AdoptedBy>,
+
+    pub husband: Option<Spouse>,
+    pub wife: Option<Spouse>,
+
     pub xref: String,
     pub notes: Vec<Note>,
     pub pedigree: Option<Pedigree>,
@@ -43,6 +45,8 @@ impl Family {
     pub fn parse(record: &mut &str) -> Family {
         let mut family = Family {
             adopted_by: None,
+            husband: None,
+            wife: None,
             xref: "".to_string(),
             notes: vec![],
             pedigree: None,

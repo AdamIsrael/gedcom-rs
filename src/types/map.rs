@@ -10,7 +10,7 @@ use winnow::prelude::*;
 // +2 LATI <PLACE_LATITUDE> {1:1} p.58
 // +2 LONG <PLACE_LONGITUDE>
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Map {
     pub latitude: f64,
     pub longitude: f64,

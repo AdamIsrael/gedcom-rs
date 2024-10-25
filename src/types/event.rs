@@ -1,6 +1,6 @@
 /// This is a template of a Type
 use crate::parse;
-use crate::types::{Address, Line, Object, Place, SourceCitation};
+use crate::types::{Address, Line, Object, Place, SourceCitation, Spouse};
 
 use winnow::prelude::*;
 
@@ -51,22 +51,33 @@ impl EventDetail {
             media: vec![],
         };
 
-        // Parse the first line, i.e., "1 BAPM",
-        let line = Line::parse(record).unwrap();
+        let mut line = Line::peek(record).unwrap();
+
+        // Check if we've received a top-level event tag, which we want to skip over.
+        match line.tag {
+            "ADOP" | "BAPM" | "BARM" | "BASM" | "BIRT" | "BLES" | "BURI" | "CENS" | "CHR"
+            | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "EVEN" | "FCOM" | "GRAD" | "IMMI"
+            | "ORDN" | "PROB" | "NATU" | "RETI" | "WILL" => {
+                // Consume the current line
+                let _ = Line::parse(record);
+                // Get the next line
+                line = Line::peek(record).unwrap();
+            }
+            _ => {}
+        }
+
         let level = line.level;
 
         while !record.is_empty() {
             let mut parse = true;
-            let line = Line::peek(record).unwrap();
-            if line.level <= level {
-                break;
-            }
-
             match line.tag {
                 "ADDR" => {
                     event.address = Some(Address::parse(record).unwrap());
                     parse = false;
                 }
+                // "AGE" => {
+                //     event.age = Some(line.value.to_string());
+                // }
                 "AGNC" => {
                     event.agency = Some(line.value.to_string());
                 }
@@ -101,13 +112,81 @@ impl EventDetail {
                 "TYPE" => {
                     event.r#type = Some(line.value.to_string());
                 }
-                _ => {}
+                _ => {
+                    // TODO: Need to collect and parse these lines. They seem to
+                    // correspond to INDIVIDUAL_ATTRIBUTE_STRUCTURE.
+                    // Not sure _where_ to parse them to, though.
+
+                    // println!("Skipping unknown tag: {}", line.tag);
+                }
             }
 
             if parse {
                 Line::parse(record).unwrap();
             }
+
+            line = Line::peek(record).unwrap();
+            if line.level < level {
+                break;
+            }
         }
+
+        Ok(event)
+    }
+}
+
+// FAMILY_EVENT_DETAIL:=
+// n HUSB
+// +1 AGE <AGE_AT_EVENT>
+// n WIFE
+// +1 AGE <AGE_AT_EVENT>
+// n <<EVENT_DETAIL>>
+
+#[derive(Clone, Debug, Default)]
+pub struct FamilyEventDetail {
+    // Xref of husband
+    pub husband: Option<Spouse>,
+    // Xref of wife
+    pub wife: Option<Spouse>,
+    pub detail: Option<EventDetail>,
+}
+
+impl FamilyEventDetail {
+    pub fn parse(record: &mut &str) -> PResult<FamilyEventDetail> {
+        let mut event = FamilyEventDetail {
+            husband: None,
+            wife: None,
+            detail: None,
+        };
+
+        // TODO: Check the first line for and see if it's a top-level event tag
+
+        let mut events: Vec<String> = vec![];
+
+        while !record.is_empty() {
+            // let mut parse = true;
+            let line = Line::peek(record).unwrap();
+            match line.tag {
+                "HUSB" => {
+                    let spouse = Spouse::parse(record);
+                    if spouse.is_ok() {
+                        event.husband = Some(spouse.unwrap());
+                    }
+                }
+                "WIFE" => {
+                    let spouse = Spouse::parse(record);
+                    if spouse.is_ok() {
+                        event.wife = Some(spouse.unwrap());
+                    }
+                }
+                _ => {
+                    // Store the remaining lines to be parsed as EventDetail
+                    events.push(line.to_string());
+                    let _ = Line::parse(record);
+                }
+            }
+        }
+        event.detail = Some(EventDetail::parse(&mut events.join("\n").as_str()).unwrap());
 
         Ok(event)
     }
@@ -168,7 +247,6 @@ mod tests {
             "1 BAPM",
             "2 DATE ABT 31 DEC 1997",
             "2 PLAC The place",
-            "2 AGE 3m",
             "2 TYPE BAPM",
             "2 ADDR",
             "3 ADR1 Church Name",
@@ -187,26 +265,73 @@ mod tests {
             "3 QUAY 3",
             "3 NOTE A baptism source note.",
             "2 NOTE A baptism event note (the event of baptism (not LDS), performed in infancy or later. See also BAPL and CHR).",
-            "1 CHR",
-            "2 DATE CAL 31 DEC 1997",
-            "2 PLAC The place",
-            "2 TYPE CHR",
-            "2 SOUR @S1@",
-            "3 PAGE 42",
-            "3 DATA",
-            "4 DATE 31 DEC 1900",
-            "4 TEXT Sample CHR Source text.",
-            "3 QUAY 3",
-            "3 NOTE A christening Source note.",
-            "2 NOTE Christening event note (the religious event (not LDS) of baptizing and/or naming a ",
-            "3 CONC child).",
-            "2 FAMC @F3@",
         ].join("\n");
         let mut record = data.as_str();
         let detail = EventDetail::parse(&mut record).unwrap();
 
         assert!(detail.date.is_some());
         assert!(detail.date.unwrap() == "ABT 31 DEC 1997");
+
+        assert!(detail.place.is_some());
+        assert!(detail.place.unwrap().name.unwrap() == "The place");
+        assert!(detail.r#type.is_some());
+        assert!(detail.address.is_some());
+        assert!(detail.agency.is_some());
+        assert!(detail.media.len() == 1);
+        assert!(detail.sources.len() == 1);
+        assert!(detail.note.is_some());
+
+        // assert!(detail.age.is_some());
+    }
+
+    #[test]
+    fn parse_family_event_detail() {
+        let data = vec![
+            "1 MARR",
+            "2 DATE 31 DEC 1997",
+            "2 PLAC The place",
+            "2 TYPE Man and Wife",
+            "2 ADDR",
+            "3 ADR1 A Church",
+            "3 ADR2 Main Street",
+            "3 CTRY USA",
+            "2 CAUS Love",
+            "2 AGNC Catholic Church",
+            "2 HUSB",
+            "3 AGE 42y",
+            "2 WIFE",
+            "3 AGE 42y 6m",
+            "2 OBJE @M8@",
+            "2 SOUR @S1@",
+            "3 PAGE 42",
+            "3 DATA",
+            "4 DATE 31 DEC 1900",
+            "4 TEXT Text from marriage source.",
+            "3 QUAY 3",
+            "3 NOTE A note about the marriage source.",
+            "2 NOTE Marriage event note (a legal, common-law, or customary event of creating a family",
+            "3 CONC unit of a man and a woman as husband and wife).",
+        ].join("\n");
+        let mut record = data.as_str();
+        let event = FamilyEventDetail::parse(&mut record).unwrap();
+        // println!("Event: {:?}", event);
+
+        assert!(event.husband.is_some());
+        let husband = event.husband.unwrap();
+        assert!(husband.age.is_some());
+        assert!(husband.age.unwrap() == "42y");
+
+        assert!(event.wife.is_some());
+        let wife = event.wife.unwrap();
+        assert!(wife.age.is_some());
+        assert!(wife.age.unwrap() == "42y 6m");
+
+        assert!(event.detail.is_some());
+        println!("Detail: {:?}", event.detail);
+        // assert!(event.wife.is_some());
+
+        // assert!(event.detail.date.is_some());
+        // assert!(event.detail.date.unwrap() == "31 DEC 1900");
     }
 
     #[test]

@@ -15,7 +15,7 @@ use winnow::prelude::*;
 // +2 LONG <PLACE_LONGITUDE> {1:1} p.58
 // +1 <<NOTE_STRUCTURE>> {0:M} p.37
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Place {
     pub name: Option<String>,
     pub form: Vec<String>,
@@ -88,7 +88,7 @@ impl Place {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct PlaceVariation {
     pub name: Option<String>,
     pub r#type: Option<String>,

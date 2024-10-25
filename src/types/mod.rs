@@ -20,14 +20,16 @@ mod quay;
 mod source;
 mod source_citation;
 mod sourcedata;
+mod spouse;
 mod submission;
 mod submitter;
+mod xref;
 
 pub use address::*;
 pub use adopted_by::AdoptedBy;
 pub use character_set::CharacterSet;
 pub use datetime::DateTime;
-pub use event::{EventDetail, EventTypeCitedFrom};
+pub use event::{EventDetail, EventTypeCitedFrom, FamilyEventDetail};
 pub use family::Family;
 pub use gedc::{Form, Gedc};
 pub use header::Header;
@@ -42,8 +44,10 @@ pub use quay::Quay;
 pub use source::Source;
 pub use source_citation::SourceCitation;
 pub use sourcedata::SourceData;
+pub use spouse::Spouse;
 pub use submission::Submission;
 pub use submitter::Submitter;
+pub use xref::Xref;
 
 #[derive(Debug, Default)]
 pub struct Gedcom {

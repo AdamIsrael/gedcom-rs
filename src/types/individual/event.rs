@@ -13,6 +13,7 @@ use crate::types::{EventDetail, Line};
 #[derive(Clone, Debug, Default)]
 pub struct IndividualEventDetail {
     pub age: Option<String>,
+
     pub detail: EventDetail,
 }
 
@@ -55,7 +56,21 @@ impl IndividualEventDetail {
             },
         };
 
-        let line = Line::parse(record).unwrap();
+        let mut line = Line::peek(record).unwrap();
+
+        // Check if we've received a top-level event tag, which we want to skip over.
+        match line.tag {
+            "ADOP" | "BAPM" | "BARM" | "BASM" | "BIRT" | "BLES" | "BURI" | "CENS" | "CHR"
+            | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "EVEN" | "FCOM" | "GRAD" | "IMMI"
+            | "ORDN" | "PROB" | "NATU" | "RETI" | "WILL" => {
+                // Consume the line
+                let _ = Line::parse(record);
+                // Get the next line
+                line = Line::peek(record).unwrap();
+            }
+            _ => {}
+        }
+
         let level = line.level;
         let mut events: Vec<String> = vec![];
 
@@ -63,11 +78,6 @@ impl IndividualEventDetail {
         events.push(line.to_string());
 
         while !record.is_empty() {
-            let line = Line::peek(record).unwrap();
-            if line.level <= level {
-                break;
-            }
-
             match line.tag {
                 "AGE" => {
                     event.age = Some(line.value.to_string());
@@ -82,6 +92,11 @@ impl IndividualEventDetail {
                 }
             }
             Line::parse(record).unwrap();
+
+            line = Line::peek(record).unwrap();
+            if line.level < level {
+                break;
+            }
         }
 
         // Now parse the events
@@ -185,6 +200,5 @@ mod tests {
         assert!(detail.media.len() == 1);
         let obje = detail.media.pop().unwrap();
         assert!(obje.xref == Some("@M15@".to_string()));
-
     }
 }
