@@ -12,9 +12,7 @@ pub struct Residence {
 impl Residence {
     // Parse a RESI record
     pub fn parse(record: &mut &str) -> PResult<Residence> {
-        let mut residence = Residence {
-            detail: None,
-        };
+        let mut residence = Residence { detail: None };
 
         let line = Line::peek(record).unwrap();
 
