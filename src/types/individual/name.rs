@@ -59,17 +59,7 @@ pub struct Name {
 }
 impl Name {
     fn parse(record: &mut &str) -> PResult<Name> {
-        let mut name = Name {
-            value: None,
-            given: None,
-            surname: None,
-            nickname: None,
-            prefix: None,
-            suffix: None,
-            surname_prefix: None,
-            note: None,
-            r#type: None,
-        };
+        let mut name = Name::default();
 
         // We're on level two, so parse until we hit another level two?
         // let min_level: i32 = 2;
@@ -85,7 +75,10 @@ impl Name {
         while !record.is_empty() {
             let mut consume = true;
             // line = Line::parse(record).unwrap();
-            line = Line::peek(record).unwrap();
+            let Ok(peek_line) = Line::peek(record) else {
+                break;
+            };
+            line = peek_line;
 
             // (buffer, line) = Line::parse(buffer).unwrap();
             // println!("Name::level = {}, tag = {:?}, value={:?}", line.level, line.tag, line.value);
@@ -109,8 +102,9 @@ impl Name {
                     name.nickname = Some(line.value.to_string());
                 }
                 "NOTE" => {
-                    let note = parse::get_tag_value(record).unwrap();
-                    name.note = Some(Note { note });
+                    if let Ok(note) = parse::get_tag_value(record) {
+                        name.note = Some(Note { note });
+                    }
                     consume = false;
                 }
                 "NPFX" => {
@@ -128,12 +122,15 @@ impl Name {
             }
 
             if consume {
-                Line::parse(record).unwrap();
+                let _ = Line::parse(record);
             }
             // Check if the next line is a new NAME record
             // TODO: a peek_line method so we can check level and tag in one call
             // let (_, line) = Line::parse(buffer).unwrap();
-            line = Line::peek(record).unwrap();
+            let Ok(peek_line) = Line::peek(record) else {
+                break;
+            };
+            line = peek_line;
 
             // let level = parse::peek_level(buffer).unwrap_or(("", 0_u8)).1;
             // // let tag = Some(parse::peek_tag(buffer).unwrap().1);
@@ -218,51 +215,23 @@ pub struct PersonalName {
 
 impl PersonalName {
     pub fn parse(record: &mut &str) -> PResult<PersonalName> {
-        let mut pn = PersonalName {
-            name: Name {
-                value: None,
-                given: None,
-                surname: None,
-                nickname: None,
-                prefix: None,
-                suffix: None,
-                surname_prefix: None,
-                note: None,
-                r#type: None,
-            },
-            romanized: Name {
-                value: None,
-                given: None,
-                surname: None,
-                nickname: None,
-                prefix: None,
-                suffix: None,
-                surname_prefix: None,
-                note: None,
-                r#type: None,
-            },
-            phonetic: Name {
-                value: None,
-                given: None,
-                surname: None,
-                nickname: None,
-                prefix: None,
-                suffix: None,
-                surname_prefix: None,
-                note: None,
-                r#type: None,
-            },
-            r#type: None,
-        };
+        let mut pn = PersonalName::default();
 
         // We're on level one, so parse until we hit another level one?
-        let level = Line::peek(record).unwrap().level;
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(pn);
+        };
+        let level = level_line.level;
 
         // Parse the name out of the record, and switch to a buffer
-        pn.name = Name::parse(record).unwrap();
+        if let Ok(name) = Name::parse(record) {
+            pn.name = name;
+        }
 
         // let mut line = Line::parse(&mut buffer).unwrap();
-        let mut line = Line::peek(record).unwrap();
+        let Ok(mut line) = Line::peek(record) else {
+            return Ok(pn);
+        };
 
         // let (mut buffer, mut line) = Line::parse(buffer).unwrap();
 
@@ -272,25 +241,29 @@ impl PersonalName {
             if line.level == level + 1 {
                 match line.tag {
                     "ROMN" => {
-                        pn.romanized = Name::parse(record).unwrap();
-                        if !line.value.is_empty() {
-                            pn.romanized.value = Some(line.value.to_string());
-                        } else {
-                            println!(
-                                "Romanized value is missing; Level={}, tag={}",
-                                line.level, line.tag
-                            );
+                        if let Ok(romanized) = Name::parse(record) {
+                            pn.romanized = romanized;
+                            if !line.value.is_empty() {
+                                pn.romanized.value = Some(line.value.to_string());
+                            } else {
+                                println!(
+                                    "Romanized value is missing; Level={}, tag={}",
+                                    line.level, line.tag
+                                );
+                            }
                         }
                     }
                     "FONE" => {
-                        pn.phonetic = Name::parse(record).unwrap();
-                        if !line.value.is_empty() {
-                            pn.phonetic.value = Some(line.value.to_string());
-                        } else {
-                            println!(
-                                "Phonetic value is missing; Level={}, tag={}",
-                                line.level, line.tag
-                            );
+                        if let Ok(phonetic) = Name::parse(record) {
+                            pn.phonetic = phonetic;
+                            if !line.value.is_empty() {
+                                pn.phonetic.value = Some(line.value.to_string());
+                            } else {
+                                println!(
+                                    "Phonetic value is missing; Level={}, tag={}",
+                                    line.level, line.tag
+                                );
+                            }
                         }
                     }
                     _ => {
@@ -303,7 +276,10 @@ impl PersonalName {
             } else {
                 // (buffer, line) = Line::parse(buffer).unwrap();
                 // line = Line::parse(record).unwrap();
-                line = Line::peek(record).unwrap();
+                let Ok(peek_line) = Line::peek(record) else {
+                    break;
+                };
+                line = peek_line;
             }
         }
 

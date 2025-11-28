@@ -93,6 +93,23 @@ pub struct Individual {
     pub xref: Option<String>,
 }
 
+// Macro to handle repetitive event parsing with proper error handling
+macro_rules! parse_event {
+    ($record:expr, $field:expr, $parser:ty) => {{
+        if let Ok(event) = <$parser>::parse($record) {
+            $field.push(event);
+        }
+        false
+    }};
+    // Variant for Option fields
+    (option, $record:expr, $field:expr, $parser:ty) => {{
+        if let Ok(event) = <$parser>::parse($record) {
+            $field = Some(event);
+        }
+        false
+    }};
+}
+
 // impl<'a> Individual<'a> {
 impl Individual {
     pub fn parse(record: &mut &str) -> Individual {
@@ -100,7 +117,9 @@ impl Individual {
         let mut individual = Individual::default();
 
         while !record.is_empty() {
-            let line = Line::peek(record).unwrap();
+            let Ok(line) = Line::peek(record) else {
+                break;
+            };
 
             // Flag to track if we should consume the next line in record
             let mut parse = true;
@@ -112,23 +131,19 @@ impl Individual {
                 1 => {
                     match line.tag {
                         "NAME" => {
-                            let pn = PersonalName::parse(record).unwrap();
-                            individual.names.push(pn);
-                            parse = false;
+                            parse = parse_event!(record, individual.names, PersonalName);
                         }
                         "SEX" => {
-                            individual.gender = super::Gender::from_str(line.value).unwrap();
+                            if let Ok(gender) = super::Gender::from_str(line.value) {
+                                individual.gender = gender;
+                            }
                         }
                         "BIRT" => {
-                            let birth = Birth::parse(record).unwrap();
-                            individual.birth.push(birth);
-                            parse = false;
+                            parse = parse_event!(record, individual.birth, Birth);
                         }
                         "DEAT" => {
                             // TODO: Support 1 DEAT Y
-                            let death = Death::parse(record).unwrap();
-                            individual.death.push(death);
-                            parse = false;
+                            parse = parse_event!(record, individual.death, Death);
                         }
                         "FAMS" => {
                             let fam = Family::parse(record);
@@ -142,129 +157,85 @@ impl Individual {
                         }
                         // baptism
                         "BAPM" => {
-                            let baptism = IndividualEventDetail::parse(record).unwrap();
-                            individual.baptism.push(baptism);
-                            parse = false;
+                            parse = parse_event!(record, individual.baptism, IndividualEventDetail);
                         }
                         // christening
                         "CHR" => {
-                            let christening = Christening::parse(record).unwrap();
-                            individual.christening.push(christening);
-                            parse = false;
+                            parse = parse_event!(record, individual.christening, Christening);
                         }
                         // bar mitzvah
                         "BARM" => {
-                            let bar = IndividualEventDetail::parse(record).unwrap();
-                            individual.barmitzvah.push(bar);
-                            parse = false;
+                            parse = parse_event!(record, individual.barmitzvah, IndividualEventDetail);
                         }
                         // bas mitzvah
                         "BASM" => {
-                            let bar = IndividualEventDetail::parse(record).unwrap();
-                            individual.basmitzvah.push(bar);
-                            parse = false;
+                            parse = parse_event!(record, individual.basmitzvah, IndividualEventDetail);
                         }
                         // blessing
                         "BLES" => {
                             // TODO: Need to add tests for this
-                            let blessing = IndividualEventDetail::parse(record).unwrap();
-                            individual.blessing.push(blessing);
-                            parse = false;
+                            parse = parse_event!(record, individual.blessing, IndividualEventDetail);
                         }
                         // Adoption
                         "ADOP" => {
-                            let adoption = Adoption::parse(record).unwrap();
-                            individual.adoption.push(adoption);
-                            parse = false;
+                            parse = parse_event!(record, individual.adoption, Adoption);
                         }
                         // Adult Christening
                         "CHRA" => {
-                            let christening = Christening::parse(record).unwrap();
-                            individual.christening_adult.push(christening);
-                            parse = false;
+                            parse = parse_event!(record, individual.christening_adult, Christening);
                         }
                         // Confirmation
                         "CONF" => {
-                            let confirmation = IndividualEventDetail::parse(record).unwrap();
-                            individual.confirmation.push(confirmation);
-                            parse = false;
+                            parse = parse_event!(record, individual.confirmation, IndividualEventDetail);
                         }
                         "FCOM" => {
-                            let first_communion = IndividualEventDetail::parse(record).unwrap();
-                            individual.first_communion = Some(first_communion);
-                            parse = false;
+                            parse = parse_event!(option, record, individual.first_communion, IndividualEventDetail);
                         }
                         "GRAD" => {
-                            let grad = IndividualEventDetail::parse(record).unwrap();
-                            individual.graduation.push(grad);
-                            parse = false;
+                            parse = parse_event!(record, individual.graduation, IndividualEventDetail);
                         }
                         "EMIG" => {
-                            let emig = IndividualEventDetail::parse(record).unwrap();
-                            individual.emigration.push(emig);
-                            parse = false;
+                            parse = parse_event!(record, individual.emigration, IndividualEventDetail);
                         }
                         "IMMI" => {
-                            let immi = IndividualEventDetail::parse(record).unwrap();
-                            individual.immigration.push(immi);
-                            parse = false;
+                            parse = parse_event!(record, individual.immigration, IndividualEventDetail);
                         }
                         "NATU" => {
-                            let natu = IndividualEventDetail::parse(record).unwrap();
-                            individual.naturalization.push(natu);
-                            parse = false;
+                            parse = parse_event!(record, individual.naturalization, IndividualEventDetail);
                         }
                         "CENS" => {
-                            let census = IndividualEventDetail::parse(record).unwrap();
-                            individual.census.push(census);
-                            parse = false;
+                            parse = parse_event!(record, individual.census, IndividualEventDetail);
                         }
                         "RETI" => {
-                            let reti = IndividualEventDetail::parse(record).unwrap();
-                            individual.retirement.push(reti);
-                            parse = false;
+                            parse = parse_event!(record, individual.retirement, IndividualEventDetail);
                         }
                         // probate
                         "PROB" => {
-                            let probate = IndividualEventDetail::parse(record).unwrap();
-                            individual.probate.push(probate);
-                            parse = false;
+                            parse = parse_event!(record, individual.probate, IndividualEventDetail);
                         }
                         // burial
                         "BURI" => {
-                            let burial = IndividualEventDetail::parse(record).unwrap();
-                            individual.burial.push(burial);
-                            parse = false;
+                            parse = parse_event!(record, individual.burial, IndividualEventDetail);
                         }
                         // Will
                         "WILL" => {
-                            let will = IndividualEventDetail::parse(record).unwrap();
-                            individual.will.push(will);
-                            parse = false;
+                            parse = parse_event!(record, individual.will, IndividualEventDetail);
                         }
                         // Cremation
                         "CREM" => {
-                            let cremation = IndividualEventDetail::parse(record).unwrap();
-                            individual.cremation.push(cremation);
-                            parse = false;
+                            parse = parse_event!(record, individual.cremation, IndividualEventDetail);
                         }
                         // generic event
                         "EVEN" => {
-                            let event = IndividualEventDetail::parse(record).unwrap();
-                            individual.events.push(event);
-                            parse = false;
+                            parse = parse_event!(record, individual.events, IndividualEventDetail);
                         }
                         // residence
                         "RESI" => {
-                            let residence = Residence::parse(record).unwrap();
-                            individual.residences.push(residence);
-                            parse = false;
+                            parse = parse_event!(record, individual.residences, Residence);
                         }
                         // occupation
                         "OCCU" => {
-                            let occupation = IndividualEventDetail::parse(record).unwrap();
-                            individual.events.push(occupation);
-                            parse = false;
+                            parse = parse_event!(record, individual.events, IndividualEventDetail);
                         }
                         "EDUC" => {}
                         // physical description
@@ -303,7 +274,7 @@ impl Individual {
             }
             // Consume the line
             if parse {
-                Line::parse(record).unwrap();
+                let _ = Line::parse(record);
             }
         }
 
