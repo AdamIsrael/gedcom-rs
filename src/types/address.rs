@@ -20,32 +20,18 @@ pub struct Address {
 
 impl Address {
     pub fn parse(buffer: &mut &str) -> PResult<Address> {
-        let mut address = Address {
-            addr1: None,
-            addr2: None,
-            addr3: None,
-            city: None,
-            state: None,
-            postal_code: None,
-            country: None,
-            phone: vec![],
-            email: vec![],
-            fax: vec![],
-            www: vec![],
-        };
+        let mut address = Address::default();
 
-        let mut line = Line::peek(buffer).unwrap();
+        let line = Line::peek(buffer)?;
         let min_level = line.level;
 
         // Only iterate through the ADDR records
+        let mut line = Line::peek(buffer)?;
         while line.level >= min_level {
-            line = Line::peek(buffer).unwrap();
-
             let mut consume = true;
             match line.tag {
                 "ADDR" => {
-                    address.addr1 = parse::get_tag_value(buffer).unwrap();
-                    // println!("Input after get_tag_value: \n'{}'", buffer);
+                    address.addr1 = parse::get_tag_value(buffer)?;
                     consume = false;
                 }
                 "ADR1" => {
@@ -88,16 +74,12 @@ impl Address {
                     break;
                 }
             }
-            // println!("Buffer before: {}", buffer.len());
             if consume {
-                Line::parse(buffer).unwrap();
+                Line::parse(buffer)?;
             }
-            // println!("Buffer after: {}", buffer.len());
-            // (buffer, _) = Line::parse(buffer).unwrap();
 
             // Grab the next line, if there is one, or short-circuit the loop
-            line = Line::peek(buffer).unwrap();
-            // (_, line) = Line::peek(buffer).unwrap();
+            line = Line::peek(buffer)?;
         }
         Ok(address)
     }

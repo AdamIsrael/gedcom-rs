@@ -9,14 +9,14 @@ use std::path::Path;
 
 use winnow::prelude::*;
 
-/// This is pretty much a kludge to strip out U+FEFF, a Zero Width No-Break Space
-/// https://www.compart.com/en/unicode/U+FEFF
-///
-/// So far, I've only seen this with one GEDCOM, as the starting byte.
+// This is pretty much a kludge to strip out U+FEFF, a Zero Width No-Break Space
+// https://www.compart.com/en/unicode/U+FEFF
+//
+// So far, I've only seen this with one GEDCOM, as the starting byte.
 // pub fn zero_with_no_break_space(input: &mut &str) -> PResult<&str> {
 //     if input.starts_with('\u{FEFF}') {
 //         let parser = tag("\u{FEFF}");
-
+//
 //         parser.parse_next(input)
 //     } else {
 //         Ok("")
@@ -25,32 +25,32 @@ use winnow::prelude::*;
 
 /// Read the next tag's value and any continuations
 pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
-    let mut line = Line::parse(input).unwrap();
+    let mut line = Line::parse(input)?;
 
     // Seed the value with the initial value
     let mut text: String = line.value.to_string();
 
-    line = Line::peek(input).unwrap();
+    line = Line::peek(input)?;
     while line.tag == "CONC" || line.tag == "CONT" {
         // consume
-        line = Line::parse(input).unwrap();
+        line = Line::parse(input)?;
 
         if line.tag == "CONT" {
-            text += "\n";
+            text.push('\n');
         }
-        text += line.value;
+        text.push_str(line.value);
 
         // peek ahead
-        line = Line::peek(input).unwrap();
+        line = Line::peek(input)?;
     }
 
     Ok(Some(text))
 }
 
-/// Parse the buffer if the CONC tag is found and return the resulting string.
+// Parse the buffer if the CONC tag is found and return the resulting string.
 // pub fn conc(input: &mut &str) -> PResult<Option<String>> {
 //     let line = Line::parse(input).unwrap();
-
+//
 //     if line.tag == "CONC" {
 //         Ok(Some(line.value.to_string()))
 //     } else {
@@ -58,11 +58,11 @@ pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
 //     }
 // }
 
-/// Parse the buffer if the CONT tag is found and return the resulting string.
-/// TODO: Refactor this. It should handle CONT and CONC.
+// Parse the buffer if the CONT tag is found and return the resulting string.
+// TODO: Refactor this. It should handle CONT and CONC.
 // pub fn cont(input: &mut &str) -> PResult<Option<String>> {
 //     let line = Line::parse(input).unwrap();
-
+//
 //     if line.tag == "CONT" {
 //         Ok(Some(line.value.to_string()))
 //     } else {
@@ -72,23 +72,10 @@ pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
 
 /// Parse a GEDCOM file
 pub fn parse_gedcom(filename: &str) -> Gedcom {
-    // Initialize an empty gedcom
+    // Initialize an empty gedcom with pre-allocated capacity
     let mut gedcom = Gedcom {
-        header: Header {
-            character_set: None,
-            copyright: None,
-            date: None,
-            destination: None,
-            gedcom_version: None,
-            language: None,
-            filename: None,
-            note: None,
-            place: None,
-            source: None,
-            submitter: None,
-            submission: None,
-        },
-        individuals: vec![],
+        header: Header::default(),
+        individuals: Vec::with_capacity(100), // Pre-allocate for typical genealogy files
     };
 
     if let Ok(lines) = read_lines(filename) {
@@ -101,7 +88,7 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
         // This is kind of like a buffered read, specific to the GEDCOM format
         // We read into the buffer until we hit a new record, and then parse that
         // record into a struct.
-        let mut record: String = String::new();
+        let mut record = String::with_capacity(1024); // Pre-allocate to reduce reallocations
 
         // Use `map_while` because we could loop on an Err value
         for mut buffer in lines.map_while(Result::ok) {
@@ -109,8 +96,6 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
             if buffer.strip_prefix('\u{FEFF}').is_some() {
                 buffer.remove(0);
             }
-            // println!("Buffer: \n'{}'", buffer);
-            // record = buffer.clone() + "\n";
 
             if let Some(ch) = buffer.chars().next() {
                 if ch == '0' && !record.is_empty() {
@@ -118,43 +103,37 @@ pub fn parse_gedcom(filename: &str) -> Gedcom {
 
                     // Peek at the first line in the record so we know how
                     // to parse it.
-                    let line = Line::peek(&mut input).unwrap();
-                    // println!("Got a line: {:?}", line);
-                    match line.tag {
-                        "HEAD" => {
-                            // println!("Parsing HEAD: \n{}", input);
-                            gedcom.header = Header::parse(input.to_string());
-                        }
-                        "INDI" => {
-                            let indi = Individual::parse(&mut input);
-                            // TODO: Remove the if. This is just to clean up the output for debugging.
-                            // if indi.xref.clone().unwrap() == "@I1@" {
-                            gedcom.individuals.push(indi);
-                            // }
-                        }
-                        "SOUR" => {}
-                        "REPO" => {}
-                        "OBJE" => {
-                            // let obj = Object::parse(buff);
-                            // println!("{:?}", obj);
-                        }
-                        "FAM" => {}
-                        "SUBM" => {
-                            // // The record of the submitter of the family tree
-                            // // Not always present (it exists in complete.ged)
-                            if let Some(ref subm) = gedcom.header.submitter {
-                                if let Some(xref) = &subm.xref {
-                                    gedcom.header.submitter =
-                                        Submitter::find_by_xref(input, xref.to_string());
+                    if let Ok(line) = Line::peek(&mut input) {
+                        match line.tag {
+                            "HEAD" => {
+                                gedcom.header = Header::parse(input.to_string());
+                            }
+                            "INDI" => {
+                                let indi = Individual::parse(&mut input);
+                                gedcom.individuals.push(indi);
+                            }
+                            "SOUR" => {}
+                            "REPO" => {}
+                            "OBJE" => {}
+                            "FAM" => {}
+                            "SUBM" => {
+                                // The record of the submitter of the family tree
+                                // Not always present (it exists in complete.ged)
+                                if let Some(ref subm) = gedcom.header.submitter {
+                                    if let Some(xref) = &subm.xref {
+                                        gedcom.header.submitter =
+                                            Submitter::find_by_xref(input, xref.to_string());
+                                    }
                                 }
                             }
+                            _ => {}
                         }
-                        _ => {}
-                    };
+                    }
 
                     record.clear();
                 }
-                record = record + &buffer.clone() + "\n";
+                record.push_str(&buffer);
+                record.push('\n');
             }
         }
         // TODO: families

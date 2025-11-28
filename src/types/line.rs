@@ -10,7 +10,7 @@ use winnow::token::{literal, take_till};
 
 /// A GEDCOM line
 /// level + delim (space) + [optional_xref_ID] + tag + [optional_line_value] + terminator
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Default)]
 pub struct Line<'a> {
     pub level: u8,
     pub xref: &'a str,
@@ -143,10 +143,10 @@ impl<'b> Line<'b> {
             .parse_next(input)
     }
 
-    /// Parse a number from the string, but return it as an actual Rust number, not a string.
+    // Parse a number from the string, but return it as an actual Rust number, not a string.
     // fn peek_level<'s>(input: &mut &'s str) -> PResult<u8> {
     //     let start = input.checkpoint();
-
+    //
     //     let level = Self::level(input).unwrap();
     //     input.reset(start);
     //     Ok(level)

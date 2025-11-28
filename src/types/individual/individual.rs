@@ -97,39 +97,7 @@ pub struct Individual {
 impl Individual {
     pub fn parse(record: &mut &str) -> Individual {
         // pub fn parse(mut record: String) -> Individual {
-        let mut individual = Individual {
-            // sources: vec![],
-            adoption: vec![],
-            birth: vec![],
-            burial: vec![],
-            death: vec![],
-            baptism: vec![],
-            barmitzvah: vec![],
-            basmitzvah: vec![],
-            blessing: vec![],
-            census: vec![],
-            christening: vec![],
-            christening_adult: vec![],
-            confirmation: vec![],
-            cremation: vec![],
-            emigration: vec![],
-            events: vec![],
-            famc: vec![],
-            fams: vec![],
-            first_communion: None,
-            gender: super::Gender::Unknown,
-            graduation: vec![],
-            immigration: vec![],
-            names: vec![],
-
-            naturalization: vec![],
-            probate: vec![],
-            residences: vec![],
-            retirement: vec![],
-            will: vec![],
-
-            xref: None,
-        };
+        let mut individual = Individual::default();
 
         while !record.is_empty() {
             let line = Line::peek(record).unwrap();
@@ -359,7 +327,7 @@ pub enum NameType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{place, AdoptedBy, Quay};
+    use crate::types::{AdoptedBy, Quay};
 
     #[test]
     fn parse_indi_baptism() {

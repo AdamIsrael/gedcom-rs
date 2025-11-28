@@ -168,15 +168,13 @@ impl FamilyEventDetail {
             let line = Line::peek(record).unwrap();
             match line.tag {
                 "HUSB" => {
-                    let spouse = Spouse::parse(record);
-                    if spouse.is_ok() {
-                        event.husband = Some(spouse.unwrap());
+                    if let Ok(spouse) = Spouse::parse(record) {
+                        event.husband = Some(spouse);
                     }
                 }
                 "WIFE" => {
-                    let spouse = Spouse::parse(record);
-                    if spouse.is_ok() {
-                        event.wife = Some(spouse.unwrap());
+                    if let Ok(spouse) = Spouse::parse(record) {
+                        event.wife = Some(spouse);
                     }
                 }
                 _ => {

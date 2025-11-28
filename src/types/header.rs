@@ -57,45 +57,27 @@ pub struct Header {
 
 impl Header {
     pub fn parse(mut record: String) -> Header {
-        let mut header = Header {
-            character_set: None,
-            copyright: None,
-            // corporation: None,
-            date: None,
-            destination: None,
-            gedcom_version: None,
-            language: None,
-            filename: None,
-            note: None,
-            place: None,
-            source: None,
-            submitter: None,
-            submission: None,
-        };
+        let mut header = Header::default();
 
         // do parser stuff here
         while !record.is_empty() {
             let mut buffer: &str = record.as_str();
-            let line = Line::peek(&mut buffer).unwrap();
+            let line = Line::peek(&mut buffer).unwrap_or_default();
 
             // Inspect the top-level tags only.
             if line.level == 0 && line.tag == "HEAD" {
                 // Consume the line
-                // println!("Consuming HEAD");
-                // (buffer, _) = Line::parse(&record).unwrap();
-                Line::parse(&mut buffer).unwrap();
+                let _ = Line::parse(&mut buffer);
             } else if line.level == 1 {
                 match line.tag {
                     "CHAR" => {
                         (buffer, header.character_set) = CharacterSet::parse(&record);
                     }
                     "COPR" => {
-                        header.copyright = parse::get_tag_value(&mut buffer).unwrap();
+                        if let Ok(copyright) = parse::get_tag_value(&mut buffer) {
+                            header.copyright = copyright;
+                        }
                     }
-                    // "CORP" => {
-                    //     println!("parsing CORP");
-                    //     (buffer, header.corporation) = corporation::Corporation::parse(&record);
-                    // }
                     "DATE" => {
                         // We're doing lazy parsing of the date, because parsing
                         // date strings is hard. For now.
@@ -103,30 +85,25 @@ impl Header {
                     }
                     "DEST" => {
                         header.destination = Some(line.value.to_string());
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "FILE" => {
                         header.filename = Some(line.value.to_string());
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "GEDC" => {
                         (buffer, header.gedcom_version) = Gedc::parse(&record);
                     }
                     "LANG" => {
                         header.language = Some(line.value.to_string());
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "NOTE" => {
                         // This is just parsing the value of a line, and any
-                        // CONC/CONT that follows. Rewrite
-                        header.note = parse::get_tag_value(&mut buffer).unwrap();
-                        // (buffer, header.note) = parse::get_tag_value(&record).unwrap();
-                        // let note: Option<Note>;
-                        // (buffer, note) = Note::parse(&record);
-                        // header.note = note;
+                        // CONC/CONT that follows.
+                        if let Ok(note) = parse::get_tag_value(&mut buffer) {
+                            header.note = note;
+                        }
                     }
                     "PLAC" => {
                         if let Ok(place) = Place::parse(&mut buffer) {
@@ -143,14 +120,11 @@ impl Header {
                         (buffer, header.submission) = Submission::parse(&record);
                     }
                     _ => {
-                        // println!("Unhandled header tag: {}", line.tag);
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                 };
             } else {
-                // (buffer, _) = Line::parse(&record).unwrap();
-                Line::parse(&mut buffer).unwrap();
+                let _ = Line::parse(&mut buffer);
             }
 
             record = buffer.to_string();
