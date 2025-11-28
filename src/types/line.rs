@@ -75,21 +75,21 @@ impl<'b> Line<'b> {
 
                     let is_eol = Self::peek_eol(input)?;
                     if is_eol {
-                        Self::eol(input).unwrap();
+                        Self::eol(input)?;
                     } else {
-                        Self::delim(input).unwrap();
+                        Self::delim(input)?;
                         line.value = Self::value(input)?;
 
                         let is_eol = Self::peek_eol(input)?;
                         if is_eol {
-                            Self::eol(input).unwrap();
+                            Self::eol(input)?;
                         }
                     }
                 }
                 Err(e) => {
                     println!("Err: {}", e);
                     println!("Error parsing line: '{}'", input);
-                    Self::eol(input).unwrap();
+                    let _ = Self::eol(input);
                     /*
                     There's a case where a line is simply the extension of the
                     previous line because of an embedded newline. This is common
@@ -126,7 +126,7 @@ impl<'b> Line<'b> {
     /// Peek ahead at the next line without consuming it.
     pub fn peek(input: &mut &'b str) -> PResult<Line<'b>> {
         let start = input.checkpoint();
-        let line = Line::parse(input).unwrap();
+        let line = Line::parse(input)?;
 
         input.reset(start);
         Ok(line)
@@ -238,6 +238,7 @@ impl<'b> Line<'b> {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

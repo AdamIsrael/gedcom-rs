@@ -32,6 +32,7 @@ fn usage(msg: &str) {
     std::process::exit(0x0100);
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

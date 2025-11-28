@@ -24,6 +24,7 @@ impl FromStr for Gender {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::Gender;

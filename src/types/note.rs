@@ -14,12 +14,13 @@ impl Note {
     pub fn parse(buffer: &mut &str) -> PResult<Note> {
         let mut note = Note { note: None };
 
-        note.note = parse::get_tag_value(buffer).unwrap();
+        note.note = parse::get_tag_value(buffer)?;
 
         Ok(note)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::Note;

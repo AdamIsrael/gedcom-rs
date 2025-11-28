@@ -21,7 +21,7 @@ impl Christening {
             family: None,
         };
 
-        let line = Line::parse(record).unwrap();
+        let line = Line::parse(record)?;
         let level = line.level;
         let mut events: Vec<String> = vec![];
 
@@ -29,7 +29,7 @@ impl Christening {
         events.push(line.to_string());
 
         while !record.is_empty() {
-            let line = Line::peek(record).unwrap();
+            let line = Line::peek(record)?;
             if line.level <= level {
                 break;
             }
@@ -55,7 +55,7 @@ impl Christening {
                     events.push(line.to_string());
                 }
             }
-            Line::parse(record).unwrap();
+            Line::parse(record)?;
         }
 
         // Now parse the events
@@ -63,13 +63,14 @@ impl Christening {
             // Remove the last line; it belongs to the next record
             let event = events.join("\n");
             let mut event_str = event.as_str();
-            christening.event = IndividualEventDetail::parse(&mut event_str).unwrap();
+            christening.event = IndividualEventDetail::parse(&mut event_str)?;
         }
 
         Ok(christening)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

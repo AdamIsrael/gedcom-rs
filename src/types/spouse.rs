@@ -36,11 +36,11 @@ impl Spouse {
                 "AGE" => {
                     spouse.age = Some(line.value.to_string());
                     // Consume the line
-                    let _ = Line::parse(record).unwrap();
+                    let _ = Line::parse(record);
                 }
                 _ => {
                     // Consume the line
-                    let _ = Line::parse(record).unwrap();
+                    let _ = Line::parse(record);
                     break;
                 }
             }
@@ -57,6 +57,7 @@ impl Spouse {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

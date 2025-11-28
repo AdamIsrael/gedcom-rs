@@ -41,30 +41,31 @@ pub struct Source {
 impl Source {
     /// Parse a SOUR record
     pub fn parse(mut buffer: &str) -> (&str, Option<Source>) {
-        let mut source = Source {
-            corporation: None,
-            data: None,
-            name: None,
-            source: "".to_string(),
-            version: None,
+        let mut source = Source::default();
+        
+        let Ok(line) = Line::peek(&mut buffer) else {
+            return (buffer, Some(source));
         };
-        let mut line: Line;
-
-        line = Line::peek(&mut buffer).unwrap();
 
         // Verify we have a SOUR record
         if line.level == 1 && line.tag == "SOUR" {
             // Consume the first line
-            line = Line::parse(&mut buffer).unwrap();
+            let Ok(line) = Line::parse(&mut buffer) else {
+                return (buffer, Some(source));
+            };
 
             source.source = line.value.to_string();
 
-            let mut next = Line::peek(&mut buffer).unwrap();
+            let Ok(mut next) = Line::peek(&mut buffer) else {
+                return (buffer, Some(source));
+            };
 
             while next.level >= line.level {
                 // We don't want to consume the line yet because we may need
                 // the original for a parser.
-                let inner_line: Line = Line::peek(&mut buffer).unwrap();
+                let Ok(inner_line) = Line::peek(&mut buffer) else {
+                    break;
+                };
 
                 // println!("Evaluating tag: {:?}", inner_line.tag);
                 match inner_line.tag {
@@ -76,18 +77,18 @@ impl Source {
                         // but is probably not useful for anything
                         println!("Skipping _TREE");
                         // Consume the line
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "CORP" => {
                         (buffer, source.corporation) = Corporation::parse(buffer);
                     }
                     "NAME" => {
                         source.name = Some(inner_line.value.to_string());
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "VERS" => {
                         source.version = Some(inner_line.value.to_string());
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "DATA" => {
                         (buffer, source.data) = SourceData::parse(buffer);
@@ -96,13 +97,16 @@ impl Source {
                         println!("Unknown line: {:?}", inner_line);
 
                         // consume the line so we can parse the next
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                 }
 
                 // Peek at the next level
                 if !buffer.is_empty() {
-                    next = Line::peek(&mut buffer).unwrap();
+                    let Ok(n) = Line::peek(&mut buffer) else {
+                        break;
+                    };
+                    next = n;
                     if next.level <= 1 {
                         break;
                     }
@@ -116,6 +120,7 @@ impl Source {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::types::DateTime;

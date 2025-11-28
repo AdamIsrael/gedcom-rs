@@ -33,16 +33,11 @@ impl Submitter {
         // println!("find_by_xref::buffer: {:?}", buffer);
         let mut submitter = Submitter {
             xref: Some(xref),
-            name: None,
-            address: None,
-            media: vec![],
-            lang: vec![],
-            rfn: None,
-            rin: None,
-            note: None,
-            change_date: None,
+            ..Default::default()
         };
-        let mut line = Line::peek(&mut buffer).unwrap();
+        let Ok(mut line) = Line::peek(&mut buffer) else {
+            return Some(submitter);
+        };
 
         while !buffer.is_empty() {
             // this is only going to match one line. We want to skip forward
@@ -50,57 +45,72 @@ impl Submitter {
             // if line.level == 0 && xref == line.xref.unwrap() {
             if line.level == 0 {
                 // Peek at the next line so we know how to parse it.
-                line = Line::peek(&mut buffer).unwrap();
+                let Ok(peek_line) = Line::peek(&mut buffer) else {
+                    break;
+                };
+                line = peek_line;
 
                 // Loop through the rest of the record
                 while line.level > 0 || !buffer.is_empty() {
                     match line.tag {
                         "NAME" => {
                             submitter.name = Some(line.value.to_string());
-                            Line::parse(&mut buffer).unwrap();
+                            let _ = Line::parse(&mut buffer);
                         }
                         "ADDR" => {
-                            submitter.address = Some(Address::parse(&mut buffer).unwrap());
+                            if let Ok(addr) = Address::parse(&mut buffer) {
+                                submitter.address = Some(addr);
+                            }
                         }
                         "OBJE" => {
                             // Parse the object id and add it to the list
                             let media_xref = line.value;
                             submitter.media.push(media_xref.to_string());
-                            Line::parse(&mut buffer).unwrap();
+                            let _ = Line::parse(&mut buffer);
                             // TODO: find the media object and parse it
                         }
                         "RIN" => {
-                            line = Line::parse(&mut buffer).unwrap();
-                            submitter.rin = Some(line.value.to_string());
+                            if let Ok(parsed_line) = Line::parse(&mut buffer) {
+                                line = parsed_line;
+                                submitter.rin = Some(line.value.to_string());
+                            }
                             // println!("!! {:}", line.tag);
                         }
                         "CHAN" => {
                             // Parse the date/time
-                            Line::parse(&mut buffer).unwrap();
+                            let _ = Line::parse(&mut buffer);
                             (buffer, submitter.change_date) = DateTime::parse(buffer);
                         }
                         "LANG" => {
                             let lang = line.value;
                             submitter.lang.push(lang.to_string());
-                            Line::parse(&mut buffer).unwrap();
+                            let _ = Line::parse(&mut buffer);
                         }
                         "NOTE" => {
-                            submitter.note = Some(Note::parse(&mut buffer).unwrap());
+                            if let Ok(note) = Note::parse(&mut buffer) {
+                                submitter.note = Some(note);
+                            }
                         }
                         "RFN" => {
                             let rfn = line.value;
                             submitter.rfn = Some(rfn.to_string());
-                            Line::parse(&mut buffer).unwrap();
+                            let _ = Line::parse(&mut buffer);
                         }
                         _ => {
                             // Advance the buffer past the unknown line
-                            Line::parse(&mut buffer).unwrap();
+                            let _ = Line::parse(&mut buffer);
                         }
                     }
-                    line = Line::peek(&mut buffer).unwrap();
+                    let Ok(peek_line) = Line::peek(&mut buffer) else {
+                        break;
+                    };
+                    line = peek_line;
                 }
             } else {
-                line = Line::parse(&mut buffer).unwrap();
+                let Ok(parsed_line) = Line::parse(&mut buffer) else {
+                    break;
+                };
+                line = parsed_line;
             }
         }
 
@@ -110,21 +120,25 @@ impl Submitter {
     /// Parses a SUBM block
     pub fn parse(mut buffer: &str) -> (&str, Option<Submitter>) {
         let mut submitter: Option<Submitter> = None;
-        let mut line = Line::peek(&mut buffer).unwrap();
-        if line.level == 1 && line.tag == "SUBM" {
-            // advance our position in the buffer
-            line = Line::parse(&mut buffer).unwrap();
-            // This is a temporary hack, because parse::xref strips @ from the id
-            let xref = line.value;
+        if let Ok(mut line) = Line::peek(&mut buffer) {
+            if line.level == 1 && line.tag == "SUBM" {
+                // advance our position in the buffer
+                if let Ok(parsed_line) = Line::parse(&mut buffer) {
+                    line = parsed_line;
+                    // This is a temporary hack, because parse::xref strips @ from the id
+                    let xref = line.value;
 
-            // Find by xref
-            submitter = Submitter::find_by_xref(buffer, xref.to_string());
+                    // Find by xref
+                    submitter = Submitter::find_by_xref(buffer, xref.to_string());
+                }
+            }
         }
 
         (buffer, submitter)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::Submitter;

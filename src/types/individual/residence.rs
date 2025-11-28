@@ -14,7 +14,7 @@ impl Residence {
     pub fn parse(record: &mut &str) -> PResult<Residence> {
         let mut residence = Residence { detail: None };
 
-        let line = Line::peek(record).unwrap();
+        let line = Line::peek(record)?;
 
         // Check if we've received a top-level event tag, which we want to skip over.
         if line.tag == "RESI" {
@@ -27,7 +27,7 @@ impl Residence {
         // 3 CONT Spencer, Utah UT84991
         // 2 DATE from 1900 to 1905
 
-        let detail = FamilyEventDetail::parse(record).unwrap();
+        let detail = FamilyEventDetail::parse(record)?;
 
         residence.detail = Some(detail);
 
@@ -35,6 +35,7 @@ impl Residence {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

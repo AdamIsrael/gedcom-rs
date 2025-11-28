@@ -19,31 +19,33 @@ pub struct Map {
 impl Map {
     /// Parse a map record
     pub fn parse(record: &mut &str) -> PResult<Map> {
-        let mut map = Map {
-            latitude: 0.0,
-            longitude: 0.0,
-        };
-        let level = Line::peek(record).unwrap().level;
+        let mut map = Map::default();
+        
+        let level = Line::peek(record)?.level;
 
         while !record.is_empty() {
-            let mut line = Line::parse(record).unwrap();
+            let mut line = Line::parse(record)?;
             match line.tag {
                 "LATI" => {
                     // Need to map this:
                     // N41.913744 -> 41.913744
                     // S41.913744 -> -41.913744
-                    map.latitude = f64::from_str(&line.value[1..line.value.len()]).unwrap();
-                    if line.value.chars().nth(0) == Some('S') {
-                        map.latitude *= -1.0;
+                    if let Ok(lat) = f64::from_str(&line.value[1..line.value.len()]) {
+                        map.latitude = lat;
+                        if line.value.chars().nth(0) == Some('S') {
+                            map.latitude *= -1.0;
+                        }
                     }
                 }
                 "LONG" => {
                     // Need to map this:
                     // W88.31085 -> -88.31085
                     // E88.31085 -> 88.31085
-                    map.longitude = f64::from_str(&line.value[1..line.value.len()]).unwrap();
-                    if line.value.chars().nth(0) == Some('W') {
-                        map.longitude *= -1.0;
+                    if let Ok(lon) = f64::from_str(&line.value[1..line.value.len()]) {
+                        map.longitude = lon;
+                        if line.value.chars().nth(0) == Some('W') {
+                            map.longitude *= -1.0;
+                        }
                     }
                 }
                 _ => {}
@@ -51,7 +53,7 @@ impl Map {
 
             // If the next level matches our initial level, we're done parsing
             // this structure.
-            line = Line::peek(record).unwrap();
+            line = Line::peek(record)?;
             if line.level == level {
                 break;
             }
@@ -61,6 +63,7 @@ impl Map {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

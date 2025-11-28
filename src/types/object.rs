@@ -29,12 +29,13 @@ impl Object {
     pub fn parse(buffer: &mut &str) -> PResult<Object> {
         let mut obje = Object { xref: None };
 
-        obje.xref = parse::get_tag_value(buffer).unwrap();
+        obje.xref = parse::get_tag_value(buffer)?;
 
         Ok(obje)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::Object;

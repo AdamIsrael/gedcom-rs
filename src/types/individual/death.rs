@@ -29,13 +29,9 @@ pub struct Death {
 
 impl Death {
     pub fn parse(record: &mut &str) -> PResult<Death> {
-        let mut death = Death {
-            age: None,
-            event: None,
-            family: None,
-        };
+        let mut death = Death::default();
 
-        let line = Line::parse(record).unwrap();
+        let line = Line::parse(record)?;
         // TODO: This implies a death is known but the date is not.
         // Is this effective as-is? It'll create an empty death record, so
         // we have Some() in place, where if there is no death tag we would
@@ -47,7 +43,7 @@ impl Death {
         events.push(line.to_string());
 
         while !record.is_empty() {
-            let line = Line::peek(record).unwrap();
+            let line = Line::peek(record)?;
             if line.level == 1 {
                 break;
             }
@@ -65,20 +61,21 @@ impl Death {
                 }
             }
 
-            Line::parse(record).unwrap();
+            Line::parse(record)?;
         }
 
         // Now parse the events
         if !events.is_empty() {
             let event = events.join("\n");
             let mut event_str = event.as_str();
-            death.event = Some(EventDetail::parse(&mut event_str).unwrap());
+            death.event = Some(EventDetail::parse(&mut event_str)?);
         }
 
         Ok(death)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

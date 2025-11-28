@@ -35,7 +35,7 @@ impl Birth {
             family: None,
         };
 
-        let line = Line::parse(record).unwrap();
+        let line = Line::parse(record)?;
         let level = line.level;
         let mut events: Vec<String> = vec![];
 
@@ -43,7 +43,7 @@ impl Birth {
         events.push(line.to_string());
 
         while !record.is_empty() {
-            let line = Line::peek(record).unwrap();
+            let line = Line::peek(record)?;
             if line.level <= level {
                 break;
             }
@@ -70,7 +70,7 @@ impl Birth {
                 }
             }
 
-            Line::parse(record).unwrap();
+            Line::parse(record)?;
         }
 
         // Now parse the events
@@ -78,13 +78,14 @@ impl Birth {
             // Remove the last line; it belongs to the next record
             let event = events.join("\n");
             let mut event_str = event.as_str();
-            birth.event = IndividualEventDetail::parse(&mut event_str).unwrap();
+            birth.event = IndividualEventDetail::parse(&mut event_str)?;
         }
 
         Ok(birth)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

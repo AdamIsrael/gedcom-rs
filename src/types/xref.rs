@@ -15,7 +15,7 @@ impl Xref {
         // We find the xref in two places, potentially. The first is in the tag,
         // the second is in the value. Line::parse will set xref if it's in the tag.
         // If there's no xref, we'll check the value to see if it contains one.
-        let record = Line::parse(record).unwrap();
+        let record = Line::parse(record)?;
 
         if !record.xref.is_empty() {
             Ok(Xref {
@@ -34,6 +34,7 @@ impl Xref {
     // TODO: implement a function that will lookup an individual by their xref
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

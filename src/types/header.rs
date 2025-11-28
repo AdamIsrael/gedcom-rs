@@ -133,6 +133,7 @@ impl Header {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::types::{corporation::Corporation, Address, DateTime, Form};

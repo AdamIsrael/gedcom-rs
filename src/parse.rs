@@ -155,6 +155,7 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -15,27 +15,37 @@ pub struct SourceData {
 impl SourceData {
     /// Parse a SOUR record
     pub fn parse(mut buffer: &str) -> (&str, Option<SourceData>) {
-        let mut data = SourceData {
-            name: None,
-            date: None,
-            copyright: None,
-        };
+        let mut data = SourceData::default();
         let mut line: Line;
 
-        line = Line::peek(&mut buffer).unwrap();
+        if let Ok(l) = Line::peek(&mut buffer) {
+            line = l;
+        } else {
+            return (buffer, Some(data));
+        }
+
         if line.tag == "DATA" {
             let lvl = line.level;
 
             // consume the line
-            line = Line::parse(&mut buffer).unwrap();
-            data.name = Some(line.value.to_string());
+            if let Ok(l) = Line::parse(&mut buffer) {
+                line = l;
+                data.name = Some(line.value.to_string());
+            } else {
+                return (buffer, Some(data));
+            }
 
             while line.level >= lvl {
                 if buffer.is_empty() {
                     break;
                 }
 
-                line = Line::peek(&mut buffer).unwrap();
+                if let Ok(l) = Line::peek(&mut buffer) {
+                    line = l;
+                } else {
+                    break;
+                }
+
                 if line.level == 1 {
                     // abort
                     break;
@@ -46,7 +56,9 @@ impl SourceData {
                     }
                     "COPR" => {
                         // Consume the line and get the value
-                        data.copyright = parse::get_tag_value(&mut buffer).unwrap();
+                        if let Ok(copyright) = parse::get_tag_value(&mut buffer) {
+                            data.copyright = copyright;
+                        }
                     }
                     _ => {
                         break;
@@ -59,6 +71,7 @@ impl SourceData {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::SourceData;

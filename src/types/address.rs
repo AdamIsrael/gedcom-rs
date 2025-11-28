@@ -124,6 +124,7 @@ impl Address {
 ///
 /// Why did I do it this way, vs implementing `parse` on the Address?
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

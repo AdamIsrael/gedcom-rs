@@ -295,6 +295,7 @@ pub enum NameType {
     Other,
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;
