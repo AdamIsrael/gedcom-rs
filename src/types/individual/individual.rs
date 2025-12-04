@@ -265,9 +265,7 @@ impl Individual {
                         "REFN" => {}
                         "RIN" => {}
                         "CHAN" => {}
-                        _ => {
-                            println!("Unknown Individual tag: {:?}", line.tag);
-                        }
+                        _ => {}
                     }
                 }
                 _ => {}

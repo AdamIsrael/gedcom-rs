@@ -71,11 +71,8 @@ impl Source {
                 match inner_line.tag {
                     // An ancestry-specific tag
                     "_TREE" => {
-                        // The value of tree contains the tree name, which is useful,
-                        // but not a part of the GEDCOM spec.
                         // The next level (3) may contain RIN, some sort of internal id
                         // but is probably not useful for anything
-                        println!("Skipping _TREE");
                         // Consume the line
                         let _ = Line::parse(&mut buffer);
                     }
@@ -94,8 +91,6 @@ impl Source {
                         (buffer, source.data) = SourceData::parse(buffer);
                     }
                     _ => {
-                        println!("Unknown line: {:?}", inner_line);
-
                         // consume the line so we can parse the next
                         let _ = Line::parse(&mut buffer);
                     }

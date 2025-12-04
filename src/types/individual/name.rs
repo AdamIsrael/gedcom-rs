@@ -146,9 +146,6 @@ impl Name {
             if line.level == 2 && (line.tag == "ROMN" || line.tag == "FONE") {
                 break;
             }
-            if line.tag == "BIRT" {
-                println!("DEBUG: {:?}", line);
-            }
         }
 
         // println!("Name: {:?}", name);
@@ -245,11 +242,6 @@ impl PersonalName {
                             pn.romanized = romanized;
                             if !line.value.is_empty() {
                                 pn.romanized.value = Some(line.value.to_string());
-                            } else {
-                                println!(
-                                    "Romanized value is missing; Level={}, tag={}",
-                                    line.level, line.tag
-                                );
                             }
                         }
                     }
@@ -258,16 +250,11 @@ impl PersonalName {
                             pn.phonetic = phonetic;
                             if !line.value.is_empty() {
                                 pn.phonetic.value = Some(line.value.to_string());
-                            } else {
-                                println!(
-                                    "Phonetic value is missing; Level={}, tag={}",
-                                    line.level, line.tag
-                                );
                             }
                         }
                     }
                     _ => {
-                        println!("skipping PersonalName tag {:?}", line.tag);
+                        // Unknown tag, skip it
                     }
                 }
             }

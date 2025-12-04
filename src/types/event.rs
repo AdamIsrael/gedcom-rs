@@ -333,7 +333,6 @@ mod tests {
         assert!(wife.age.unwrap() == "42y 6m");
 
         assert!(event.detail.is_some());
-        println!("Detail: {:?}", event.detail);
         // assert!(event.wife.is_some());
 
         // assert!(event.detail.date.is_some());

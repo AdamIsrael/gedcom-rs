@@ -88,9 +88,7 @@ impl<'b> Line<'b> {
                         }
                     }
                 }
-                Err(e) => {
-                    println!("Err: {}", e);
-                    println!("Error parsing line: '{}'", input);
+                Err(_e) => {
                     let _ = Self::eol(input);
                     /*
                     There's a case where a line is simply the extension of the
