@@ -162,16 +162,9 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
                     }
                 }
 
-                // Shrink capacity if it grew too large
-                if record.capacity() > INITIAL_RECORD_CAPACITY * 4 {
-                    record.shrink_to(INITIAL_RECORD_CAPACITY);
-                } else {
-                    record.clear();
-                }
+                record.clear();
             }
             
-            // Reserve space to avoid reallocation
-            record.reserve(line.len() + 1);
             record.push_str(line);
             record.push('\n');
         }
