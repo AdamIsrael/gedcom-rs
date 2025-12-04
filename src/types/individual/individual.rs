@@ -29,65 +29,38 @@ use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residenc
 // +1 <<SOURCE_CITATION>> +1 <<MULTIMEDIA_LINK>>
 #[derive(Debug, Default)]
 pub struct Individual {
-    pub adoption: Vec<Adoption>,
-
+    // Common events - keep as Vec
     pub birth: Vec<Birth>,
     pub death: Vec<Death>,
-
-    // Baptism-related fields
-    /// The event of baptism (not LDS), performed in infancy or later.
-    pub baptism: Vec<IndividualEventDetail>,
-    /// The ceremonial event held when a Jewish boy reaches age 13.
-    pub barmitzvah: Vec<IndividualEventDetail>,
-    /// The ceremonial event held when a Jewish girl reaches age 13.
-    pub basmitzvah: Vec<IndividualEventDetail>,
-    /// A religious event of bestowing divine care or intercession. Sometimes given in connection with anaming ceremony.
-    pub blessing: Vec<IndividualEventDetail>,
-
-    pub burial: Vec<IndividualEventDetail>,
-
-    /// Census
-    pub census: Vec<IndividualEventDetail>,
-
-    /// The religious event (not LDS) of baptizing and/or naming a child.
     pub christening: Vec<Christening>,
-
-    /// The religious event (not LDS) of baptizing and/or naming an adult person.
-    pub christening_adult: Vec<Christening>,
-
-    /// The religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership.
-    pub confirmation: Vec<IndividualEventDetail>,
-
-    /// First Communion
-    pub first_communion: Option<IndividualEventDetail>,
-
-    pub cremation: Vec<IndividualEventDetail>,
-
-    pub emigration: Vec<IndividualEventDetail>,
-
-    /// Generic events not covered by a specific type
-    pub events: Vec<IndividualEventDetail>,
-
-    pub gender: super::Gender,
-
-    pub graduation: Vec<IndividualEventDetail>,
-
-    pub immigration: Vec<IndividualEventDetail>,
-
+    pub names: Vec<PersonalName>,
     pub residences: Vec<Residence>,
     pub famc: Vec<Family>,
     pub fams: Vec<Family>,
+    pub gender: super::Gender,
 
-    pub names: Vec<PersonalName>,
-
-    pub naturalization: Vec<IndividualEventDetail>,
-
-    pub probate: Vec<IndividualEventDetail>,
-
-    // RETI: Retirement
-    pub retirement: Vec<IndividualEventDetail>,
-
-    pub will: Vec<IndividualEventDetail>,
+    // Rare events - use Option<Vec<T>>
+    pub adoption: Option<Vec<Adoption>>,
+    pub baptism: Option<Vec<IndividualEventDetail>>,
+    pub barmitzvah: Option<Vec<IndividualEventDetail>>,
+    pub basmitzvah: Option<Vec<IndividualEventDetail>>,
+    pub blessing: Option<Vec<IndividualEventDetail>>,
+    pub burial: Option<Vec<IndividualEventDetail>>,
+    pub census: Option<Vec<IndividualEventDetail>>,
+    pub christening_adult: Option<Vec<Christening>>,
+    pub confirmation: Option<Vec<IndividualEventDetail>>,
+    pub first_communion: Option<IndividualEventDetail>,
+    pub cremation: Option<Vec<IndividualEventDetail>>,
+    pub emigration: Option<Vec<IndividualEventDetail>>,
+    pub graduation: Option<Vec<IndividualEventDetail>>,
+    pub immigration: Option<Vec<IndividualEventDetail>>,
+    pub naturalization: Option<Vec<IndividualEventDetail>>,
+    pub probate: Option<Vec<IndividualEventDetail>>,
+    pub retirement: Option<Vec<IndividualEventDetail>>,
+    pub will: Option<Vec<IndividualEventDetail>>,
+    
+    /// Generic events not covered by a specific type
+    pub events: Option<Vec<IndividualEventDetail>>,
 
     /// The XRef pointer associated with this individual
     pub xref: Option<Xref>,
@@ -95,13 +68,21 @@ pub struct Individual {
 
 // Macro to handle repetitive event parsing with proper error handling
 macro_rules! parse_event {
+    // For Vec<T> fields
     ($record:expr, $field:expr, $parser:ty) => {{
         if let Ok(event) = <$parser>::parse($record) {
             $field.push(event);
         }
         false
     }};
-    // Variant for Option fields
+    // For Option<Vec<T>> fields
+    (option_vec, $record:expr, $field:expr, $parser:ty) => {{
+        if let Ok(event) = <$parser>::parse($record) {
+            $field.get_or_insert_with(Vec::new).push(event);
+        }
+        false
+    }};
+    // For Option<T> fields (single value)
     (option, $record:expr, $field:expr, $parser:ty) => {{
         if let Ok(event) = <$parser>::parse($record) {
             $field = Some(event);
@@ -157,7 +138,7 @@ impl Individual {
                         }
                         // baptism
                         "BAPM" => {
-                            parse = parse_event!(record, individual.baptism, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.baptism, IndividualEventDetail);
                         }
                         // christening
                         "CHR" => {
@@ -165,69 +146,69 @@ impl Individual {
                         }
                         // bar mitzvah
                         "BARM" => {
-                            parse = parse_event!(record, individual.barmitzvah, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.barmitzvah, IndividualEventDetail);
                         }
                         // bas mitzvah
                         "BASM" => {
-                            parse = parse_event!(record, individual.basmitzvah, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.basmitzvah, IndividualEventDetail);
                         }
                         // blessing
                         "BLES" => {
                             // TODO: Need to add tests for this
-                            parse = parse_event!(record, individual.blessing, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.blessing, IndividualEventDetail);
                         }
                         // Adoption
                         "ADOP" => {
-                            parse = parse_event!(record, individual.adoption, Adoption);
+                            parse = parse_event!(option_vec, record, individual.adoption, Adoption);
                         }
                         // Adult Christening
                         "CHRA" => {
-                            parse = parse_event!(record, individual.christening_adult, Christening);
+                            parse = parse_event!(option_vec, record, individual.christening_adult, Christening);
                         }
                         // Confirmation
                         "CONF" => {
-                            parse = parse_event!(record, individual.confirmation, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.confirmation, IndividualEventDetail);
                         }
                         "FCOM" => {
                             parse = parse_event!(option, record, individual.first_communion, IndividualEventDetail);
                         }
                         "GRAD" => {
-                            parse = parse_event!(record, individual.graduation, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.graduation, IndividualEventDetail);
                         }
                         "EMIG" => {
-                            parse = parse_event!(record, individual.emigration, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.emigration, IndividualEventDetail);
                         }
                         "IMMI" => {
-                            parse = parse_event!(record, individual.immigration, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.immigration, IndividualEventDetail);
                         }
                         "NATU" => {
-                            parse = parse_event!(record, individual.naturalization, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.naturalization, IndividualEventDetail);
                         }
                         "CENS" => {
-                            parse = parse_event!(record, individual.census, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.census, IndividualEventDetail);
                         }
                         "RETI" => {
-                            parse = parse_event!(record, individual.retirement, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.retirement, IndividualEventDetail);
                         }
                         // probate
                         "PROB" => {
-                            parse = parse_event!(record, individual.probate, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.probate, IndividualEventDetail);
                         }
                         // burial
                         "BURI" => {
-                            parse = parse_event!(record, individual.burial, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.burial, IndividualEventDetail);
                         }
                         // Will
                         "WILL" => {
-                            parse = parse_event!(record, individual.will, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.will, IndividualEventDetail);
                         }
                         // Cremation
                         "CREM" => {
-                            parse = parse_event!(record, individual.cremation, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.cremation, IndividualEventDetail);
                         }
                         // generic event
                         "EVEN" => {
-                            parse = parse_event!(record, individual.events, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.events, IndividualEventDetail);
                         }
                         // residence
                         "RESI" => {
@@ -235,7 +216,7 @@ impl Individual {
                         }
                         // occupation
                         "OCCU" => {
-                            parse = parse_event!(record, individual.events, IndividualEventDetail);
+                            parse = parse_event!(option_vec, record, individual.events, IndividualEventDetail);
                         }
                         "EDUC" => {}
                         // physical description
@@ -1193,7 +1174,7 @@ mod tests {
 
         // Baptism
         // "1 BAPM",
-        let bapm = indi.baptism.pop().unwrap();
+        let bapm = indi.baptism.as_mut().unwrap().pop().unwrap();
 
         // "2 DATE ABT 31 DEC 1997",
         assert!(bapm.detail.date.unwrap() == "ABT 31 DEC 1997");
@@ -1311,7 +1292,7 @@ mod tests {
         assert!(chr.family.unwrap().xref == "@F3@".to_string());
 
         // "1 BARM",
-        let barm = indi.barmitzvah.first().unwrap().clone();
+        let barm = indi.barmitzvah.as_ref().unwrap().first().unwrap().clone();
         // "2 DATE AFT 31 DEC 1997",
         assert!(barm.detail.date.unwrap() == "AFT 31 DEC 1997");
 
@@ -1348,7 +1329,7 @@ mod tests {
 
         // Baz Mitzvah
         // "1 BASM",
-        let basm = indi.basmitzvah.first().unwrap().clone();
+        let basm = indi.basmitzvah.as_ref().unwrap().first().unwrap().clone();
 
         // "2 DATE AFT 31 DEC 1997",
         assert!(basm.detail.date.unwrap() == "AFT 31 DEC 1997");
@@ -1385,7 +1366,7 @@ mod tests {
         assert!(basm.detail.note.unwrap() == "Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, also known as \"Bat Mitzvah\").");
 
         // "1 ADOP",
-        let mut adoption = indi.adoption.pop().unwrap().clone();
+        let mut adoption = indi.adoption.as_mut().unwrap().pop().unwrap().clone();
 
         // "2 DATE BEF 31 DEC 1997",
         assert!(adoption.event.detail.date.unwrap() == "BEF 31 DEC 1997");
@@ -1431,7 +1412,7 @@ mod tests {
 
         // Adult Christening
         // "1 CHRA",
-        let chr = indi.christening_adult.first().unwrap().clone();
+        let chr = indi.christening_adult.as_ref().unwrap().first().unwrap().clone();
 
         // "2 DATE BET 31 DEC 1997 AND 1 FEB 1998",
         assert!(chr.event.detail.date.unwrap() == "BET 31 DEC 1997 AND 1 FEB 1998");
@@ -1465,8 +1446,8 @@ mod tests {
 
         // CONFIRMATION
         // "1 CONF",
-        assert!(indi.confirmation.len() == 1);
-        let confirmation = indi.confirmation.first().unwrap().clone();
+        assert!(indi.confirmation.as_ref().unwrap().len() == 1);
+        let confirmation = indi.confirmation.as_ref().unwrap().first().unwrap().clone();
 
         // "2 DATE BET 31 DEC 1997 AND 2 JAN 1998",
         assert!(confirmation.detail.date.unwrap() == "BET 31 DEC 1997 AND 2 JAN 1998");
