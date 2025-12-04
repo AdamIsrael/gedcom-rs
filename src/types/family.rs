@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::{
     parse,
-    types::{AdoptedBy, Line, Note, Pedigree, Spouse},
+    types::{AdoptedBy, Line, Note, Pedigree, Spouse, Xref},
 };
 
 // TODO: implement full parsing of the family record
@@ -36,7 +36,7 @@ pub struct Family {
     pub husband: Option<Spouse>,
     pub wife: Option<Spouse>,
 
-    pub xref: String,
+    pub xref: Xref,
     pub notes: Vec<Note>,
     pub pedigree: Option<Pedigree>,
 }
@@ -47,7 +47,7 @@ impl Family {
             adopted_by: None,
             husband: None,
             wife: None,
-            xref: "".to_string(),
+            xref: Xref::default(),
             notes: vec![],
             pedigree: None,
         };
@@ -61,7 +61,7 @@ impl Family {
         // If we're at the top of the record, consume the line
         if tag == "FAMC" || tag == "FAMS" {
             // Capture the xref
-            family.xref = line.value.to_string();
+            family.xref = Xref::new(line.value.to_string());
             let _ = Line::parse(record);
         }
 

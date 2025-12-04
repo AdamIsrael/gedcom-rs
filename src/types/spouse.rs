@@ -22,16 +22,10 @@ impl Spouse {
         while !record.is_empty() {
             match line.tag {
                 "HUSB" => {
-                    let xref = Xref::parse(record)?;
-                    if xref.xref.is_some() {
-                        spouse.xref = Some(xref);
-                    }
+                    spouse.xref = Xref::parse(record)?;
                 }
                 "WIFE" => {
-                    let xref = Xref::parse(record)?;
-                    if xref.xref.is_some() {
-                        spouse.xref = Some(xref);
-                    }
+                    spouse.xref = Xref::parse(record)?;
                 }
                 "AGE" => {
                     spouse.age = Some(line.value.to_string());
@@ -85,7 +79,7 @@ mod tests {
 
         assert!(spouse.age.is_none());
         assert!(spouse.xref.is_some());
-        assert!("@I5@".to_string() == spouse.xref.unwrap().xref.unwrap());
+        assert_eq!("@I5@", spouse.xref.as_ref().unwrap().as_str());
     }
 
     #[test]
@@ -102,6 +96,6 @@ mod tests {
         assert!("42y".to_string() == spouse.age.unwrap());
 
         assert!(spouse.xref.is_some());
-        assert!("@I5@".to_string() == spouse.xref.unwrap().xref.unwrap());
+        assert_eq!("@I5@", spouse.xref.as_ref().unwrap().as_str());
     }
 }

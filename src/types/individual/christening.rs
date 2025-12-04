@@ -1,4 +1,4 @@
-use crate::types::{Family, Line};
+use crate::types::{Family, Line, Xref};
 
 use winnow::prelude::*;
 
@@ -41,7 +41,7 @@ impl Christening {
                         adopted_by: None,
                         husband: None,
                         wife: None,
-                        xref: line.value.to_string(),
+                        xref: Xref::new(line.value.to_string()),
                         notes: vec![],
                         pedigree: None,
                     };

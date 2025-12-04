@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::types::individual::name::*;
-use crate::types::{Family, Line};
+use crate::types::{Family, Line, Xref};
 
 use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residence};
 
@@ -90,7 +90,7 @@ pub struct Individual {
     pub will: Vec<IndividualEventDetail>,
 
     /// The XRef pointer associated with this individual
-    pub xref: Option<String>,
+    pub xref: Option<Xref>,
 }
 
 // Macro to handle repetitive event parsing with proper error handling
@@ -126,7 +126,7 @@ impl Individual {
 
             match line.level {
                 0 => {
-                    individual.xref = Some(line.xref.to_string());
+                    individual.xref = Some(Xref::new(line.xref.to_string()));
                 }
                 1 => {
                     match line.tag {
@@ -1005,7 +1005,7 @@ mod tests {
         let mut indi = Individual::parse(&mut record);
 
         assert_eq!(2, indi.names.len());
-        assert_eq!(Some("@I1@".to_string()), indi.xref);
+        assert_eq!(Some(Xref::new("@I1@")), indi.xref);
 
         // Check the name.name
         assert_eq!(
