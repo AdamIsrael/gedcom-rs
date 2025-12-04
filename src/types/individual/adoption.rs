@@ -33,7 +33,8 @@ impl Adoption {
         }
 
         let level = line.level;
-        let mut events: Vec<String> = vec![];
+        // Pre-allocate capacity for typical event detail (avg ~10-15 lines)
+        let mut events: Vec<String> = Vec::with_capacity(16);
 
         // Add the first line so EventDetails will parse cleanly
         events.push(line.to_string());

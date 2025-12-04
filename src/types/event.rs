@@ -159,7 +159,8 @@ impl FamilyEventDetail {
 
         // TODO: Check the first line for and see if it's a top-level event tag
 
-        let mut events: Vec<String> = vec![];
+        // Pre-allocate capacity for typical event detail (avg ~10-15 lines)
+        let mut events: Vec<String> = Vec::with_capacity(16);
 
         while !record.is_empty() {
             // let mut parse = true;
