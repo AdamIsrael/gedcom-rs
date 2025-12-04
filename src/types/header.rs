@@ -56,12 +56,12 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn parse(mut record: String) -> Header {
+    pub fn parse(record: String) -> Header {
         let mut header = Header::default();
+        let mut buffer: &str = record.as_str();
 
         // do parser stuff here
-        while !record.is_empty() {
-            let mut buffer: &str = record.as_str();
+        while !buffer.is_empty() {
             let line = Line::peek(&mut buffer).unwrap_or_default();
 
             // Inspect the top-level tags only.
@@ -71,7 +71,7 @@ impl Header {
             } else if line.level == 1 {
                 match line.tag {
                     "CHAR" => {
-                        (buffer, header.character_set) = CharacterSet::parse(&record);
+                        (buffer, header.character_set) = CharacterSet::parse(buffer);
                     }
                     "COPR" => {
                         if let Ok(copyright) = parse::get_tag_value(&mut buffer) {
@@ -81,7 +81,7 @@ impl Header {
                     "DATE" => {
                         // We're doing lazy parsing of the date, because parsing
                         // date strings is hard. For now.
-                        (buffer, header.date) = DateTime::parse(&record);
+                        (buffer, header.date) = DateTime::parse(buffer);
                     }
                     "DEST" => {
                         header.destination = Some(line.value.to_string());
@@ -92,7 +92,7 @@ impl Header {
                         let _ = Line::parse(&mut buffer);
                     }
                     "GEDC" => {
-                        (buffer, header.gedcom_version) = Gedc::parse(&record);
+                        (buffer, header.gedcom_version) = Gedc::parse(buffer);
                     }
                     "LANG" => {
                         header.language = Some(line.value.to_string());
@@ -111,13 +111,13 @@ impl Header {
                         }
                     }
                     "SOUR" => {
-                        (buffer, header.source) = Source::parse(&record);
+                        (buffer, header.source) = Source::parse(buffer);
                     }
                     "SUBM" => {
-                        (buffer, header.submitter) = Submitter::parse(&record);
+                        (buffer, header.submitter) = Submitter::parse(buffer);
                     }
                     "SUBN" => {
-                        (buffer, header.submission) = Submission::parse(&record);
+                        (buffer, header.submission) = Submission::parse(buffer);
                     }
                     _ => {
                         let _ = Line::parse(&mut buffer);
@@ -126,8 +126,6 @@ impl Header {
             } else {
                 let _ = Line::parse(&mut buffer);
             }
-
-            record = buffer.to_string();
         }
         header
     }
