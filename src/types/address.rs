@@ -1,9 +1,10 @@
 use super::Line;
 use crate::parse;
 
+use smallvec::SmallVec;
 use winnow::prelude::*;
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Address {
     pub addr1: Option<String>,
     pub addr2: Option<String>,
@@ -12,10 +13,28 @@ pub struct Address {
     pub state: Option<String>,
     pub postal_code: Option<String>,
     pub country: Option<String>,
-    pub phone: Vec<String>,
-    pub email: Vec<String>,
-    pub fax: Vec<String>,
-    pub www: Vec<String>,
+    pub phone: SmallVec<[String; 2]>,
+    pub email: SmallVec<[String; 2]>,
+    pub fax: SmallVec<[String; 1]>,
+    pub www: SmallVec<[String; 1]>,
+}
+
+impl Default for Address {
+    fn default() -> Self {
+        Self {
+            addr1: None,
+            addr2: None,
+            addr3: None,
+            city: None,
+            state: None,
+            postal_code: None,
+            country: None,
+            phone: SmallVec::new(),
+            email: SmallVec::new(),
+            fax: SmallVec::new(),
+            www: SmallVec::new(),
+        }
+    }
 }
 
 impl Address {
