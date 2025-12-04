@@ -56,9 +56,9 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn parse(record: String) -> Header {
+    pub fn parse(record: &str) -> Header {
         let mut header = Header::default();
-        let mut buffer: &str = record.as_str();
+        let mut buffer: &str = record;
 
         // do parser stuff here
         while !buffer.is_empty() {
@@ -213,7 +213,7 @@ mod tests {
             "3 TIME 8:35:36",
         ];
 
-        let header = Header::parse(data.join("\n"));
+        let header = Header::parse(&data.join("\n"));
 
         // Character encoding
         assert!(header.character_set.is_some());

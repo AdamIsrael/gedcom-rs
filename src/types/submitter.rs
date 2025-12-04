@@ -29,10 +29,10 @@ pub struct Submitter {
 impl Submitter {
     // TODO: Move this to a utility module, since it could be called from
     // multiple places.
-    pub fn find_by_xref(mut buffer: &str, xref: String) -> Option<Submitter> {
+    pub fn find_by_xref(mut buffer: &str, xref: &str) -> Option<Submitter> {
         // println!("find_by_xref::buffer: {:?}", buffer);
         let mut submitter = Submitter {
-            xref: Some(xref),
+            xref: Some(xref.to_string()),
             ..Default::default()
         };
         let Ok(mut line) = Line::peek(&mut buffer) else {
@@ -129,7 +129,7 @@ impl Submitter {
                     let xref = line.value;
 
                     // Find by xref
-                    submitter = Submitter::find_by_xref(buffer, xref.to_string());
+                    submitter = Submitter::find_by_xref(buffer, xref);
                 }
             }
         }

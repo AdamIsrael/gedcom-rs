@@ -128,7 +128,7 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
                 if let Ok(line) = Line::peek(&mut input) {
                     match line.tag {
                         "HEAD" => {
-                            gedcom.header = Header::parse(input.to_string());
+                            gedcom.header = Header::parse(input);
                         }
                         "INDI" => {
                             let indi = Individual::parse(&mut input);
@@ -144,7 +144,7 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
                             if let Some(ref subm) = gedcom.header.submitter {
                                 if let Some(xref) = &subm.xref {
                                     gedcom.header.submitter =
-                                        Submitter::find_by_xref(input, xref.to_string());
+                                        Submitter::find_by_xref(input, xref);
                                 }
                             }
                         }
