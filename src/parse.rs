@@ -110,17 +110,27 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
     // This is kind of like a buffered read, specific to the GEDCOM format
     // We read into the buffer until we hit a new record, and then parse that
     // record into a struct.
-    let mut record = String::with_capacity(1024); // Pre-allocate to reduce reallocations
+    
+    // Capacity management constants
+    const INITIAL_RECORD_CAPACITY: usize = 2048;  // Typical record ~1-2KB
+    const MAX_RECORD_SIZE: usize = 64 * 1024;      // 64KB safety limit
+    
+    let mut record = String::with_capacity(INITIAL_RECORD_CAPACITY);
 
     // Use `map_while` because we could loop on an Err value
-    for mut buffer in lines.map_while(std::result::Result::ok) {
+    for buffer in lines.map_while(std::result::Result::ok) {
         // Strip off any leading Zero Width No-Break Space
-        if buffer.strip_prefix('\u{FEFF}').is_some() {
-            buffer.remove(0);
-        }
+        let line = buffer.strip_prefix('\u{FEFF}').unwrap_or(&buffer);
 
-        if let Some(ch) = buffer.chars().next() {
+        if let Some(ch) = line.chars().next() {
             if ch == '0' && !record.is_empty() {
+                // Safety check: skip oversized records
+                if record.len() > MAX_RECORD_SIZE {
+                    eprintln!("Warning: Skipping oversized record ({} bytes)", record.len());
+                    record.clear();
+                    continue;
+                }
+                
                 let mut input: &str = record.as_str();
 
                 // Peek at the first line in the record so we know how
@@ -152,9 +162,17 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
                     }
                 }
 
-                record.clear();
+                // Shrink capacity if it grew too large
+                if record.capacity() > INITIAL_RECORD_CAPACITY * 4 {
+                    record.shrink_to(INITIAL_RECORD_CAPACITY);
+                } else {
+                    record.clear();
+                }
             }
-            record.push_str(&buffer);
+            
+            // Reserve space to avoid reallocation
+            record.reserve(line.len() + 1);
+            record.push_str(line);
             record.push('\n');
         }
     }
