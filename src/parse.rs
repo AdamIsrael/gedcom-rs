@@ -1,6 +1,7 @@
 // use crate::types::{Address, Line, Source};
 // use super::types::Line;
 use super::types::*;
+use crate::error::{GedcomError, Result};
 
 use std::fs::File;
 
@@ -71,77 +72,98 @@ pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
 // }
 
 /// Parse a GEDCOM file
-pub fn parse_gedcom(filename: &str) -> Gedcom {
+///
+/// # Arguments
+///
+/// * `filename` - Path to the GEDCOM file to parse
+///
+/// # Returns
+///
+/// Returns a `Result` containing the parsed `Gedcom` structure or a `GedcomError`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file cannot be found or opened
+/// - The file cannot be read
+/// - The GEDCOM data is malformed
+pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
+    // Check if file exists first for better error messages
+    if !Path::new(filename).exists() {
+        return Err(GedcomError::FileNotFound(filename.to_string()));
+    }
+
     // Initialize an empty gedcom with pre-allocated capacity
     let mut gedcom = Gedcom {
         header: Header::default(),
         individuals: Vec::with_capacity(100), // Pre-allocate for typical genealogy files
     };
 
-    if let Ok(lines) = read_lines(filename) {
-        // Consumes the iterator, returns an (Optional) String
+    let lines = read_lines(filename)?;
+    
+    // Consumes the iterator, returns an (Optional) String
 
-        // Read through the lines and build a buffer of <records>, each starting
-        // with a zero and ending with the last line before the next. Then feed that
-        // buffer to a nom parser to split it into Lines?
+    // Read through the lines and build a buffer of <records>, each starting
+    // with a zero and ending with the last line before the next. Then feed that
+    // buffer to a nom parser to split it into Lines?
 
-        // This is kind of like a buffered read, specific to the GEDCOM format
-        // We read into the buffer until we hit a new record, and then parse that
-        // record into a struct.
-        let mut record = String::with_capacity(1024); // Pre-allocate to reduce reallocations
+    // This is kind of like a buffered read, specific to the GEDCOM format
+    // We read into the buffer until we hit a new record, and then parse that
+    // record into a struct.
+    let mut record = String::with_capacity(1024); // Pre-allocate to reduce reallocations
 
-        // Use `map_while` because we could loop on an Err value
-        for mut buffer in lines.map_while(Result::ok) {
-            // Strip off any leading Zero Width No-Break Space
-            if buffer.strip_prefix('\u{FEFF}').is_some() {
-                buffer.remove(0);
-            }
+    // Use `map_while` because we could loop on an Err value
+    for mut buffer in lines.map_while(std::result::Result::ok) {
+        // Strip off any leading Zero Width No-Break Space
+        if buffer.strip_prefix('\u{FEFF}').is_some() {
+            buffer.remove(0);
+        }
 
-            if let Some(ch) = buffer.chars().next() {
-                if ch == '0' && !record.is_empty() {
-                    let mut input: &str = record.as_str();
+        if let Some(ch) = buffer.chars().next() {
+            if ch == '0' && !record.is_empty() {
+                let mut input: &str = record.as_str();
 
-                    // Peek at the first line in the record so we know how
-                    // to parse it.
-                    if let Ok(line) = Line::peek(&mut input) {
-                        match line.tag {
-                            "HEAD" => {
-                                gedcom.header = Header::parse(input.to_string());
-                            }
-                            "INDI" => {
-                                let indi = Individual::parse(&mut input);
-                                gedcom.individuals.push(indi);
-                            }
-                            "SOUR" => {}
-                            "REPO" => {}
-                            "OBJE" => {}
-                            "FAM" => {}
-                            "SUBM" => {
-                                // The record of the submitter of the family tree
-                                // Not always present (it exists in complete.ged)
-                                if let Some(ref subm) = gedcom.header.submitter {
-                                    if let Some(xref) = &subm.xref {
-                                        gedcom.header.submitter =
-                                            Submitter::find_by_xref(input, xref.to_string());
-                                    }
+                // Peek at the first line in the record so we know how
+                // to parse it.
+                if let Ok(line) = Line::peek(&mut input) {
+                    match line.tag {
+                        "HEAD" => {
+                            gedcom.header = Header::parse(input.to_string());
+                        }
+                        "INDI" => {
+                            let indi = Individual::parse(&mut input);
+                            gedcom.individuals.push(indi);
+                        }
+                        "SOUR" => {}
+                        "REPO" => {}
+                        "OBJE" => {}
+                        "FAM" => {}
+                        "SUBM" => {
+                            // The record of the submitter of the family tree
+                            // Not always present (it exists in complete.ged)
+                            if let Some(ref subm) = gedcom.header.submitter {
+                                if let Some(xref) = &subm.xref {
+                                    gedcom.header.submitter =
+                                        Submitter::find_by_xref(input, xref.to_string());
                                 }
                             }
-                            _ => {}
                         }
+                        _ => {}
                     }
-
-                    record.clear();
                 }
-                record.push_str(&buffer);
-                record.push('\n');
+
+                record.clear();
             }
+            record.push_str(&buffer);
+            record.push('\n');
         }
-        // TODO: families
-        // TODO: repositories
-        // TODO: sources
-        // TODO: multimedia
     }
-    gedcom
+    // TODO: families
+    // TODO: repositories
+    // TODO: sources
+    // TODO: multimedia
+    
+    Ok(gedcom)
 }
 
 // The output is wrapped in a Result to allow matching on errors

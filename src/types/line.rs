@@ -64,7 +64,9 @@ impl<'b> Line<'b> {
                             line.xref = xref;
                         }
                         Err(_e) => {
-                            todo!();
+                            // Failed to parse xref - treat as no xref present
+                            // This handles malformed xref like "@INVALID" without closing @
+                            line.xref = "";
                         }
                     }
                     if !line.xref.is_empty() {
