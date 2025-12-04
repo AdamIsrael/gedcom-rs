@@ -6,16 +6,16 @@ use std::io;
 pub enum GedcomError {
     /// Error reading the GEDCOM file
     Io(io::Error),
-    
+
     /// The file path provided does not exist or cannot be accessed
     FileNotFound(String),
-    
+
     /// Error parsing a specific line or record
     ParseError {
         line_number: Option<usize>,
         message: String,
     },
-    
+
     /// Invalid GEDCOM structure (e.g., missing required fields)
     InvalidStructure(String),
 }
@@ -25,7 +25,10 @@ impl fmt::Display for GedcomError {
         match self {
             GedcomError::Io(err) => write!(f, "I/O error: {}", err),
             GedcomError::FileNotFound(path) => write!(f, "File not found: {}", path),
-            GedcomError::ParseError { line_number, message } => {
+            GedcomError::ParseError {
+                line_number,
+                message,
+            } => {
                 if let Some(line) = line_number {
                     write!(f, "Parse error at line {}: {}", line, message)
                 } else {

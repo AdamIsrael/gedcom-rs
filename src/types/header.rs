@@ -276,22 +276,26 @@ mod tests {
                             "+1-800-555-1111".to_string(),
                             "+1-800-555-1212".to_string(),
                             "+1-800-555-1313".to_string(),
-                        ].into(),
+                        ]
+                        .into(),
                         email: vec![
                             "a@example.com".to_string(),
                             "b@example.com".to_string(),
                             "c@example.com".to_string(),
-                        ].into(),
+                        ]
+                        .into(),
                         fax: vec![
                             "+1-800-555-1414".to_string(),
                             "+1-800-555-1515".to_string(),
                             "+1-800-555-1616".to_string(),
-                        ].into(),
+                        ]
+                        .into(),
                         www: vec![
                             "https://www.example.com".to_string(),
                             "https://www.example.org".to_string(),
                             "https://www.example.net".to_string(),
-                        ].into(),
+                        ]
+                        .into(),
                     })
                 })
         );

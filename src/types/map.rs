@@ -20,7 +20,7 @@ impl Map {
     /// Parse a map record
     pub fn parse(record: &mut &str) -> PResult<Map> {
         let mut map = Map::default();
-        
+
         let level = Line::peek(record)?.level;
 
         while !record.is_empty() {

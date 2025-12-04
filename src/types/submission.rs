@@ -12,7 +12,7 @@ impl Submission {
     /// Parses a SUBN block
     pub fn parse(mut buffer: &str) -> (&str, Option<Submission>) {
         let mut submission: Option<Submission> = None;
-        
+
         if let Ok(line) = Line::peek(&mut buffer) {
             if line.level == 1 && line.tag == "SUBN" {
                 // advance our position in the buffer

@@ -42,7 +42,7 @@ impl Source {
     /// Parse a SOUR record
     pub fn parse(mut buffer: &str) -> (&str, Option<Source>) {
         let mut source = Source::default();
-        
+
         let Ok(line) = Line::peek(&mut buffer) else {
             return (buffer, Some(source));
         };

@@ -9,7 +9,10 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     match args.len() {
         1 => usage("Missing filename."),
-        s if s > 2 => usage(&format!("Found more args than expected: {:?}", args.get(1..).unwrap_or(&[]))),
+        s if s > 2 => usage(&format!(
+            "Found more args than expected: {:?}",
+            args.get(1..).unwrap_or(&[])
+        )),
         _ => (),
     };
 

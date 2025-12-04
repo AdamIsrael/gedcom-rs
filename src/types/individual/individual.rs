@@ -58,7 +58,7 @@ pub struct Individual {
     pub probate: Option<Vec<IndividualEventDetail>>,
     pub retirement: Option<Vec<IndividualEventDetail>>,
     pub will: Option<Vec<IndividualEventDetail>>,
-    
+
     /// Generic events not covered by a specific type
     pub events: Option<Vec<IndividualEventDetail>>,
 
@@ -138,7 +138,12 @@ impl Individual {
                         }
                         // baptism
                         "BAPM" => {
-                            parse = parse_event!(option_vec, record, individual.baptism, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.baptism,
+                                IndividualEventDetail
+                            );
                         }
                         // christening
                         "CHR" => {
@@ -146,16 +151,31 @@ impl Individual {
                         }
                         // bar mitzvah
                         "BARM" => {
-                            parse = parse_event!(option_vec, record, individual.barmitzvah, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.barmitzvah,
+                                IndividualEventDetail
+                            );
                         }
                         // bas mitzvah
                         "BASM" => {
-                            parse = parse_event!(option_vec, record, individual.basmitzvah, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.basmitzvah,
+                                IndividualEventDetail
+                            );
                         }
                         // blessing
                         "BLES" => {
                             // TODO: Need to add tests for this
-                            parse = parse_event!(option_vec, record, individual.blessing, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.blessing,
+                                IndividualEventDetail
+                            );
                         }
                         // Adoption
                         "ADOP" => {
@@ -163,52 +183,122 @@ impl Individual {
                         }
                         // Adult Christening
                         "CHRA" => {
-                            parse = parse_event!(option_vec, record, individual.christening_adult, Christening);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.christening_adult,
+                                Christening
+                            );
                         }
                         // Confirmation
                         "CONF" => {
-                            parse = parse_event!(option_vec, record, individual.confirmation, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.confirmation,
+                                IndividualEventDetail
+                            );
                         }
                         "FCOM" => {
-                            parse = parse_event!(option, record, individual.first_communion, IndividualEventDetail);
+                            parse = parse_event!(
+                                option,
+                                record,
+                                individual.first_communion,
+                                IndividualEventDetail
+                            );
                         }
                         "GRAD" => {
-                            parse = parse_event!(option_vec, record, individual.graduation, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.graduation,
+                                IndividualEventDetail
+                            );
                         }
                         "EMIG" => {
-                            parse = parse_event!(option_vec, record, individual.emigration, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.emigration,
+                                IndividualEventDetail
+                            );
                         }
                         "IMMI" => {
-                            parse = parse_event!(option_vec, record, individual.immigration, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.immigration,
+                                IndividualEventDetail
+                            );
                         }
                         "NATU" => {
-                            parse = parse_event!(option_vec, record, individual.naturalization, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.naturalization,
+                                IndividualEventDetail
+                            );
                         }
                         "CENS" => {
-                            parse = parse_event!(option_vec, record, individual.census, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.census,
+                                IndividualEventDetail
+                            );
                         }
                         "RETI" => {
-                            parse = parse_event!(option_vec, record, individual.retirement, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.retirement,
+                                IndividualEventDetail
+                            );
                         }
                         // probate
                         "PROB" => {
-                            parse = parse_event!(option_vec, record, individual.probate, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.probate,
+                                IndividualEventDetail
+                            );
                         }
                         // burial
                         "BURI" => {
-                            parse = parse_event!(option_vec, record, individual.burial, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.burial,
+                                IndividualEventDetail
+                            );
                         }
                         // Will
                         "WILL" => {
-                            parse = parse_event!(option_vec, record, individual.will, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.will,
+                                IndividualEventDetail
+                            );
                         }
                         // Cremation
                         "CREM" => {
-                            parse = parse_event!(option_vec, record, individual.cremation, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.cremation,
+                                IndividualEventDetail
+                            );
                         }
                         // generic event
                         "EVEN" => {
-                            parse = parse_event!(option_vec, record, individual.events, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.events,
+                                IndividualEventDetail
+                            );
                         }
                         // residence
                         "RESI" => {
@@ -216,7 +306,12 @@ impl Individual {
                         }
                         // occupation
                         "OCCU" => {
-                            parse = parse_event!(option_vec, record, individual.events, IndividualEventDetail);
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.events,
+                                IndividualEventDetail
+                            );
                         }
                         "EDUC" => {}
                         // physical description
@@ -1257,7 +1352,17 @@ mod tests {
         assert!(chr.event.detail.date.as_ref().unwrap() == "CAL 31 DEC 1997");
 
         // "2 PLAC The place",
-        assert!(chr.event.detail.place.as_ref().unwrap().name.as_ref().unwrap() == "The place");
+        assert!(
+            chr.event
+                .detail
+                .place
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                == "The place"
+        );
 
         // "2 TYPE CHR",
         assert!(chr.event.detail.r#type.as_ref().unwrap() == "CHR");
@@ -1282,7 +1387,9 @@ mod tests {
         assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A christening Source note.",
-        assert!(source.note.as_ref().unwrap().note.as_ref().unwrap() == "A christening Source note.");
+        assert!(
+            source.note.as_ref().unwrap().note.as_ref().unwrap() == "A christening Source note."
+        );
 
         // "2 NOTE Christening event note (the religious event (not LDS) of baptizing and/or naming a ",
         // "3 CONC child).",
@@ -1315,13 +1422,17 @@ mod tests {
         assert!(sdata.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Some Bar Mitzvah source text.",
-        assert!(sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some Bar Mitzvah source text.");
+        assert!(
+            sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some Bar Mitzvah source text."
+        );
 
         // "3 QUAY 3",
         assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A Bar Mitzvah source note.",
-        assert!(source.note.as_ref().unwrap().note.as_ref().unwrap() == "A Bar Mitzvah source note.");
+        assert!(
+            source.note.as_ref().unwrap().note.as_ref().unwrap() == "A Bar Mitzvah source note."
+        );
 
         // "2 NOTE Bar Mitzvah event note (the ceremonial event held when a Jewish boy reaches age ",
         // "3 CONC 13).",
@@ -1353,13 +1464,17 @@ mod tests {
         assert!(sdata.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Some Bar Mitzvah source text.",
-        assert!(sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some Bas Mitzvah source text.");
+        assert!(
+            sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some Bas Mitzvah source text."
+        );
 
         // "3 QUAY 3",
         assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A Bar Mitzvah source note.",
-        assert!(source.note.as_ref().unwrap().note.as_ref().unwrap() == "A Bas Mitzvah source note.");
+        assert!(
+            source.note.as_ref().unwrap().note.as_ref().unwrap() == "A Bas Mitzvah source note."
+        );
 
         // "2 NOTE Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, ",
         // "3 CONC also known as \"Bat Mitzvah\").",
@@ -1372,7 +1487,18 @@ mod tests {
         assert!(adoption.event.detail.date.as_ref().unwrap() == "BEF 31 DEC 1997");
 
         // "2 PLAC The place",
-        assert!(adoption.event.detail.place.as_ref().unwrap().name.as_ref().unwrap() == "The place");
+        assert!(
+            adoption
+                .event
+                .detail
+                .place
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                == "The place"
+        );
 
         // "2 TYPE ADOP",
         assert!(adoption.event.detail.r#type.as_ref().unwrap() == "ADOP");
@@ -1391,7 +1517,9 @@ mod tests {
         assert!(sdata.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Some adoption source text.",
-        assert!(sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some adoption source text.");
+        assert!(
+            sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some adoption source text."
+        );
 
         // "3 QUAY 3",
         assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
@@ -1418,7 +1546,17 @@ mod tests {
         assert!(chr.event.detail.date.as_ref().unwrap() == "BET 31 DEC 1997 AND 1 FEB 1998");
 
         // "2 PLAC The place",
-        assert!(chr.event.detail.place.as_ref().unwrap().name.as_ref().unwrap() == "The place");
+        assert!(
+            chr.event
+                .detail
+                .place
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                == "The place"
+        );
         // "2 TYPE CHRA",
         assert!(chr.event.detail.r#type.as_ref().unwrap() == "CHRA");
 
@@ -1434,11 +1572,15 @@ mod tests {
         // "4 DATE 31 DEC 1900",
         assert!(data.date.as_ref().unwrap() == "31 DEC 1900");
         // "4 TEXT Some christening source text.",
-        assert!(data.text.as_ref().unwrap().note.as_ref().unwrap() == "Some christening source text.");
+        assert!(
+            data.text.as_ref().unwrap().note.as_ref().unwrap() == "Some christening source text."
+        );
         // "3 QUAY 3",
         assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
         // "3 NOTE A christening source note.",
-        assert!(source.note.as_ref().unwrap().note.as_ref().unwrap() == "A christening source note.");
+        assert!(
+            source.note.as_ref().unwrap().note.as_ref().unwrap() == "A christening source note."
+        );
 
         // "2 NOTE Adult christening event note (the religious event (not LDS) of baptizing and/or ",
         // "3 CONC naming an adult person).",
@@ -1453,7 +1595,17 @@ mod tests {
         assert!(confirmation.detail.date.as_ref().unwrap() == "BET 31 DEC 1997 AND 2 JAN 1998");
 
         // "2 PLAC The place",
-        assert!(confirmation.detail.place.as_ref().unwrap().name.as_ref().unwrap() == "The place");
+        assert!(
+            confirmation
+                .detail
+                .place
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                == "The place"
+        );
 
         // "2 TYPE CONF",
         assert!(confirmation.detail.r#type.as_ref().unwrap() == "CONF");

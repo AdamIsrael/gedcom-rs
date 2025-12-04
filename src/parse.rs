@@ -100,7 +100,7 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
     };
 
     let lines = read_lines(filename)?;
-    
+
     // Consumes the iterator, returns an (Optional) String
 
     // Read through the lines and build a buffer of <records>, each starting
@@ -110,11 +110,11 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
     // This is kind of like a buffered read, specific to the GEDCOM format
     // We read into the buffer until we hit a new record, and then parse that
     // record into a struct.
-    
+
     // Capacity management constants
-    const INITIAL_RECORD_CAPACITY: usize = 2048;  // Typical record ~1-2KB
-    const MAX_RECORD_SIZE: usize = 64 * 1024;      // 64KB safety limit
-    
+    const INITIAL_RECORD_CAPACITY: usize = 2048; // Typical record ~1-2KB
+    const MAX_RECORD_SIZE: usize = 64 * 1024; // 64KB safety limit
+
     let mut record = String::with_capacity(INITIAL_RECORD_CAPACITY);
 
     // Use `map_while` because we could loop on an Err value
@@ -126,11 +126,14 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
             if ch == '0' && !record.is_empty() {
                 // Safety check: skip oversized records
                 if record.len() > MAX_RECORD_SIZE {
-                    eprintln!("Warning: Skipping oversized record ({} bytes)", record.len());
+                    eprintln!(
+                        "Warning: Skipping oversized record ({} bytes)",
+                        record.len()
+                    );
                     record.clear();
                     continue;
                 }
-                
+
                 let mut input: &str = record.as_str();
 
                 // Peek at the first line in the record so we know how
@@ -153,8 +156,7 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
                             // Not always present (it exists in complete.ged)
                             if let Some(ref subm) = gedcom.header.submitter {
                                 if let Some(xref) = &subm.xref {
-                                    gedcom.header.submitter =
-                                        Submitter::find_by_xref(input, xref);
+                                    gedcom.header.submitter = Submitter::find_by_xref(input, xref);
                                 }
                             }
                         }
@@ -164,7 +166,7 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
 
                 record.clear();
             }
-            
+
             record.push_str(line);
             record.push('\n');
         }
@@ -173,7 +175,7 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
     // TODO: repositories
     // TODO: sources
     // TODO: multimedia
-    
+
     Ok(gedcom)
 }
 

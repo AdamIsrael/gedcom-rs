@@ -65,7 +65,7 @@ pub struct Gedc {
 impl Gedc {
     pub fn parse(mut buffer: &str) -> (&str, Option<Gedc>) {
         let mut gedc = Gedc::default();
-        
+
         let Ok(mut line) = Line::peek(&mut buffer) else {
             return (buffer, Some(gedc));
         };

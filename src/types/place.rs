@@ -33,7 +33,7 @@ impl Place {
             return Ok(place);
         };
         let level = level_line.level;
-        
+
         while !record.is_empty() {
             let mut parse = true;
             let Ok(mut line) = Line::peek(record) else {
