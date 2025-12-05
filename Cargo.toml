@@ -25,6 +25,7 @@ panic = "warn"
 [dependencies]
 smallvec = "1.10.0"
 winnow = "0.5.40"
+encoding_rs = "0.8"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
