@@ -10,7 +10,7 @@ use winnow::token::{literal, take_till};
 
 /// A GEDCOM line
 /// level + delim (space) + [optional_xref_ID] + tag + [optional_line_value] + terminator
-#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Default)]
 pub struct Line<'a> {
     pub level: u8,
     pub xref: &'a str,
@@ -64,7 +64,9 @@ impl<'b> Line<'b> {
                             line.xref = xref;
                         }
                         Err(_e) => {
-                            todo!();
+                            // Failed to parse xref - treat as no xref present
+                            // This handles malformed xref like "@INVALID" without closing @
+                            line.xref = "";
                         }
                     }
                     if !line.xref.is_empty() {
@@ -75,21 +77,19 @@ impl<'b> Line<'b> {
 
                     let is_eol = Self::peek_eol(input)?;
                     if is_eol {
-                        Self::eol(input).unwrap();
+                        Self::eol(input)?;
                     } else {
-                        Self::delim(input).unwrap();
+                        Self::delim(input)?;
                         line.value = Self::value(input)?;
 
                         let is_eol = Self::peek_eol(input)?;
                         if is_eol {
-                            Self::eol(input).unwrap();
+                            Self::eol(input)?;
                         }
                     }
                 }
-                Err(e) => {
-                    println!("Err: {}", e);
-                    println!("Error parsing line: '{}'", input);
-                    Self::eol(input).unwrap();
+                Err(_e) => {
+                    let _ = Self::eol(input);
                     /*
                     There's a case where a line is simply the extension of the
                     previous line because of an embedded newline. This is common
@@ -126,7 +126,7 @@ impl<'b> Line<'b> {
     /// Peek ahead at the next line without consuming it.
     pub fn peek(input: &mut &'b str) -> PResult<Line<'b>> {
         let start = input.checkpoint();
-        let line = Line::parse(input).unwrap();
+        let line = Line::parse(input)?;
 
         input.reset(start);
         Ok(line)
@@ -143,10 +143,10 @@ impl<'b> Line<'b> {
             .parse_next(input)
     }
 
-    /// Parse a number from the string, but return it as an actual Rust number, not a string.
+    // Parse a number from the string, but return it as an actual Rust number, not a string.
     // fn peek_level<'s>(input: &mut &'s str) -> PResult<u8> {
     //     let start = input.checkpoint();
-
+    //
     //     let level = Self::level(input).unwrap();
     //     input.reset(start);
     //     Ok(level)
@@ -238,6 +238,7 @@ impl<'b> Line<'b> {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

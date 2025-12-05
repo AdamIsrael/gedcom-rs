@@ -38,6 +38,7 @@ impl FromStr for Pedigree {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::Pedigree;

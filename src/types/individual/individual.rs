@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::types::individual::name::*;
-use crate::types::{Family, Line};
+use crate::types::{Family, Line, Xref};
 
 use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residence};
 
@@ -29,138 +29,102 @@ use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residenc
 // +1 <<SOURCE_CITATION>> +1 <<MULTIMEDIA_LINK>>
 #[derive(Debug, Default)]
 pub struct Individual {
-    pub adoption: Vec<Adoption>,
-
+    // Common events - keep as Vec
     pub birth: Vec<Birth>,
     pub death: Vec<Death>,
-
-    // Baptism-related fields
-    /// The event of baptism (not LDS), performed in infancy or later.
-    pub baptism: Vec<IndividualEventDetail>,
-    /// The ceremonial event held when a Jewish boy reaches age 13.
-    pub barmitzvah: Vec<IndividualEventDetail>,
-    /// The ceremonial event held when a Jewish girl reaches age 13.
-    pub basmitzvah: Vec<IndividualEventDetail>,
-    /// A religious event of bestowing divine care or intercession. Sometimes given in connection with anaming ceremony.
-    pub blessing: Vec<IndividualEventDetail>,
-
-    pub burial: Vec<IndividualEventDetail>,
-
-    /// Census
-    pub census: Vec<IndividualEventDetail>,
-
-    /// The religious event (not LDS) of baptizing and/or naming a child.
     pub christening: Vec<Christening>,
-
-    /// The religious event (not LDS) of baptizing and/or naming an adult person.
-    pub christening_adult: Vec<Christening>,
-
-    /// The religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership.
-    pub confirmation: Vec<IndividualEventDetail>,
-
-    /// First Communion
-    pub first_communion: Option<IndividualEventDetail>,
-
-    pub cremation: Vec<IndividualEventDetail>,
-
-    pub emigration: Vec<IndividualEventDetail>,
-
-    /// Generic events not covered by a specific type
-    pub events: Vec<IndividualEventDetail>,
-
-    pub gender: super::Gender,
-
-    pub graduation: Vec<IndividualEventDetail>,
-
-    pub immigration: Vec<IndividualEventDetail>,
-
+    pub names: Vec<PersonalName>,
     pub residences: Vec<Residence>,
     pub famc: Vec<Family>,
     pub fams: Vec<Family>,
+    pub gender: super::Gender,
 
-    pub names: Vec<PersonalName>,
+    // Rare events - use Option<Vec<T>>
+    pub adoption: Option<Vec<Adoption>>,
+    pub baptism: Option<Vec<IndividualEventDetail>>,
+    pub barmitzvah: Option<Vec<IndividualEventDetail>>,
+    pub basmitzvah: Option<Vec<IndividualEventDetail>>,
+    pub blessing: Option<Vec<IndividualEventDetail>>,
+    pub burial: Option<Vec<IndividualEventDetail>>,
+    pub census: Option<Vec<IndividualEventDetail>>,
+    pub christening_adult: Option<Vec<Christening>>,
+    pub confirmation: Option<Vec<IndividualEventDetail>>,
+    pub first_communion: Option<IndividualEventDetail>,
+    pub cremation: Option<Vec<IndividualEventDetail>>,
+    pub emigration: Option<Vec<IndividualEventDetail>>,
+    pub graduation: Option<Vec<IndividualEventDetail>>,
+    pub immigration: Option<Vec<IndividualEventDetail>>,
+    pub naturalization: Option<Vec<IndividualEventDetail>>,
+    pub probate: Option<Vec<IndividualEventDetail>>,
+    pub retirement: Option<Vec<IndividualEventDetail>>,
+    pub will: Option<Vec<IndividualEventDetail>>,
 
-    pub naturalization: Vec<IndividualEventDetail>,
-
-    pub probate: Vec<IndividualEventDetail>,
-
-    // RETI: Retirement
-    pub retirement: Vec<IndividualEventDetail>,
-
-    pub will: Vec<IndividualEventDetail>,
+    /// Generic events not covered by a specific type
+    pub events: Option<Vec<IndividualEventDetail>>,
 
     /// The XRef pointer associated with this individual
-    pub xref: Option<String>,
+    pub xref: Option<Xref>,
+}
+
+// Macro to handle repetitive event parsing with proper error handling
+macro_rules! parse_event {
+    // For Vec<T> fields
+    ($record:expr, $field:expr, $parser:ty) => {{
+        if let Ok(event) = <$parser>::parse($record) {
+            $field.push(event);
+        }
+        false
+    }};
+    // For Option<Vec<T>> fields
+    (option_vec, $record:expr, $field:expr, $parser:ty) => {{
+        if let Ok(event) = <$parser>::parse($record) {
+            $field.get_or_insert_with(Vec::new).push(event);
+        }
+        false
+    }};
+    // For Option<T> fields (single value)
+    (option, $record:expr, $field:expr, $parser:ty) => {{
+        if let Ok(event) = <$parser>::parse($record) {
+            $field = Some(event);
+        }
+        false
+    }};
 }
 
 // impl<'a> Individual<'a> {
 impl Individual {
     pub fn parse(record: &mut &str) -> Individual {
         // pub fn parse(mut record: String) -> Individual {
-        let mut individual = Individual {
-            // sources: vec![],
-            adoption: vec![],
-            birth: vec![],
-            burial: vec![],
-            death: vec![],
-            baptism: vec![],
-            barmitzvah: vec![],
-            basmitzvah: vec![],
-            blessing: vec![],
-            census: vec![],
-            christening: vec![],
-            christening_adult: vec![],
-            confirmation: vec![],
-            cremation: vec![],
-            emigration: vec![],
-            events: vec![],
-            famc: vec![],
-            fams: vec![],
-            first_communion: None,
-            gender: super::Gender::Unknown,
-            graduation: vec![],
-            immigration: vec![],
-            names: vec![],
-
-            naturalization: vec![],
-            probate: vec![],
-            residences: vec![],
-            retirement: vec![],
-            will: vec![],
-
-            xref: None,
-        };
+        let mut individual = Individual::default();
 
         while !record.is_empty() {
-            let line = Line::peek(record).unwrap();
+            let Ok(line) = Line::peek(record) else {
+                break;
+            };
 
             // Flag to track if we should consume the next line in record
             let mut parse = true;
 
             match line.level {
                 0 => {
-                    individual.xref = Some(line.xref.to_string());
+                    individual.xref = Some(Xref::new(line.xref.to_string()));
                 }
                 1 => {
                     match line.tag {
                         "NAME" => {
-                            let pn = PersonalName::parse(record).unwrap();
-                            individual.names.push(pn);
-                            parse = false;
+                            parse = parse_event!(record, individual.names, PersonalName);
                         }
                         "SEX" => {
-                            individual.gender = super::Gender::from_str(line.value).unwrap();
+                            if let Ok(gender) = super::Gender::from_str(line.value) {
+                                individual.gender = gender;
+                            }
                         }
                         "BIRT" => {
-                            let birth = Birth::parse(record).unwrap();
-                            individual.birth.push(birth);
-                            parse = false;
+                            parse = parse_event!(record, individual.birth, Birth);
                         }
                         "DEAT" => {
                             // TODO: Support 1 DEAT Y
-                            let death = Death::parse(record).unwrap();
-                            individual.death.push(death);
-                            parse = false;
+                            parse = parse_event!(record, individual.death, Death);
                         }
                         "FAMS" => {
                             let fam = Family::parse(record);
@@ -174,129 +138,180 @@ impl Individual {
                         }
                         // baptism
                         "BAPM" => {
-                            let baptism = IndividualEventDetail::parse(record).unwrap();
-                            individual.baptism.push(baptism);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.baptism,
+                                IndividualEventDetail
+                            );
                         }
                         // christening
                         "CHR" => {
-                            let christening = Christening::parse(record).unwrap();
-                            individual.christening.push(christening);
-                            parse = false;
+                            parse = parse_event!(record, individual.christening, Christening);
                         }
                         // bar mitzvah
                         "BARM" => {
-                            let bar = IndividualEventDetail::parse(record).unwrap();
-                            individual.barmitzvah.push(bar);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.barmitzvah,
+                                IndividualEventDetail
+                            );
                         }
                         // bas mitzvah
                         "BASM" => {
-                            let bar = IndividualEventDetail::parse(record).unwrap();
-                            individual.basmitzvah.push(bar);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.basmitzvah,
+                                IndividualEventDetail
+                            );
                         }
                         // blessing
                         "BLES" => {
                             // TODO: Need to add tests for this
-                            let blessing = IndividualEventDetail::parse(record).unwrap();
-                            individual.blessing.push(blessing);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.blessing,
+                                IndividualEventDetail
+                            );
                         }
                         // Adoption
                         "ADOP" => {
-                            let adoption = Adoption::parse(record).unwrap();
-                            individual.adoption.push(adoption);
-                            parse = false;
+                            parse = parse_event!(option_vec, record, individual.adoption, Adoption);
                         }
                         // Adult Christening
                         "CHRA" => {
-                            let christening = Christening::parse(record).unwrap();
-                            individual.christening_adult.push(christening);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.christening_adult,
+                                Christening
+                            );
                         }
                         // Confirmation
                         "CONF" => {
-                            let confirmation = IndividualEventDetail::parse(record).unwrap();
-                            individual.confirmation.push(confirmation);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.confirmation,
+                                IndividualEventDetail
+                            );
                         }
                         "FCOM" => {
-                            let first_communion = IndividualEventDetail::parse(record).unwrap();
-                            individual.first_communion = Some(first_communion);
-                            parse = false;
+                            parse = parse_event!(
+                                option,
+                                record,
+                                individual.first_communion,
+                                IndividualEventDetail
+                            );
                         }
                         "GRAD" => {
-                            let grad = IndividualEventDetail::parse(record).unwrap();
-                            individual.graduation.push(grad);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.graduation,
+                                IndividualEventDetail
+                            );
                         }
                         "EMIG" => {
-                            let emig = IndividualEventDetail::parse(record).unwrap();
-                            individual.emigration.push(emig);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.emigration,
+                                IndividualEventDetail
+                            );
                         }
                         "IMMI" => {
-                            let immi = IndividualEventDetail::parse(record).unwrap();
-                            individual.immigration.push(immi);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.immigration,
+                                IndividualEventDetail
+                            );
                         }
                         "NATU" => {
-                            let natu = IndividualEventDetail::parse(record).unwrap();
-                            individual.naturalization.push(natu);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.naturalization,
+                                IndividualEventDetail
+                            );
                         }
                         "CENS" => {
-                            let census = IndividualEventDetail::parse(record).unwrap();
-                            individual.census.push(census);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.census,
+                                IndividualEventDetail
+                            );
                         }
                         "RETI" => {
-                            let reti = IndividualEventDetail::parse(record).unwrap();
-                            individual.retirement.push(reti);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.retirement,
+                                IndividualEventDetail
+                            );
                         }
                         // probate
                         "PROB" => {
-                            let probate = IndividualEventDetail::parse(record).unwrap();
-                            individual.probate.push(probate);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.probate,
+                                IndividualEventDetail
+                            );
                         }
                         // burial
                         "BURI" => {
-                            let burial = IndividualEventDetail::parse(record).unwrap();
-                            individual.burial.push(burial);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.burial,
+                                IndividualEventDetail
+                            );
                         }
                         // Will
                         "WILL" => {
-                            let will = IndividualEventDetail::parse(record).unwrap();
-                            individual.will.push(will);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.will,
+                                IndividualEventDetail
+                            );
                         }
                         // Cremation
                         "CREM" => {
-                            let cremation = IndividualEventDetail::parse(record).unwrap();
-                            individual.cremation.push(cremation);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.cremation,
+                                IndividualEventDetail
+                            );
                         }
                         // generic event
                         "EVEN" => {
-                            let event = IndividualEventDetail::parse(record).unwrap();
-                            individual.events.push(event);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.events,
+                                IndividualEventDetail
+                            );
                         }
                         // residence
                         "RESI" => {
-                            let residence = Residence::parse(record).unwrap();
-                            individual.residences.push(residence);
-                            parse = false;
+                            parse = parse_event!(record, individual.residences, Residence);
                         }
                         // occupation
                         "OCCU" => {
-                            let occupation = IndividualEventDetail::parse(record).unwrap();
-                            individual.events.push(occupation);
-                            parse = false;
+                            parse = parse_event!(
+                                option_vec,
+                                record,
+                                individual.events,
+                                IndividualEventDetail
+                            );
                         }
                         "EDUC" => {}
                         // physical description
@@ -326,16 +341,14 @@ impl Individual {
                         "REFN" => {}
                         "RIN" => {}
                         "CHAN" => {}
-                        _ => {
-                            println!("Unknown Individual tag: {:?}", line.tag);
-                        }
+                        _ => {}
                     }
                 }
                 _ => {}
             }
             // Consume the line
             if parse {
-                Line::parse(record).unwrap();
+                let _ = Line::parse(record);
             }
         }
 
@@ -356,10 +369,11 @@ pub enum NameType {
     Other,
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{place, AdoptedBy, Quay};
+    use crate::types::{AdoptedBy, Quay};
 
     #[test]
     fn parse_indi_baptism() {
@@ -1067,7 +1081,7 @@ mod tests {
         let mut indi = Individual::parse(&mut record);
 
         assert_eq!(2, indi.names.len());
-        assert_eq!(Some("@I1@".to_string()), indi.xref);
+        assert_eq!(Some(Xref::new("@I1@")), indi.xref);
 
         // Check the name.name
         assert_eq!(
@@ -1124,127 +1138,127 @@ mod tests {
         assert!(indi.birth.len() == 2);
         let birth = indi.birth.first().unwrap();
 
-        let mut event = birth.event.clone();
+        let event = &birth.event;
 
-        assert!(event.detail.r#type.unwrap() == "Normal");
-        assert!(event.detail.date.unwrap() == "31 DEC 1965");
+        assert!(event.detail.r#type.as_ref().unwrap() == "Normal");
+        assert!(event.detail.date.as_ref().unwrap() == "31 DEC 1965");
 
-        let place = event.detail.place.unwrap();
-        assert!(place.name.unwrap() == "Salt Lake City, UT, USA");
-        assert!(place.note.unwrap().note.unwrap() == "Place note");
+        let place = event.detail.place.as_ref().unwrap();
+        assert!(place.name.as_ref().unwrap() == "Salt Lake City, UT, USA");
+        assert!(place.note.as_ref().unwrap().note.as_ref().unwrap() == "Place note");
 
-        let place_phonetic = place.phonetic.unwrap();
-        assert!(place_phonetic.name.unwrap() == "Salt Lake City, UT, USA");
-        assert!(place_phonetic.r#type.unwrap() == "user defined");
-        let place_roman = place.roman.unwrap();
-        assert!(place_roman.name.unwrap() == "Salt Lake City, UT, USA");
-        assert!(place_roman.r#type.unwrap() == "user defined");
-        let place_map = place.map.unwrap();
+        let place_phonetic = place.phonetic.as_ref().unwrap();
+        assert!(place_phonetic.name.as_ref().unwrap() == "Salt Lake City, UT, USA");
+        assert!(place_phonetic.r#type.as_ref().unwrap() == "user defined");
+        let place_roman = place.roman.as_ref().unwrap();
+        assert!(place_roman.name.as_ref().unwrap() == "Salt Lake City, UT, USA");
+        assert!(place_roman.r#type.as_ref().unwrap() == "user defined");
+        let place_map = place.map.as_ref().unwrap();
         assert!(place_map.latitude == 0.0);
         assert!(place_map.longitude == 0.0);
 
-        let addr = event.detail.address.unwrap();
-        assert!(addr.addr1.unwrap() == "St. Marks Hospital");
-        assert!(addr.city.unwrap() == "Salt Lake City");
-        assert!(addr.state.unwrap() == "UT");
-        assert!(addr.postal_code.unwrap() == "84121");
-        assert!(addr.country.unwrap() == "USA");
+        let addr = event.detail.address.as_ref().unwrap();
+        assert!(addr.addr1.as_ref().unwrap() == "St. Marks Hospital");
+        assert!(addr.city.as_ref().unwrap() == "Salt Lake City");
+        assert!(addr.state.as_ref().unwrap() == "UT");
+        assert!(addr.postal_code.as_ref().unwrap() == "84121");
+        assert!(addr.country.as_ref().unwrap() == "USA");
 
-        assert!(event.detail.agency.unwrap() == "none");
-        assert!(event.detail.religion.unwrap() == "Religion");
-        assert!(event.detail.cause.unwrap() == "Conception");
+        assert!(event.detail.agency.as_ref().unwrap() == "none");
+        assert!(event.detail.religion.as_ref().unwrap() == "Religion");
+        assert!(event.detail.cause.as_ref().unwrap() == "Conception");
 
         // Good to know: notes can be an xref that refer to a top-level note,
         // i.e, @N8@ -> '0 NOTE @N8@'.
         // I need to write some kind of resolver
         // TODO: Convert to a Note (and add xref to Note)
-        assert!(event.detail.note.unwrap() == "@N8@");
+        assert!(event.detail.note.as_ref().unwrap() == "@N8@");
 
-        let mut source = event.detail.sources.pop().unwrap();
-        assert!(source.xref.unwrap() == "@S1@");
-        assert!(source.page.unwrap() == 42);
+        let source = event.detail.sources.first().unwrap();
+        assert!(source.xref.as_ref().unwrap() == "@S1@");
+        assert!(source.page.as_ref().unwrap() == &42);
 
-        let sdata = source.data.unwrap();
-        assert!(sdata.date.unwrap() == "1 JAN 1900");
-        assert!(sdata.text.unwrap().note.unwrap() == "Here is some text from the source specific to this source citation.\nHere is more text but on a new line.");
+        let sdata = source.data.as_ref().unwrap();
+        assert!(sdata.date.as_ref().unwrap() == "1 JAN 1900");
+        assert!(sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Here is some text from the source specific to this source citation.\nHere is more text but on a new line.");
 
-        let sevent = source.event.unwrap();
-        assert!(sevent.role.unwrap() == "CHIL");
-        assert!(sevent.r#type.unwrap() == "BIRT");
+        let sevent = source.event.as_ref().unwrap();
+        assert!(sevent.role.as_ref().unwrap() == "CHIL");
+        assert!(sevent.r#type.as_ref().unwrap() == "BIRT");
 
         assert!(source.media.len() == 1);
-        let media = source.media.pop().unwrap();
+        let media = source.media.first().unwrap();
         assert!(media.xref == Some("@M8@".to_string()));
 
-        assert!(source.note.unwrap().note.unwrap() == "Some notes about this birth source citation which are embedded in the citation structure itself.");
+        assert!(source.note.as_ref().unwrap().note.as_ref().unwrap() == "Some notes about this birth source citation which are embedded in the citation structure itself.");
 
-        assert!(source.quay.unwrap() == Quay::Secondary);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Secondary);
 
-        let obje = event.detail.media.pop().unwrap();
+        let obje = event.detail.media.first().unwrap();
         assert!(obje.xref == Some("@M15@".to_string()));
 
-        assert!(event.age.unwrap() == "0y");
+        assert!(event.age.as_ref().unwrap() == "0y");
 
-        assert!(birth.family.clone().unwrap().xref == "@F2@");
+        assert!(birth.family.as_ref().unwrap().xref == "@F2@");
 
         // Death
         // "1 DEAT",
         let death = indi.death.first().unwrap();
 
-        let mut devent = death.event.clone().unwrap();
+        let devent = death.event.as_ref().unwrap();
         // "2 DATE ABT 15 JAN 2001",
         assert!(devent.date.is_some());
-        assert!(devent.date.unwrap() == "ABT 15 JAN 2001");
+        assert!(devent.date.as_ref().unwrap() == "ABT 15 JAN 2001");
 
         // "2 PLAC New York, New York, USA",
         // "3 NOTE The place structure has more detail than usually used for places",
         // "2 AGE 76y",
-        assert!(death.age.clone().unwrap() == "76y");
+        assert!(death.age.as_ref().unwrap() == "76y");
         // "2 TYPE slow",
-        assert!(devent.r#type.unwrap() == "slow");
+        assert!(devent.r#type.as_ref().unwrap() == "slow");
 
         // "2 ADDR",
         // "3 ADR1 at Home",
         assert!(devent.address.is_some());
-        let addr = devent.address.unwrap();
-        assert!(addr.addr1.unwrap() == "at Home");
+        let addr = devent.address.as_ref().unwrap();
+        assert!(addr.addr1.as_ref().unwrap() == "at Home");
 
         // "2 CAUS Cancer",
-        assert!(devent.cause.unwrap() == "Cancer");
+        assert!(devent.cause.as_ref().unwrap() == "Cancer");
 
         // "2 AGNC none",
-        assert!(devent.agency.unwrap() == "none");
+        assert!(devent.agency.as_ref().unwrap() == "none");
 
         // "2 OBJE @M8@",
         assert!(devent.media.len() == 1);
-        let obj = devent.media.pop().unwrap();
+        let obj = devent.media.first().unwrap();
         assert!(obj.xref == Some("@M8@".to_string()));
 
         // "2 SOUR @S1@",
         assert!(devent.sources.len() == 1);
-        let source = devent.sources.pop().unwrap();
-        assert!(source.xref.unwrap() == "@S1@");
+        let source = devent.sources.first().unwrap();
+        assert!(source.xref.as_ref().unwrap() == "@S1@");
 
         // "3 PAGE 42",
-        assert!(source.page.unwrap() == 42);
+        assert!(source.page.as_ref().unwrap() == &42);
 
         // "3 DATA",
-        let sdata = source.data.unwrap();
+        let sdata = source.data.as_ref().unwrap();
 
         // "4 DATE 31 DEC 1900",
-        assert!(sdata.date.unwrap() == "31 DEC 1900");
+        assert!(sdata.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Some death source text.",
-        assert!(sdata.text.unwrap().note.unwrap() == "Some death source text.");
+        assert!(sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some death source text.");
 
         // "3 QUAY 3",
-        assert!(source.quay.unwrap() == Quay::Direct);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A death source note.",
-        assert!(source.note.unwrap().note.unwrap() == "A death source note.");
+        assert!(source.note.as_ref().unwrap().note.as_ref().unwrap() == "A death source note.");
 
         // "2 NOTE A death event note.",
-        assert!(devent.note.unwrap() == "A death event note.");
+        assert!(devent.note.as_ref().unwrap() == "A death event note.");
 
         // Family links
         // FAMS
@@ -1255,7 +1269,7 @@ mod tests {
 
         // Baptism
         // "1 BAPM",
-        let bapm = indi.baptism.pop().unwrap();
+        let bapm = indi.baptism.as_mut().unwrap().pop().unwrap();
 
         // "2 DATE ABT 31 DEC 1997",
         assert!(bapm.detail.date.unwrap() == "ABT 31 DEC 1997");
@@ -1317,7 +1331,7 @@ mod tests {
         assert!(sdata.text.unwrap().note.unwrap() == "Sample baptism Source text.");
 
         // "3 QUAY 3",
-        assert!(source.quay.unwrap() == Quay::Direct);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A baptism source note.",
         assert!(source.note.unwrap().note.unwrap() == "A baptism source note.");
@@ -1332,238 +1346,295 @@ mod tests {
         // Christening
 
         // "1 CHR",
-        let chr = indi.christening.first().unwrap().clone();
+        let chr = indi.christening.first().unwrap();
 
         // "2 DATE CAL 31 DEC 1997",
-        assert!(chr.event.detail.date.unwrap() == "CAL 31 DEC 1997");
+        assert!(chr.event.detail.date.as_ref().unwrap() == "CAL 31 DEC 1997");
 
         // "2 PLAC The place",
-        assert!(chr.event.detail.place.unwrap().name.unwrap() == "The place");
+        assert!(
+            chr.event
+                .detail
+                .place
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                == "The place"
+        );
 
         // "2 TYPE CHR",
-        assert!(chr.event.detail.r#type.unwrap() == "CHR");
+        assert!(chr.event.detail.r#type.as_ref().unwrap() == "CHR");
 
-        let source = chr.event.detail.sources.first().unwrap().clone();
+        let source = chr.event.detail.sources.first().unwrap();
 
         // "2 SOUR @S1@",
-        assert!(source.xref.unwrap() == "@S1@");
+        assert!(source.xref.as_ref().unwrap() == "@S1@");
 
         // "3 PAGE 42",
         assert!(source.page.unwrap() == 42);
 
         // "3 DATA",
-        let data = source.data.unwrap();
+        let data = source.data.as_ref().unwrap();
         // "4 DATE 31 DEC 1900",
-        assert!(data.date.unwrap() == "31 DEC 1900");
+        assert!(data.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Sample CHR Source text.",
-        assert!(data.text.unwrap().note.unwrap() == "Sample CHR Source text.");
+        assert!(data.text.as_ref().unwrap().note.as_ref().unwrap() == "Sample CHR Source text.");
 
         // "3 QUAY 3",
-        assert!(source.quay.unwrap() == Quay::Direct);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A christening Source note.",
-        assert!(source.note.unwrap().note.unwrap() == "A christening Source note.");
+        assert!(
+            source.note.as_ref().unwrap().note.as_ref().unwrap() == "A christening Source note."
+        );
 
         // "2 NOTE Christening event note (the religious event (not LDS) of baptizing and/or naming a ",
         // "3 CONC child).",
-        assert!(chr.event.detail.note.unwrap() == "Christening event note (the religious event (not LDS) of baptizing and/or naming a child).");
+        assert!(chr.event.detail.note.as_ref().unwrap() == "Christening event note (the religious event (not LDS) of baptizing and/or naming a child).");
 
         // "2 FAMC @F3@",
-        assert!(chr.family.unwrap().xref == "@F3@".to_string());
+        assert!(chr.family.as_ref().unwrap().xref == "@F3@".to_string());
 
         // "1 BARM",
-        let barm = indi.barmitzvah.first().unwrap().clone();
+        let barm = indi.barmitzvah.as_ref().unwrap().first().unwrap();
         // "2 DATE AFT 31 DEC 1997",
-        assert!(barm.detail.date.unwrap() == "AFT 31 DEC 1997");
+        assert!(barm.detail.date.as_ref().unwrap() == "AFT 31 DEC 1997");
 
         // "2 PLAC The place",
-        assert!(barm.detail.place.unwrap().name.unwrap() == "The place");
+        assert!(barm.detail.place.as_ref().unwrap().name.as_ref().unwrap() == "The place");
 
         // "2 TYPE BARM",
-        assert!(barm.detail.r#type.unwrap() == "BARM");
+        assert!(barm.detail.r#type.as_ref().unwrap() == "BARM");
 
-        let source = barm.detail.sources.first().unwrap().clone();
+        let source = barm.detail.sources.first().unwrap();
         // "2 SOUR @S1@",
-        assert!(source.xref.unwrap() == "@S1@");
+        assert!(source.xref.as_ref().unwrap() == "@S1@");
         // "3 PAGE 42",
         assert!(source.page.unwrap() == 42);
 
         // "3 DATA",
-        let sdata = source.data.unwrap();
+        let sdata = source.data.as_ref().unwrap();
 
         // "4 DATE 31 DEC 1900",
-        assert!(sdata.date.unwrap() == "31 DEC 1900");
+        assert!(sdata.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Some Bar Mitzvah source text.",
-        assert!(sdata.text.unwrap().note.unwrap() == "Some Bar Mitzvah source text.");
+        assert!(
+            sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some Bar Mitzvah source text."
+        );
 
         // "3 QUAY 3",
-        assert!(source.quay.unwrap() == Quay::Direct);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A Bar Mitzvah source note.",
-        assert!(source.note.unwrap().note.unwrap() == "A Bar Mitzvah source note.");
+        assert!(
+            source.note.as_ref().unwrap().note.as_ref().unwrap() == "A Bar Mitzvah source note."
+        );
 
         // "2 NOTE Bar Mitzvah event note (the ceremonial event held when a Jewish boy reaches age ",
         // "3 CONC 13).",
-        assert!(barm.detail.note.unwrap() == "Bar Mitzvah event note (the ceremonial event held when a Jewish boy reaches age 13).");
+        assert!(barm.detail.note.as_ref().unwrap() == "Bar Mitzvah event note (the ceremonial event held when a Jewish boy reaches age 13).");
 
         // Baz Mitzvah
         // "1 BASM",
-        let basm = indi.basmitzvah.first().unwrap().clone();
+        let basm = indi.basmitzvah.as_ref().unwrap().first().unwrap();
 
         // "2 DATE AFT 31 DEC 1997",
-        assert!(basm.detail.date.unwrap() == "AFT 31 DEC 1997");
+        assert!(basm.detail.date.as_ref().unwrap() == "AFT 31 DEC 1997");
 
         // "2 PLAC The place",
-        assert!(basm.detail.place.unwrap().name.unwrap() == "The place");
+        assert!(basm.detail.place.as_ref().unwrap().name.as_ref().unwrap() == "The place");
 
         // "2 TYPE BARM",
-        assert!(basm.detail.r#type.unwrap() == "BASM");
+        assert!(basm.detail.r#type.as_ref().unwrap() == "BASM");
 
-        let source = basm.detail.sources.first().unwrap().clone();
+        let source = basm.detail.sources.first().unwrap();
         // "2 SOUR @S1@",
-        assert!(source.xref.unwrap() == "@S1@");
+        assert!(source.xref.as_ref().unwrap() == "@S1@");
         // "3 PAGE 42",
         assert!(source.page.unwrap() == 42);
 
         // "3 DATA",
-        let sdata = source.data.unwrap();
+        let sdata = source.data.as_ref().unwrap();
 
         // "4 DATE 31 DEC 1900",
-        assert!(sdata.date.unwrap() == "31 DEC 1900");
+        assert!(sdata.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Some Bar Mitzvah source text.",
-        assert!(sdata.text.unwrap().note.unwrap() == "Some Bas Mitzvah source text.");
+        assert!(
+            sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some Bas Mitzvah source text."
+        );
 
         // "3 QUAY 3",
-        assert!(source.quay.unwrap() == Quay::Direct);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A Bar Mitzvah source note.",
-        assert!(source.note.unwrap().note.unwrap() == "A Bas Mitzvah source note.");
+        assert!(
+            source.note.as_ref().unwrap().note.as_ref().unwrap() == "A Bas Mitzvah source note."
+        );
 
         // "2 NOTE Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, ",
         // "3 CONC also known as \"Bat Mitzvah\").",
-        assert!(basm.detail.note.unwrap() == "Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, also known as \"Bat Mitzvah\").");
+        assert!(basm.detail.note.as_ref().unwrap() == "Bas Mitzvah event note (the ceremonial event held when a Jewish girl reaches age 13, also known as \"Bat Mitzvah\").");
 
         // "1 ADOP",
-        let mut adoption = indi.adoption.pop().unwrap().clone();
+        let adoption = indi.adoption.as_ref().unwrap().first().unwrap();
 
         // "2 DATE BEF 31 DEC 1997",
-        assert!(adoption.event.detail.date.unwrap() == "BEF 31 DEC 1997");
+        assert!(adoption.event.detail.date.as_ref().unwrap() == "BEF 31 DEC 1997");
 
         // "2 PLAC The place",
-        assert!(adoption.event.detail.place.unwrap().name.unwrap() == "The place");
+        assert!(
+            adoption
+                .event
+                .detail
+                .place
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                == "The place"
+        );
 
         // "2 TYPE ADOP",
-        assert!(adoption.event.detail.r#type.unwrap() == "ADOP");
+        assert!(adoption.event.detail.r#type.as_ref().unwrap() == "ADOP");
 
         // "2 SOUR @S1@",
-        let source = adoption.event.detail.sources.pop().unwrap();
-        assert!(source.xref.unwrap() == "@S1@");
+        let source = adoption.event.detail.sources.first().unwrap();
+        assert!(source.xref.as_ref().unwrap() == "@S1@");
 
         // "3 PAGE 42",
         assert!(source.page.unwrap() == 42);
 
         // "3 DATA",
-        let sdata = source.data.unwrap();
+        let sdata = source.data.as_ref().unwrap();
 
         // "4 DATE 31 DEC 1900",
-        assert!(sdata.date.unwrap() == "31 DEC 1900");
+        assert!(sdata.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Some adoption source text.",
-        assert!(sdata.text.unwrap().note.unwrap() == "Some adoption source text.");
+        assert!(
+            sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some adoption source text."
+        );
 
         // "3 QUAY 3",
-        assert!(source.quay.unwrap() == Quay::Direct);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE An adoption source note.",
-        assert!(source.note.unwrap().note.unwrap() == "An adoption source note.");
+        assert!(source.note.as_ref().unwrap().note.as_ref().unwrap() == "An adoption source note.");
 
         // "2 NOTE Adoption event note (pertaining to creation of a child-parent relationship that does ",
         // "3 CONC not exist biologically).",
-        assert!(adoption.event.detail.note.unwrap() == "Adoption event note (pertaining to creation of a child-parent relationship that does not exist biologically).");
+        assert!(adoption.event.detail.note.as_ref().unwrap() == "Adoption event note (pertaining to creation of a child-parent relationship that does not exist biologically).");
 
         // "2 FAMC @F3@",
-        let family = adoption.family.unwrap();
+        let family = adoption.family.as_ref().unwrap();
         assert!(family.xref == "@F3@");
         // "3 ADOP BOTH",
         assert!(family.adopted_by.is_some());
-        assert!(family.adopted_by.unwrap() == AdoptedBy::Both);
+        assert!(family.adopted_by.as_ref().unwrap() == &AdoptedBy::Both);
 
         // Adult Christening
         // "1 CHRA",
-        let chr = indi.christening_adult.first().unwrap().clone();
+        let chr = indi.christening_adult.as_ref().unwrap().first().unwrap();
 
         // "2 DATE BET 31 DEC 1997 AND 1 FEB 1998",
-        assert!(chr.event.detail.date.unwrap() == "BET 31 DEC 1997 AND 1 FEB 1998");
+        assert!(chr.event.detail.date.as_ref().unwrap() == "BET 31 DEC 1997 AND 1 FEB 1998");
 
         // "2 PLAC The place",
-        assert!(chr.event.detail.place.unwrap().name.unwrap() == "The place");
+        assert!(
+            chr.event
+                .detail
+                .place
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                == "The place"
+        );
         // "2 TYPE CHRA",
-        assert!(chr.event.detail.r#type.unwrap() == "CHRA");
+        assert!(chr.event.detail.r#type.as_ref().unwrap() == "CHRA");
 
-        let source = chr.event.detail.sources.first().unwrap().clone();
+        let source = chr.event.detail.sources.first().unwrap();
         // "2 SOUR @S1@",
-        assert!(source.xref.unwrap() == "@S1@");
+        assert!(source.xref.as_ref().unwrap() == "@S1@");
 
         // "3 PAGE 42",
         assert!(source.page.unwrap() == 42);
 
         // "3 DATA",
-        let data = source.data.unwrap();
+        let data = source.data.as_ref().unwrap();
         // "4 DATE 31 DEC 1900",
-        assert!(data.date.unwrap() == "31 DEC 1900");
+        assert!(data.date.as_ref().unwrap() == "31 DEC 1900");
         // "4 TEXT Some christening source text.",
-        assert!(data.text.unwrap().note.unwrap() == "Some christening source text.");
+        assert!(
+            data.text.as_ref().unwrap().note.as_ref().unwrap() == "Some christening source text."
+        );
         // "3 QUAY 3",
-        assert!(source.quay.unwrap() == Quay::Direct);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
         // "3 NOTE A christening source note.",
-        assert!(source.note.unwrap().note.unwrap() == "A christening source note.");
+        assert!(
+            source.note.as_ref().unwrap().note.as_ref().unwrap() == "A christening source note."
+        );
 
         // "2 NOTE Adult christening event note (the religious event (not LDS) of baptizing and/or ",
         // "3 CONC naming an adult person).",
-        assert!(chr.event.detail.note.unwrap() == "Adult christening event note (the religious event (not LDS) of baptizing and/or naming an adult person).");
+        assert!(chr.event.detail.note.as_ref().unwrap() == "Adult christening event note (the religious event (not LDS) of baptizing and/or naming an adult person).");
 
         // CONFIRMATION
         // "1 CONF",
-        assert!(indi.confirmation.len() == 1);
-        let confirmation = indi.confirmation.first().unwrap().clone();
+        assert!(indi.confirmation.as_ref().unwrap().len() == 1);
+        let confirmation = indi.confirmation.as_ref().unwrap().first().unwrap();
 
         // "2 DATE BET 31 DEC 1997 AND 2 JAN 1998",
-        assert!(confirmation.detail.date.unwrap() == "BET 31 DEC 1997 AND 2 JAN 1998");
+        assert!(confirmation.detail.date.as_ref().unwrap() == "BET 31 DEC 1997 AND 2 JAN 1998");
 
         // "2 PLAC The place",
-        assert!(confirmation.detail.place.unwrap().name.unwrap() == "The place");
+        assert!(
+            confirmation
+                .detail
+                .place
+                .as_ref()
+                .unwrap()
+                .name
+                .as_ref()
+                .unwrap()
+                == "The place"
+        );
 
         // "2 TYPE CONF",
-        assert!(confirmation.detail.r#type.unwrap() == "CONF");
+        assert!(confirmation.detail.r#type.as_ref().unwrap() == "CONF");
 
-        let source = confirmation.detail.sources.first().unwrap().clone();
+        let source = confirmation.detail.sources.first().unwrap();
 
         // "2 SOUR @S1@",
-        assert!(source.xref.unwrap() == "@S1@");
+        assert!(source.xref.as_ref().unwrap() == "@S1@");
 
         // "3 PAGE 42",
         assert!(source.page.unwrap() == 42);
 
         // "3 DATA",
-        let sdata = source.data.unwrap();
+        let sdata = source.data.as_ref().unwrap();
 
         // "4 DATE 31 DEC 1900",
-        assert!(sdata.date.unwrap() == "31 DEC 1900");
+        assert!(sdata.date.as_ref().unwrap() == "31 DEC 1900");
 
         // "4 TEXT Some CONF Source text.",
-        assert!(sdata.text.unwrap().note.unwrap() == "Some CONF Source text.");
+        assert!(sdata.text.as_ref().unwrap().note.as_ref().unwrap() == "Some CONF Source text.");
 
         // "3 QUAY 3",
-        assert!(source.quay.unwrap() == Quay::Direct);
+        assert!(source.quay.as_ref().unwrap() == &Quay::Direct);
 
         // "3 NOTE A CONF Source note.",
-        assert!(source.note.unwrap().note.unwrap() == "A CONF Source note.");
+        assert!(source.note.as_ref().unwrap().note.as_ref().unwrap() == "A CONF Source note.");
 
         // "2 NOTE CONFIRMATION event note (the religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership).",
-        assert!(confirmation.detail.note.unwrap() == "CONFIRMATION event note (the religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership).");
+        assert!(confirmation.detail.note.as_ref().unwrap() == "CONFIRMATION event note (the religious event (not LDS) of conferring the gift of the Holy Ghost and, among protestants, full church membership).");
 
         // First Communion
         assert!(indi.first_communion.is_some());

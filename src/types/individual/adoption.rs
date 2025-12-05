@@ -25,7 +25,7 @@ impl Adoption {
             family: None,
         };
 
-        let line = Line::parse(record).unwrap();
+        let line = Line::parse(record)?;
 
         // Make sure we have an ADOP record to start with!
         if line.tag != "ADOP" {
@@ -33,13 +33,14 @@ impl Adoption {
         }
 
         let level = line.level;
-        let mut events: Vec<String> = vec![];
+        // Pre-allocate capacity for typical event detail (avg ~10-15 lines)
+        let mut events: Vec<String> = Vec::with_capacity(16);
 
         // Add the first line so EventDetails will parse cleanly
         events.push(line.to_string());
 
         while !record.is_empty() {
-            let line = Line::peek(record).unwrap();
+            let line = Line::peek(record)?;
             if line.level <= level {
                 break;
             }
@@ -60,7 +61,7 @@ impl Adoption {
                 }
             }
             if consume {
-                Line::parse(record).unwrap();
+                Line::parse(record)?;
             }
         }
 
@@ -69,13 +70,14 @@ impl Adoption {
             // Remove the last line; it belongs to the next record
             let event = events.join("\n");
             let mut event_str = event.as_str();
-            adoption.event = IndividualEventDetail::parse(&mut event_str).unwrap();
+            adoption.event = IndividualEventDetail::parse(&mut event_str)?;
         }
 
         Ok(adoption)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

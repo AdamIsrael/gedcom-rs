@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::{
     parse,
-    types::{AdoptedBy, Line, Note, Pedigree, Spouse},
+    types::{AdoptedBy, Line, Note, Pedigree, Spouse, Xref},
 };
 
 // TODO: implement full parsing of the family record
@@ -36,7 +36,7 @@ pub struct Family {
     pub husband: Option<Spouse>,
     pub wife: Option<Spouse>,
 
-    pub xref: String,
+    pub xref: Xref,
     pub notes: Vec<Note>,
     pub pedigree: Option<Pedigree>,
 }
@@ -47,25 +47,29 @@ impl Family {
             adopted_by: None,
             husband: None,
             wife: None,
-            xref: "".to_string(),
+            xref: Xref::default(),
             notes: vec![],
             pedigree: None,
         };
 
-        let line = Line::peek(record).unwrap();
+        let Ok(line) = Line::peek(record) else {
+            return family;
+        };
         let level = line.level;
         let tag = line.tag;
 
         // If we're at the top of the record, consume the line
         if tag == "FAMC" || tag == "FAMS" {
             // Capture the xref
-            family.xref = line.value.to_string();
-            Line::parse(record).unwrap();
+            family.xref = Xref::new(line.value.to_string());
+            let _ = Line::parse(record);
         }
 
         while !record.is_empty() {
             let mut consume = true;
-            let line = Line::peek(record).unwrap();
+            let Ok(line) = Line::peek(record) else {
+                break;
+            };
 
             // If the next level matches our initial level, we're done parsing
             // this structure.
@@ -75,24 +79,26 @@ impl Family {
 
             match line.tag {
                 "NOTE" => {
-                    if let Some(note) = parse::get_tag_value(record).unwrap() {
+                    if let Ok(Some(note)) = parse::get_tag_value(record) {
                         family.notes.push(Note { note: Some(note) });
                     }
                     consume = false;
                 }
                 "PEDI" => {
-                    let pedigree = Pedigree::from_str(line.value).unwrap();
-                    family.pedigree = Some(pedigree);
+                    if let Ok(pedigree) = Pedigree::from_str(line.value) {
+                        family.pedigree = Some(pedigree);
+                    }
                 }
                 "ADOP" => {
-                    let adopted_by = AdoptedBy::from_str(line.value).unwrap();
-                    family.adopted_by = Some(adopted_by);
+                    if let Ok(adopted_by) = AdoptedBy::from_str(line.value) {
+                        family.adopted_by = Some(adopted_by);
+                    }
                 }
                 _ => {}
             }
 
             if consume {
-                Line::parse(record).unwrap();
+                let _ = Line::parse(record);
             }
         }
 
@@ -100,6 +106,7 @@ impl Family {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

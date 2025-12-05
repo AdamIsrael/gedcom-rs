@@ -14,6 +14,14 @@ exclude = [
     ".vscode/*",
 ]
 
+[lints.clippy]
+# Deny unwrap usage in production code (tests are allowed)
+unwrap_used = "deny"
+expect_used = "warn"
+# Additional safety lints
+indexing_slicing = "warn"
+panic = "warn"
+
 [dependencies]
 smallvec = "1.10.0"
 winnow = "0.5.40"

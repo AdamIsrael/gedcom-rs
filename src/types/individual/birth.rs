@@ -1,4 +1,4 @@
-use crate::types::{Family, Line};
+use crate::types::{Family, Line, Xref};
 
 use winnow::prelude::*;
 
@@ -35,15 +35,16 @@ impl Birth {
             family: None,
         };
 
-        let line = Line::parse(record).unwrap();
+        let line = Line::parse(record)?;
         let level = line.level;
-        let mut events: Vec<String> = vec![];
+        // Pre-allocate capacity for typical event detail (avg ~10-15 lines)
+        let mut events: Vec<String> = Vec::with_capacity(16);
 
         // Add the first line so EventDetails will parse cleanly
         events.push(line.to_string());
 
         while !record.is_empty() {
-            let line = Line::peek(record).unwrap();
+            let line = Line::peek(record)?;
             if line.level <= level {
                 break;
             }
@@ -54,7 +55,7 @@ impl Birth {
                         adopted_by: None,
                         husband: None,
                         wife: None,
-                        xref: line.value.to_string(),
+                        xref: Xref::new(line.value.to_string()),
                         notes: vec![],
                         pedigree: None,
                     };
@@ -70,7 +71,7 @@ impl Birth {
                 }
             }
 
-            Line::parse(record).unwrap();
+            Line::parse(record)?;
         }
 
         // Now parse the events
@@ -78,13 +79,14 @@ impl Birth {
             // Remove the last line; it belongs to the next record
             let event = events.join("\n");
             let mut event_str = event.as_str();
-            birth.event = IndividualEventDetail::parse(&mut event_str).unwrap();
+            birth.event = IndividualEventDetail::parse(&mut event_str)?;
         }
 
         Ok(birth)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -19,25 +19,32 @@ pub struct Corporation {
 
 impl Corporation {
     pub fn parse(mut buffer: &str) -> (&str, Option<Corporation>) {
-        let mut corp: Corporation = Corporation {
-            name: None,
-            address: None,
-        };
+        let mut corp = Corporation::default();
 
-        let mut line: Line = Line::peek(&mut buffer).unwrap();
+        let Ok(mut line) = Line::peek(&mut buffer) else {
+            return (buffer, Some(corp));
+        };
 
         // Verify we have a CORP record
         // line = Line::peek(&mut buffer).unwrap();
         if line.level == 2 && line.tag == "CORP" {
-            line = Line::parse(&mut buffer).unwrap();
+            let Ok(parsed_line) = Line::parse(&mut buffer) else {
+                return (buffer, Some(corp));
+            };
+            line = parsed_line;
             // (buffer, line) = Line::parse(buffer).unwrap();
             corp.name = Some(line.value.to_string());
 
             // Check if the next line contains an address struct
-            line = Line::peek(&mut buffer).unwrap();
+            let Ok(next_line) = Line::peek(&mut buffer) else {
+                return (buffer, Some(corp));
+            };
+            line = next_line;
 
             if line.level == 3 && line.tag == "ADDR" {
-                corp.address = Some(Address::parse(&mut buffer).unwrap());
+                if let Ok(addr) = Address::parse(&mut buffer) {
+                    corp.address = Some(addr);
+                }
             }
         }
 
@@ -45,6 +52,7 @@ impl Corporation {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::types::corporation::Corporation;

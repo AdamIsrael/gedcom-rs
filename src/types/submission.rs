@@ -12,22 +12,26 @@ impl Submission {
     /// Parses a SUBN block
     pub fn parse(mut buffer: &str) -> (&str, Option<Submission>) {
         let mut submission: Option<Submission> = None;
-        let mut line = Line::peek(&mut buffer).unwrap();
-        if line.level == 1 && line.tag == "SUBN" {
-            // advance our position in the buffer
-            line = Line::parse(&mut buffer).unwrap();
-            // This is a temporary hack, because parse::xref strips @ from the id
-            let xref = line.value;
 
-            submission = Some(Submission {
-                xref: Some(xref.to_string()),
-            });
+        if let Ok(line) = Line::peek(&mut buffer) {
+            if line.level == 1 && line.tag == "SUBN" {
+                // advance our position in the buffer
+                if let Ok(parsed_line) = Line::parse(&mut buffer) {
+                    // This is a temporary hack, because parse::xref strips @ from the id
+                    let xref = parsed_line.value;
+
+                    submission = Some(Submission {
+                        xref: Some(xref.to_string()),
+                    });
+                }
+            }
         }
 
         (buffer, submission)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::Submission;

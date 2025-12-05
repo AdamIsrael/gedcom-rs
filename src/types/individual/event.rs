@@ -56,7 +56,7 @@ impl IndividualEventDetail {
             },
         };
 
-        let mut line = Line::peek(record).unwrap();
+        let mut line = Line::peek(record)?;
 
         // Check if we've received a top-level event tag, which we want to skip over.
         match line.tag {
@@ -66,13 +66,14 @@ impl IndividualEventDetail {
                 // Consume the line
                 let _ = Line::parse(record);
                 // Get the next line
-                line = Line::peek(record).unwrap();
+                line = Line::peek(record)?;
             }
             _ => {}
         }
 
         let level = line.level;
-        let mut events: Vec<String> = vec![];
+        // Pre-allocate capacity for typical event detail (avg ~10-15 lines)
+        let mut events: Vec<String> = Vec::with_capacity(16);
 
         // Add the first line so EventDetails will parse cleanly
         events.push(line.to_string());
@@ -91,9 +92,9 @@ impl IndividualEventDetail {
                     events.push(line.to_string());
                 }
             }
-            Line::parse(record).unwrap();
+            Line::parse(record)?;
 
-            line = Line::peek(record).unwrap();
+            line = Line::peek(record)?;
             if line.level < level {
                 break;
             }
@@ -104,13 +105,14 @@ impl IndividualEventDetail {
             // Remove the last line; it belongs to the next record
             let event_s = events.join("\n");
             let mut event_str = event_s.as_str();
-            event.detail = EventDetail::parse(&mut event_str).unwrap();
+            event.detail = EventDetail::parse(&mut event_str)?;
         }
 
         Ok(event)
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     // use super::*;

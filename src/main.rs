@@ -3,25 +3,41 @@ extern crate gedcom_rs;
 use gedcom_rs::parse::parse_gedcom;
 
 use std::env;
+use std::process;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     match args.len() {
         1 => usage("Missing filename."),
-        s if s > 2 => usage(&format!("Found more args than expected: {:?}", &args[1..])),
+        s if s > 2 => usage(&format!(
+            "Found more args than expected: {:?}",
+            args.get(1..).unwrap_or(&[])
+        )),
         _ => (),
     };
 
-    let filename = &args[1];
+    let filename = match args.get(1) {
+        Some(f) => f,
+        None => {
+            usage("Missing filename.");
+            unreachable!()
+        }
+    };
 
     if filename == "--help" || filename == "-h" {
         usage("");
     }
 
-    let gedcom = parse_gedcom(filename);
-
-    // TODO: print a pretty summary of the gedcom. Use `tabled` crate?
-    println!("{:#?}", gedcom);
+    match parse_gedcom(filename) {
+        Ok(gedcom) => {
+            // TODO: print a pretty summary of the gedcom. Use `tabled` crate?
+            println!("{:#?}", gedcom);
+        }
+        Err(e) => {
+            eprintln!("Error parsing GEDCOM file: {}", e);
+            process::exit(1);
+        }
+    }
 }
 
 fn usage(msg: &str) {
@@ -32,13 +48,14 @@ fn usage(msg: &str) {
     std::process::exit(0x0100);
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_complete_gedcom() {
-        let gedcom = parse_gedcom("./data/complete.ged");
+        let gedcom = parse_gedcom("./data/complete.ged").unwrap();
 
         // Test the header
         // println!("Gedcom: {:?}", gedcom.header);
@@ -54,6 +71,15 @@ mod tests {
         let note = gedcom.header.note.unwrap();
         assert!(note.starts_with("This file demonstrates all tags that are allowed in GEDCOM 5.5."));
         assert!(note.ends_with("GEDCOM 5.5 specs on the Internet at <http://homepages.rootsweb.com/~pmcbride/gedcom/55gctoc.htm>."));
+    }
+
+    #[test]
+    fn test_file_not_found() {
+        let result = parse_gedcom("./nonexistent.ged");
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(matches!(e, gedcom_rs::error::GedcomError::FileNotFound(_)));
+        }
     }
 
     // #[test]

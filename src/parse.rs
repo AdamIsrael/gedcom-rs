@@ -1,6 +1,7 @@
 // use crate::types::{Address, Line, Source};
 // use super::types::Line;
 use super::types::*;
+use crate::error::{GedcomError, Result};
 
 use std::fs::File;
 
@@ -9,14 +10,14 @@ use std::path::Path;
 
 use winnow::prelude::*;
 
-/// This is pretty much a kludge to strip out U+FEFF, a Zero Width No-Break Space
-/// https://www.compart.com/en/unicode/U+FEFF
-///
-/// So far, I've only seen this with one GEDCOM, as the starting byte.
+// This is pretty much a kludge to strip out U+FEFF, a Zero Width No-Break Space
+// https://www.compart.com/en/unicode/U+FEFF
+//
+// So far, I've only seen this with one GEDCOM, as the starting byte.
 // pub fn zero_with_no_break_space(input: &mut &str) -> PResult<&str> {
 //     if input.starts_with('\u{FEFF}') {
 //         let parser = tag("\u{FEFF}");
-
+//
 //         parser.parse_next(input)
 //     } else {
 //         Ok("")
@@ -25,32 +26,32 @@ use winnow::prelude::*;
 
 /// Read the next tag's value and any continuations
 pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
-    let mut line = Line::parse(input).unwrap();
+    let mut line = Line::parse(input)?;
 
     // Seed the value with the initial value
     let mut text: String = line.value.to_string();
 
-    line = Line::peek(input).unwrap();
+    line = Line::peek(input)?;
     while line.tag == "CONC" || line.tag == "CONT" {
         // consume
-        line = Line::parse(input).unwrap();
+        line = Line::parse(input)?;
 
         if line.tag == "CONT" {
-            text += "\n";
+            text.push('\n');
         }
-        text += line.value;
+        text.push_str(line.value);
 
         // peek ahead
-        line = Line::peek(input).unwrap();
+        line = Line::peek(input)?;
     }
 
     Ok(Some(text))
 }
 
-/// Parse the buffer if the CONC tag is found and return the resulting string.
+// Parse the buffer if the CONC tag is found and return the resulting string.
 // pub fn conc(input: &mut &str) -> PResult<Option<String>> {
 //     let line = Line::parse(input).unwrap();
-
+//
 //     if line.tag == "CONC" {
 //         Ok(Some(line.value.to_string()))
 //     } else {
@@ -58,11 +59,11 @@ pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
 //     }
 // }
 
-/// Parse the buffer if the CONT tag is found and return the resulting string.
-/// TODO: Refactor this. It should handle CONT and CONC.
+// Parse the buffer if the CONT tag is found and return the resulting string.
+// TODO: Refactor this. It should handle CONT and CONC.
 // pub fn cont(input: &mut &str) -> PResult<Option<String>> {
 //     let line = Line::parse(input).unwrap();
-
+//
 //     if line.tag == "CONT" {
 //         Ok(Some(line.value.to_string()))
 //     } else {
@@ -71,98 +72,111 @@ pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
 // }
 
 /// Parse a GEDCOM file
-pub fn parse_gedcom(filename: &str) -> Gedcom {
-    // Initialize an empty gedcom
+///
+/// # Arguments
+///
+/// * `filename` - Path to the GEDCOM file to parse
+///
+/// # Returns
+///
+/// Returns a `Result` containing the parsed `Gedcom` structure or a `GedcomError`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The file cannot be found or opened
+/// - The file cannot be read
+/// - The GEDCOM data is malformed
+pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
+    // Check if file exists first for better error messages
+    if !Path::new(filename).exists() {
+        return Err(GedcomError::FileNotFound(filename.to_string()));
+    }
+
+    // Initialize an empty gedcom with pre-allocated capacity
     let mut gedcom = Gedcom {
-        header: Header {
-            character_set: None,
-            copyright: None,
-            date: None,
-            destination: None,
-            gedcom_version: None,
-            language: None,
-            filename: None,
-            note: None,
-            place: None,
-            source: None,
-            submitter: None,
-            submission: None,
-        },
-        individuals: vec![],
+        header: Header::default(),
+        individuals: Vec::with_capacity(100), // Pre-allocate for typical genealogy files
     };
 
-    if let Ok(lines) = read_lines(filename) {
-        // Consumes the iterator, returns an (Optional) String
+    let lines = read_lines(filename)?;
 
-        // Read through the lines and build a buffer of <records>, each starting
-        // with a zero and ending with the last line before the next. Then feed that
-        // buffer to a nom parser to split it into Lines?
+    // Consumes the iterator, returns an (Optional) String
 
-        // This is kind of like a buffered read, specific to the GEDCOM format
-        // We read into the buffer until we hit a new record, and then parse that
-        // record into a struct.
-        let mut record: String = String::new();
+    // Read through the lines and build a buffer of <records>, each starting
+    // with a zero and ending with the last line before the next. Then feed that
+    // buffer to a nom parser to split it into Lines?
 
-        // Use `map_while` because we could loop on an Err value
-        for mut buffer in lines.map_while(Result::ok) {
-            // Strip off any leading Zero Width No-Break Space
-            if buffer.strip_prefix('\u{FEFF}').is_some() {
-                buffer.remove(0);
-            }
-            // println!("Buffer: \n'{}'", buffer);
-            // record = buffer.clone() + "\n";
+    // This is kind of like a buffered read, specific to the GEDCOM format
+    // We read into the buffer until we hit a new record, and then parse that
+    // record into a struct.
 
-            if let Some(ch) = buffer.chars().next() {
-                if ch == '0' && !record.is_empty() {
-                    let mut input: &str = record.as_str();
+    // Capacity management constants
+    const INITIAL_RECORD_CAPACITY: usize = 2048; // Typical record ~1-2KB
+    const MAX_RECORD_SIZE: usize = 64 * 1024; // 64KB safety limit
 
-                    // Peek at the first line in the record so we know how
-                    // to parse it.
-                    let line = Line::peek(&mut input).unwrap();
-                    // println!("Got a line: {:?}", line);
+    let mut record = String::with_capacity(INITIAL_RECORD_CAPACITY);
+
+    // Use `map_while` because we could loop on an Err value
+    for buffer in lines.map_while(std::result::Result::ok) {
+        // Strip off any leading Zero Width No-Break Space
+        let line = buffer.strip_prefix('\u{FEFF}').unwrap_or(&buffer);
+
+        if let Some(ch) = line.chars().next() {
+            if ch == '0' && !record.is_empty() {
+                // Safety check: skip oversized records
+                if record.len() > MAX_RECORD_SIZE {
+                    eprintln!(
+                        "Warning: Skipping oversized record ({} bytes)",
+                        record.len()
+                    );
+                    record.clear();
+                    continue;
+                }
+
+                let mut input: &str = record.as_str();
+
+                // Peek at the first line in the record so we know how
+                // to parse it.
+                if let Ok(line) = Line::peek(&mut input) {
                     match line.tag {
                         "HEAD" => {
-                            // println!("Parsing HEAD: \n{}", input);
-                            gedcom.header = Header::parse(input.to_string());
+                            gedcom.header = Header::parse(input);
                         }
                         "INDI" => {
                             let indi = Individual::parse(&mut input);
-                            // TODO: Remove the if. This is just to clean up the output for debugging.
-                            // if indi.xref.clone().unwrap() == "@I1@" {
                             gedcom.individuals.push(indi);
-                            // }
                         }
                         "SOUR" => {}
                         "REPO" => {}
-                        "OBJE" => {
-                            // let obj = Object::parse(buff);
-                            // println!("{:?}", obj);
-                        }
+                        "OBJE" => {}
                         "FAM" => {}
                         "SUBM" => {
-                            // // The record of the submitter of the family tree
-                            // // Not always present (it exists in complete.ged)
+                            // The record of the submitter of the family tree
+                            // Not always present (it exists in complete.ged)
                             if let Some(ref subm) = gedcom.header.submitter {
                                 if let Some(xref) = &subm.xref {
-                                    gedcom.header.submitter =
-                                        Submitter::find_by_xref(input, xref.to_string());
+                                    gedcom.header.submitter = Submitter::find_by_xref(input, xref);
                                 }
                             }
                         }
                         _ => {}
-                    };
-
-                    record.clear();
+                    }
                 }
-                record = record + &buffer.clone() + "\n";
+
+                record.clear();
             }
+
+            record.push_str(line);
+            record.push('\n');
         }
-        // TODO: families
-        // TODO: repositories
-        // TODO: sources
-        // TODO: multimedia
     }
-    gedcom
+    // TODO: families
+    // TODO: repositories
+    // TODO: sources
+    // TODO: multimedia
+
+    Ok(gedcom)
 }
 
 // The output is wrapped in a Result to allow matching on errors
@@ -176,6 +190,7 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

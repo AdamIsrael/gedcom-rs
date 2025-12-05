@@ -1,9 +1,10 @@
 use super::Line;
 use crate::parse;
 
+use smallvec::SmallVec;
 use winnow::prelude::*;
 
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Address {
     pub addr1: Option<String>,
     pub addr2: Option<String>,
@@ -12,15 +13,15 @@ pub struct Address {
     pub state: Option<String>,
     pub postal_code: Option<String>,
     pub country: Option<String>,
-    pub phone: Vec<String>,
-    pub email: Vec<String>,
-    pub fax: Vec<String>,
-    pub www: Vec<String>,
+    pub phone: SmallVec<[String; 2]>,
+    pub email: SmallVec<[String; 2]>,
+    pub fax: SmallVec<[String; 1]>,
+    pub www: SmallVec<[String; 1]>,
 }
 
-impl Address {
-    pub fn parse(buffer: &mut &str) -> PResult<Address> {
-        let mut address = Address {
+impl Default for Address {
+    fn default() -> Self {
+        Self {
             addr1: None,
             addr2: None,
             addr3: None,
@@ -28,24 +29,28 @@ impl Address {
             state: None,
             postal_code: None,
             country: None,
-            phone: vec![],
-            email: vec![],
-            fax: vec![],
-            www: vec![],
-        };
+            phone: SmallVec::new(),
+            email: SmallVec::new(),
+            fax: SmallVec::new(),
+            www: SmallVec::new(),
+        }
+    }
+}
 
-        let mut line = Line::peek(buffer).unwrap();
+impl Address {
+    pub fn parse(buffer: &mut &str) -> PResult<Address> {
+        let mut address = Address::default();
+
+        let line = Line::peek(buffer)?;
         let min_level = line.level;
 
         // Only iterate through the ADDR records
+        let mut line = Line::peek(buffer)?;
         while line.level >= min_level {
-            line = Line::peek(buffer).unwrap();
-
             let mut consume = true;
             match line.tag {
                 "ADDR" => {
-                    address.addr1 = parse::get_tag_value(buffer).unwrap();
-                    // println!("Input after get_tag_value: \n'{}'", buffer);
+                    address.addr1 = parse::get_tag_value(buffer)?;
                     consume = false;
                 }
                 "ADR1" => {
@@ -88,16 +93,12 @@ impl Address {
                     break;
                 }
             }
-            // println!("Buffer before: {}", buffer.len());
             if consume {
-                Line::parse(buffer).unwrap();
+                Line::parse(buffer)?;
             }
-            // println!("Buffer after: {}", buffer.len());
-            // (buffer, _) = Line::parse(buffer).unwrap();
 
             // Grab the next line, if there is one, or short-circuit the loop
-            line = Line::peek(buffer).unwrap();
-            // (_, line) = Line::peek(buffer).unwrap();
+            line = Line::peek(buffer)?;
         }
         Ok(address)
     }
@@ -142,6 +143,7 @@ impl Address {
 ///
 /// Why did I do it this way, vs implementing `parse` on the Address?
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

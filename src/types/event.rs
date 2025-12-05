@@ -37,21 +37,11 @@ pub struct EventDetail {
 impl EventDetail {
     /// Parse
     pub fn parse(record: &mut &str) -> PResult<EventDetail> {
-        let mut event = EventDetail {
-            r#type: None,
-            date: None,
-            place: None,
-            address: None,
-            agency: None,
-            religion: None,
-            cause: None,
-            restriction_notice: None,
-            note: None,
-            sources: vec![],
-            media: vec![],
-        };
+        let mut event = EventDetail::default();
 
-        let mut line = Line::peek(record).unwrap();
+        let Ok(mut line) = Line::peek(record) else {
+            return Ok(event);
+        };
 
         // Check if we've received a top-level event tag, which we want to skip over.
         match line.tag {
@@ -61,7 +51,11 @@ impl EventDetail {
                 // Consume the current line
                 let _ = Line::parse(record);
                 // Get the next line
-                line = Line::peek(record).unwrap();
+                if let Ok(next_line) = Line::peek(record) {
+                    line = next_line;
+                } else {
+                    return Ok(event);
+                }
             }
             _ => {}
         }
@@ -72,7 +66,9 @@ impl EventDetail {
             let mut parse = true;
             match line.tag {
                 "ADDR" => {
-                    event.address = Some(Address::parse(record).unwrap());
+                    if let Ok(addr) = Address::parse(record) {
+                        event.address = Some(addr);
+                    }
                     parse = false;
                 }
                 // "AGE" => {
@@ -88,7 +84,7 @@ impl EventDetail {
                     event.date = Some(line.value.to_string());
                 }
                 "NOTE" => {
-                    event.note = parse::get_tag_value(record).unwrap();
+                    event.note = parse::get_tag_value(record).ok().flatten();
                     parse = false;
                 }
                 "OBJE" => {
@@ -98,15 +94,18 @@ impl EventDetail {
                     event.media.push(obj);
                 }
                 "PLAC" => {
-                    event.place = Some(Place::parse(record).unwrap());
+                    if let Ok(place) = Place::parse(record) {
+                        event.place = Some(place);
+                    }
                     parse = false;
                 }
                 "RELI" => {
                     event.religion = Some(line.value.to_string());
                 }
                 "SOUR" => {
-                    let sc = SourceCitation::parse(record).unwrap();
-                    event.sources.push(sc);
+                    if let Ok(sc) = SourceCitation::parse(record) {
+                        event.sources.push(sc);
+                    }
                     parse = false;
                 }
                 "TYPE" => {
@@ -122,10 +121,13 @@ impl EventDetail {
             }
 
             if parse {
-                Line::parse(record).unwrap();
+                let _ = Line::parse(record);
             }
 
-            line = Line::peek(record).unwrap();
+            let Ok(next_line) = Line::peek(record) else {
+                break;
+            };
+            line = next_line;
             if line.level < level {
                 break;
             }
@@ -153,30 +155,27 @@ pub struct FamilyEventDetail {
 
 impl FamilyEventDetail {
     pub fn parse(record: &mut &str) -> PResult<FamilyEventDetail> {
-        let mut event = FamilyEventDetail {
-            husband: None,
-            wife: None,
-            detail: None,
-        };
+        let mut event = FamilyEventDetail::default();
 
         // TODO: Check the first line for and see if it's a top-level event tag
 
-        let mut events: Vec<String> = vec![];
+        // Pre-allocate capacity for typical event detail (avg ~10-15 lines)
+        let mut events: Vec<String> = Vec::with_capacity(16);
 
         while !record.is_empty() {
             // let mut parse = true;
-            let line = Line::peek(record).unwrap();
+            let Ok(line) = Line::peek(record) else {
+                break;
+            };
             match line.tag {
                 "HUSB" => {
-                    let spouse = Spouse::parse(record);
-                    if spouse.is_ok() {
-                        event.husband = Some(spouse.unwrap());
+                    if let Ok(spouse) = Spouse::parse(record) {
+                        event.husband = Some(spouse);
                     }
                 }
                 "WIFE" => {
-                    let spouse = Spouse::parse(record);
-                    if spouse.is_ok() {
-                        event.wife = Some(spouse.unwrap());
+                    if let Ok(spouse) = Spouse::parse(record) {
+                        event.wife = Some(spouse);
                     }
                 }
                 _ => {
@@ -186,7 +185,9 @@ impl FamilyEventDetail {
                 }
             }
         }
-        event.detail = Some(EventDetail::parse(&mut events.join("\n").as_str()).unwrap());
+        if let Ok(detail) = EventDetail::parse(&mut events.join("\n").as_str()) {
+            event.detail = Some(detail);
+        }
 
         Ok(event)
     }
@@ -207,14 +208,16 @@ pub struct EventTypeCitedFrom {
 impl EventTypeCitedFrom {
     /// Parse
     pub fn parse(record: &mut &str) -> PResult<EventTypeCitedFrom> {
-        let mut event = EventTypeCitedFrom {
-            r#type: None,
-            role: None,
+        let mut event = EventTypeCitedFrom::default();
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(event);
         };
-        let level = Line::peek(record).unwrap().level;
+        let level = level_line.level;
 
         while !record.is_empty() {
-            let mut line = Line::parse(record).unwrap();
+            let Ok(mut line) = Line::parse(record) else {
+                break;
+            };
             match line.tag {
                 "EVEN" => {
                     event.r#type = Some(line.value.to_string());
@@ -227,7 +230,10 @@ impl EventTypeCitedFrom {
 
             // If the next level matches our initial level, we're done parsing
             // this structure.
-            line = Line::peek(record).unwrap();
+            let Ok(peek_line) = Line::peek(record) else {
+                break;
+            };
+            line = peek_line;
             if line.level == level {
                 break;
             }
@@ -237,6 +243,7 @@ impl EventTypeCitedFrom {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -327,7 +334,6 @@ mod tests {
         assert!(wife.age.unwrap() == "42y 6m");
 
         assert!(event.detail.is_some());
-        println!("Detail: {:?}", event.detail);
         // assert!(event.wife.is_some());
 
         // assert!(event.detail.date.is_some());

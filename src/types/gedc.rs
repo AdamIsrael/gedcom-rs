@@ -13,27 +13,33 @@ pub struct Form {
 }
 impl Form {
     pub fn parse(mut buffer: &str) -> (&str, Option<Form>) {
-        let mut form = Form {
-            name: None,
-            version: None,
+        let mut form = Form::default();
+
+        let Ok(mut line) = Line::peek(&mut buffer) else {
+            return (buffer, Some(form));
         };
 
-        let mut line: Line;
-
-        line = Line::peek(&mut buffer).unwrap();
-
         if line.tag == "FORM" {
-            line = Line::parse(&mut buffer).unwrap();
+            let Ok(parsed_line) = Line::parse(&mut buffer) else {
+                return (buffer, Some(form));
+            };
+            line = parsed_line;
 
             form.name = Some(line.value.to_string());
 
             while !buffer.is_empty() {
                 // Peek the next line
-                line = Line::peek(&mut buffer).unwrap();
+                let Ok(next_line) = Line::peek(&mut buffer) else {
+                    break;
+                };
+                line = next_line;
                 match line.tag {
                     "VERS" => {
                         // consume the line
-                        line = Line::parse(&mut buffer).unwrap();
+                        let Ok(parsed_line) = Line::parse(&mut buffer) else {
+                            break;
+                        };
+                        line = parsed_line;
                         form.version = Some(line.value.to_string());
                     }
                     _ => {
@@ -58,27 +64,31 @@ pub struct Gedc {
 }
 impl Gedc {
     pub fn parse(mut buffer: &str) -> (&str, Option<Gedc>) {
-        let mut gedc = Gedc {
-            version: None,
-            form: None,
-        };
-        let mut line: Line;
+        let mut gedc = Gedc::default();
 
-        line = Line::peek(&mut buffer).unwrap();
+        let Ok(mut line) = Line::peek(&mut buffer) else {
+            return (buffer, Some(gedc));
+        };
 
         if line.tag == "GEDC" {
-            Line::parse(&mut buffer).unwrap();
+            let _ = Line::parse(&mut buffer);
 
             while !buffer.is_empty() {
                 // Peek the next line
-                line = Line::peek(&mut buffer).unwrap();
+                let Ok(next_line) = Line::peek(&mut buffer) else {
+                    break;
+                };
+                line = next_line;
                 match line.tag {
                     "FORM" => {
                         (buffer, gedc.form) = Form::parse(buffer);
                     }
                     "VERS" => {
                         // consume the line
-                        line = Line::parse(&mut buffer).unwrap();
+                        let Ok(parsed_line) = Line::parse(&mut buffer) else {
+                            break;
+                        };
+                        line = parsed_line;
                         gedc.version = Some(line.value.to_string());
                     }
                     _ => {
@@ -93,6 +103,7 @@ impl Gedc {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::Gedc;

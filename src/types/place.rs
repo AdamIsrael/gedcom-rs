@@ -27,19 +27,18 @@ pub struct Place {
 
 impl Place {
     pub fn parse(record: &mut &str) -> PResult<Place> {
-        let mut place = Place {
-            name: None,
-            form: vec![],
-            phonetic: None,
-            roman: None,
-            map: None,
-            note: None,
-        };
+        let mut place = Place::default();
 
-        let level = Line::peek(record).unwrap().level;
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(place);
+        };
+        let level = level_line.level;
+
         while !record.is_empty() {
             let mut parse = true;
-            let mut line = Line::peek(record).unwrap();
+            let Ok(mut line) = Line::peek(record) else {
+                break;
+            };
             match line.tag {
                 "FORM" => {
                     // TODO: implement this
@@ -53,19 +52,27 @@ impl Place {
                     place.name = Some(line.value.to_string());
                 }
                 "FONE" => {
-                    place.phonetic = Some(PlaceVariation::parse(record).unwrap());
+                    if let Ok(phonetic) = PlaceVariation::parse(record) {
+                        place.phonetic = Some(phonetic);
+                    }
                     parse = false;
                 }
                 "ROMN" => {
-                    place.roman = Some(PlaceVariation::parse(record).unwrap());
+                    if let Ok(roman) = PlaceVariation::parse(record) {
+                        place.roman = Some(roman);
+                    }
                     parse = false;
                 }
                 "MAP" => {
-                    place.map = Some(Map::parse(record).unwrap());
+                    if let Ok(map) = Map::parse(record) {
+                        place.map = Some(map);
+                    }
                     parse = false;
                 }
                 "NOTE" => {
-                    place.note = Some(Note::parse(record).unwrap());
+                    if let Ok(note) = Note::parse(record) {
+                        place.note = Some(note);
+                    }
                     parse = false;
                 }
                 _ => {}
@@ -73,12 +80,15 @@ impl Place {
 
             // If we need to, advance our position in the stream
             if parse {
-                Line::parse(record).unwrap();
+                let _ = Line::parse(record);
             }
 
             // If the next level matches our initial level, we're done parsing
             // this structure.
-            line = Line::peek(record).unwrap();
+            let Ok(peek_line) = Line::peek(record) else {
+                break;
+            };
+            line = peek_line;
             if line.level == level {
                 break;
             }
@@ -95,14 +105,16 @@ pub struct PlaceVariation {
 }
 impl PlaceVariation {
     pub fn parse(record: &mut &str) -> PResult<PlaceVariation> {
-        let mut variation = PlaceVariation {
-            name: None,
-            r#type: None,
+        let mut variation = PlaceVariation::default();
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(variation);
         };
-        let level = Line::peek(record).unwrap().level;
+        let level = level_line.level;
 
         while !record.is_empty() {
-            let mut line = Line::parse(record).unwrap();
+            let Ok(mut line) = Line::parse(record) else {
+                break;
+            };
             match line.tag {
                 "FONE" => {
                     variation.name = Some(line.value.to_string());
@@ -118,7 +130,10 @@ impl PlaceVariation {
 
             // If the next level matches our initial level, we're done parsing
             // this structure.
-            line = Line::peek(record).unwrap();
+            let Ok(peek_line) = Line::peek(record) else {
+                break;
+            };
+            line = peek_line;
             if line.level == level {
                 break;
             }
@@ -127,6 +142,7 @@ impl PlaceVariation {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

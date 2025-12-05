@@ -56,77 +56,54 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn parse(mut record: String) -> Header {
-        let mut header = Header {
-            character_set: None,
-            copyright: None,
-            // corporation: None,
-            date: None,
-            destination: None,
-            gedcom_version: None,
-            language: None,
-            filename: None,
-            note: None,
-            place: None,
-            source: None,
-            submitter: None,
-            submission: None,
-        };
+    pub fn parse(record: &str) -> Header {
+        let mut header = Header::default();
+        let mut buffer: &str = record;
 
         // do parser stuff here
-        while !record.is_empty() {
-            let mut buffer: &str = record.as_str();
-            let line = Line::peek(&mut buffer).unwrap();
+        while !buffer.is_empty() {
+            let line = Line::peek(&mut buffer).unwrap_or_default();
 
             // Inspect the top-level tags only.
             if line.level == 0 && line.tag == "HEAD" {
                 // Consume the line
-                // println!("Consuming HEAD");
-                // (buffer, _) = Line::parse(&record).unwrap();
-                Line::parse(&mut buffer).unwrap();
+                let _ = Line::parse(&mut buffer);
             } else if line.level == 1 {
                 match line.tag {
                     "CHAR" => {
-                        (buffer, header.character_set) = CharacterSet::parse(&record);
+                        (buffer, header.character_set) = CharacterSet::parse(buffer);
                     }
                     "COPR" => {
-                        header.copyright = parse::get_tag_value(&mut buffer).unwrap();
+                        if let Ok(copyright) = parse::get_tag_value(&mut buffer) {
+                            header.copyright = copyright;
+                        }
                     }
-                    // "CORP" => {
-                    //     println!("parsing CORP");
-                    //     (buffer, header.corporation) = corporation::Corporation::parse(&record);
-                    // }
                     "DATE" => {
                         // We're doing lazy parsing of the date, because parsing
                         // date strings is hard. For now.
-                        (buffer, header.date) = DateTime::parse(&record);
+                        (buffer, header.date) = DateTime::parse(buffer);
                     }
                     "DEST" => {
                         header.destination = Some(line.value.to_string());
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "FILE" => {
                         header.filename = Some(line.value.to_string());
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "GEDC" => {
-                        (buffer, header.gedcom_version) = Gedc::parse(&record);
+                        (buffer, header.gedcom_version) = Gedc::parse(buffer);
                     }
                     "LANG" => {
                         header.language = Some(line.value.to_string());
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                     "NOTE" => {
                         // This is just parsing the value of a line, and any
-                        // CONC/CONT that follows. Rewrite
-                        header.note = parse::get_tag_value(&mut buffer).unwrap();
-                        // (buffer, header.note) = parse::get_tag_value(&record).unwrap();
-                        // let note: Option<Note>;
-                        // (buffer, note) = Note::parse(&record);
-                        // header.note = note;
+                        // CONC/CONT that follows.
+                        if let Ok(note) = parse::get_tag_value(&mut buffer) {
+                            header.note = note;
+                        }
                     }
                     "PLAC" => {
                         if let Ok(place) = Place::parse(&mut buffer) {
@@ -134,31 +111,27 @@ impl Header {
                         }
                     }
                     "SOUR" => {
-                        (buffer, header.source) = Source::parse(&record);
+                        (buffer, header.source) = Source::parse(buffer);
                     }
                     "SUBM" => {
-                        (buffer, header.submitter) = Submitter::parse(&record);
+                        (buffer, header.submitter) = Submitter::parse(buffer);
                     }
                     "SUBN" => {
-                        (buffer, header.submission) = Submission::parse(&record);
+                        (buffer, header.submission) = Submission::parse(buffer);
                     }
                     _ => {
-                        // println!("Unhandled header tag: {}", line.tag);
-                        // (buffer, _) = Line::parse(&record).unwrap();
-                        Line::parse(&mut buffer).unwrap();
+                        let _ = Line::parse(&mut buffer);
                     }
                 };
             } else {
-                // (buffer, _) = Line::parse(&record).unwrap();
-                Line::parse(&mut buffer).unwrap();
+                let _ = Line::parse(&mut buffer);
             }
-
-            record = buffer.to_string();
         }
         header
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use crate::types::{corporation::Corporation, Address, DateTime, Form};
@@ -240,7 +213,7 @@ mod tests {
             "3 TIME 8:35:36",
         ];
 
-        let header = Header::parse(data.join("\n"));
+        let header = Header::parse(&data.join("\n"));
 
         // Character encoding
         assert!(header.character_set.is_some());
@@ -303,22 +276,26 @@ mod tests {
                             "+1-800-555-1111".to_string(),
                             "+1-800-555-1212".to_string(),
                             "+1-800-555-1313".to_string(),
-                        ],
+                        ]
+                        .into(),
                         email: vec![
                             "a@example.com".to_string(),
                             "b@example.com".to_string(),
                             "c@example.com".to_string(),
-                        ],
+                        ]
+                        .into(),
                         fax: vec![
                             "+1-800-555-1414".to_string(),
                             "+1-800-555-1515".to_string(),
                             "+1-800-555-1616".to_string(),
-                        ],
+                        ]
+                        .into(),
                         www: vec![
                             "https://www.example.com".to_string(),
                             "https://www.example.org".to_string(),
                             "https://www.example.net".to_string(),
-                        ],
+                        ]
+                        .into(),
                     })
                 })
         );

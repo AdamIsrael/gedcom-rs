@@ -42,33 +42,35 @@ pub struct SourceCitation {
 
 impl SourceCitation {
     pub fn parse(record: &mut &str) -> PResult<SourceCitation> {
-        let mut sc = SourceCitation {
-            xref: None,
-            page: None,
-            event: None,
-            data: None,
-            media: vec![],
-            note: None,
-            quay: None,
-        };
+        let mut sc = SourceCitation::default();
 
-        let level = Line::peek(record).unwrap().level;
-        let mut line = Line::peek(record).unwrap();
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(sc);
+        };
+        let level = level_line.level;
+        let Ok(mut line) = Line::peek(record) else {
+            return Ok(sc);
+        };
 
         while !record.is_empty() {
             let mut consume = true;
             match line.tag {
                 "DATA" => {
-                    sc.data = Some(SourceCitationData::parse(record).unwrap());
+                    if let Ok(data) = SourceCitationData::parse(record) {
+                        sc.data = Some(data);
+                    }
                     consume = false;
                 }
                 "EVEN" => {
-                    sc.event = Some(EventTypeCitedFrom::parse(record).unwrap());
+                    if let Ok(event) = EventTypeCitedFrom::parse(record) {
+                        sc.event = Some(event);
+                    }
                     consume = false;
                 }
                 "NOTE" => {
-                    let note = parse::get_tag_value(record).unwrap();
-                    sc.note = Some(Note { note });
+                    if let Ok(note) = parse::get_tag_value(record) {
+                        sc.note = Some(Note { note });
+                    }
                     consume = false;
                 }
                 "OBJE" => {
@@ -78,11 +80,14 @@ impl SourceCitation {
                     sc.media.push(obj);
                 }
                 "PAGE" => {
-                    sc.page = Some(line.value.parse().unwrap());
+                    if let Ok(page) = line.value.parse() {
+                        sc.page = Some(page);
+                    }
                 }
                 "QUAY" => {
-                    let quay = Quay::from_str(line.value).unwrap();
-                    sc.quay = Some(quay);
+                    if let Ok(quay) = Quay::from_str(line.value) {
+                        sc.quay = Some(quay);
+                    }
                 }
                 "SOUR" => {
                     sc.xref = Some(line.value.to_string());
@@ -91,11 +96,14 @@ impl SourceCitation {
             }
 
             if consume {
-                Line::parse(record).unwrap();
+                let _ = Line::parse(record);
             }
             // If the next level matches our initial level, we're done parsing
             // this structure.
-            line = Line::peek(record).unwrap();
+            let Ok(peek_line) = Line::peek(record) else {
+                break;
+            };
+            line = peek_line;
             if line.level == level {
                 break;
             }
@@ -112,13 +120,15 @@ pub struct SourceCitationData {
 }
 impl SourceCitationData {
     pub fn parse(record: &mut &str) -> PResult<SourceCitationData> {
-        let mut data = SourceCitationData {
-            date: None,
-            text: None,
-        };
+        let mut data = SourceCitationData::default();
 
-        let level = Line::peek(record).unwrap().level;
-        let mut line = Line::peek(record).unwrap();
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(data);
+        };
+        let level = level_line.level;
+        let Ok(mut line) = Line::peek(record) else {
+            return Ok(data);
+        };
 
         while !record.is_empty() {
             let mut consume = true;
@@ -127,20 +137,24 @@ impl SourceCitationData {
                     data.date = Some(line.value.to_string());
                 }
                 "TEXT" => {
-                    let text = parse::get_tag_value(record).unwrap();
-                    let note = Note { note: text };
-                    data.text = Some(note);
+                    if let Ok(text) = parse::get_tag_value(record) {
+                        let note = Note { note: text };
+                        data.text = Some(note);
+                    }
                     consume = false;
                 }
                 _ => {}
             }
 
             if consume {
-                Line::parse(record).unwrap();
+                let _ = Line::parse(record);
             }
             // If the next level matches our initial level, we're done parsing
             // this structure.
-            line = Line::peek(record).unwrap();
+            let Ok(peek_line) = Line::peek(record) else {
+                break;
+            };
+            line = peek_line;
             if line.level == level {
                 break;
             }
@@ -149,6 +163,7 @@ impl SourceCitationData {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -9,26 +9,35 @@ pub struct CharacterSet {
 }
 impl CharacterSet {
     pub fn parse(mut buffer: &str) -> (&str, Option<CharacterSet>) {
-        let mut char = CharacterSet {
-            encoding: None,
-            version: None,
-        };
+        let mut char = CharacterSet::default();
         let mut line: Line;
 
-        line = Line::peek(&mut buffer).unwrap();
-        char.encoding = Some(line.value.to_string());
+        if let Ok(l) = Line::peek(&mut buffer) {
+            line = l;
+            char.encoding = Some(line.value.to_string());
+        } else {
+            return (buffer, None);
+        }
 
         if line.tag == "CHAR" {
-            Line::parse(&mut buffer).unwrap();
+            if Line::parse(&mut buffer).is_err() {
+                return (buffer, None);
+            }
 
             while !buffer.is_empty() {
                 // Peek the next line
-                line = Line::peek(&mut buffer).unwrap();
+                if let Ok(l) = Line::peek(&mut buffer) {
+                    line = l;
+                } else {
+                    break;
+                }
                 match line.tag {
                     "VERS" => {
                         // consume the line
-                        line = Line::parse(&mut buffer).unwrap();
-                        char.version = Some(line.value.to_string());
+                        if let Ok(l) = Line::parse(&mut buffer) {
+                            line = l;
+                            char.version = Some(line.value.to_string());
+                        }
                     }
                     _ => {
                         // panic!("Unknown tag: {}", line.tag);
@@ -42,6 +51,7 @@ impl CharacterSet {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::CharacterSet;
