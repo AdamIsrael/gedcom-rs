@@ -4,10 +4,10 @@ use super::types::*;
 use crate::error::{GedcomError, Result};
 
 use std::fs::File;
-
-use std::io::{self, BufRead};
+use std::io::Read;
 use std::path::Path;
 
+use encoding_rs::{Encoding, WINDOWS_1252};
 use winnow::prelude::*;
 
 // This is pretty much a kludge to strip out U+FEFF, a Zero Width No-Break Space
@@ -46,6 +46,85 @@ pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
     }
 
     Ok(Some(text))
+}
+
+/// Detect the character encoding declared in the GEDCOM header
+/// Scans the first part of the file (as ASCII) to find the CHAR tag
+fn detect_gedcom_encoding(bytes: &[u8]) -> &'static Encoding {
+    // GEDCOM header tags are always ASCII-compatible, so we can safely
+    // search for "1 CHAR" pattern in the first ~2KB of the file
+    let search_limit = bytes.len().min(2048);
+    let search_bytes = bytes.get(..search_limit).unwrap_or(bytes);
+
+    // Look for "1 CHAR" followed by a space and the encoding name
+    // This is a simple ASCII search that works regardless of encoding
+    if let Some(pos) = search_bytes.windows(7).position(|w| w == b"1 CHAR ") {
+        let start = pos + 7; // Skip "1 CHAR "
+
+        // Find the end of the line (CR, LF, or CRLF)
+        if let Some(rest) = search_bytes.get(start..) {
+            let end = rest
+                .iter()
+                .position(|&b| b == b'\r' || b == b'\n')
+                .map(|p| start + p)
+                .unwrap_or(search_bytes.len());
+
+            if let Some(encoding_slice) = search_bytes.get(start..end) {
+                if let Ok(encoding_name) = std::str::from_utf8(encoding_slice) {
+                    let encoding_name = encoding_name.trim();
+
+                    // Map GEDCOM encoding names to Rust encoding_rs encodings
+                    return match encoding_name {
+                        "UTF-8" | "UTF8" => encoding_rs::UTF_8,
+                        // ANSEL is a specialized character set for genealogy that combines
+                        // ASCII with diacritical marks. We approximate it with Windows-1252
+                        // which covers most common Latin characters, though some special
+                        // ANSEL characters may not convert perfectly.
+                        "ANSEL" => WINDOWS_1252,
+                        "ASCII" => encoding_rs::UTF_8, // ASCII is a subset of UTF-8
+                        "UNICODE" => encoding_rs::UTF_16LE,
+                        "ANSI" => WINDOWS_1252,
+                        _ => {
+                            // Default to Windows-1252 for unknown encodings
+                            // as it's a superset of ISO-8859-1
+                            eprintln!(
+                                "Warning: Unknown encoding '{}', defaulting to Windows-1252",
+                                encoding_name
+                            );
+                            WINDOWS_1252
+                        }
+                    };
+                }
+            }
+        }
+    }
+
+    // If no CHAR tag found, default to UTF-8
+    encoding_rs::UTF_8
+}
+
+/// Read file as bytes and convert to UTF-8 String based on declared encoding
+fn read_file_with_encoding(filename: &str) -> Result<String> {
+    let mut file = File::open(filename)?;
+
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
+
+    // Detect the encoding from the GEDCOM header
+    let encoding = detect_gedcom_encoding(&bytes);
+
+    // Decode bytes to String using the detected encoding
+    let (cow, _encoding_used, had_errors) = encoding.decode(&bytes);
+
+    if had_errors {
+        eprintln!(
+            "Warning: Encoding errors detected while converting '{}' from {:?} to UTF-8",
+            filename,
+            encoding.name()
+        );
+    }
+
+    Ok(cow.into_owned())
 }
 
 // Parse the buffer if the CONC tag is found and return the resulting string.
@@ -93,47 +172,27 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
         return Err(GedcomError::FileNotFound(filename.to_string()));
     }
 
+    // Read the entire file with proper encoding handling
+    let content = read_file_with_encoding(filename)?;
+
     // Initialize an empty gedcom with pre-allocated capacity
     let mut gedcom = Gedcom {
         header: Header::default(),
         individuals: Vec::with_capacity(100), // Pre-allocate for typical genealogy files
     };
 
-    let lines = read_lines(filename)?;
-
-    // Consumes the iterator, returns an (Optional) String
-
-    // Read through the lines and build a buffer of <records>, each starting
-    // with a zero and ending with the last line before the next. Then feed that
-    // buffer to a nom parser to split it into Lines?
-
-    // This is kind of like a buffered read, specific to the GEDCOM format
-    // We read into the buffer until we hit a new record, and then parse that
-    // record into a struct.
-
     // Capacity management constants
     const INITIAL_RECORD_CAPACITY: usize = 2048; // Typical record ~1-2KB
-    const MAX_RECORD_SIZE: usize = 64 * 1024; // 64KB safety limit
 
     let mut record = String::with_capacity(INITIAL_RECORD_CAPACITY);
 
-    // Use `map_while` because we could loop on an Err value
-    for buffer in lines.map_while(std::result::Result::ok) {
+    // Process each line
+    for line in content.lines() {
         // Strip off any leading Zero Width No-Break Space
-        let line = buffer.strip_prefix('\u{FEFF}').unwrap_or(&buffer);
+        let line = line.strip_prefix('\u{FEFF}').unwrap_or(line);
 
         if let Some(ch) = line.chars().next() {
             if ch == '0' && !record.is_empty() {
-                // Safety check: skip oversized records
-                if record.len() > MAX_RECORD_SIZE {
-                    eprintln!(
-                        "Warning: Skipping oversized record ({} bytes)",
-                        record.len()
-                    );
-                    record.clear();
-                    continue;
-                }
-
                 let mut input: &str = record.as_str();
 
                 // Peek at the first line in the record so we know how
@@ -171,23 +230,37 @@ pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
             record.push('\n');
         }
     }
+
+    // Process the last record if any
+    if !record.is_empty() {
+        let mut input: &str = record.as_str();
+        if let Ok(line) = Line::peek(&mut input) {
+            match line.tag {
+                "HEAD" => {
+                    gedcom.header = Header::parse(input);
+                }
+                "INDI" => {
+                    let indi = Individual::parse(&mut input);
+                    gedcom.individuals.push(indi);
+                }
+                "SUBM" => {
+                    if let Some(ref subm) = gedcom.header.submitter {
+                        if let Some(xref) = &subm.xref {
+                            gedcom.header.submitter = Submitter::find_by_xref(input, xref);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
     // TODO: families
     // TODO: repositories
     // TODO: sources
     // TODO: multimedia
 
     Ok(gedcom)
-}
-
-// The output is wrapped in a Result to allow matching on errors
-// Returns an Iterator to the Reader of the lines of the file.
-// https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }
 
 #[allow(clippy::unwrap_used)]
