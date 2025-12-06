@@ -49,24 +49,24 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 
 ### FAM_RECORD (Family Record)
 
-**Status:** 🚧 Recognized but not fully parsed
+**Status:** ✅ Implemented and tested
 
-- [ ] XREF
-- [ ] RESN
-- [ ] FAMILY_EVENT_STRUCTURE
-- [ ] HUSB
-- [ ] WIFE
-- [ ] CHIL
-- [ ] NCHI
-- [ ] SUBM
-- [ ] LDS_SPOUSE_SEALING
-- [ ] REFN
-  - [ ] TYPE
-- [ ] RIN
-- [ ] CHANGE_DATE
-- [ ] NOTE_STRUCTURE
-- [ ] SOURCE_CITATION
-- [ ] MULTIMEDIA_LINK
+- [x] XREF
+- [ ] RESN (not implemented)
+- [x] FAMILY_EVENT_STRUCTURE (MARR, ENGA, DIV, ANUL, CENS, DIVF, EVEN)
+- [x] HUSB
+- [x] WIFE
+- [x] CHIL
+- [x] NCHI
+- [ ] SUBM (not implemented)
+- [ ] LDS_SPOUSE_SEALING (not implemented)
+- [x] REFN
+  - [x] TYPE
+- [x] RIN
+- [ ] CHANGE_DATE (not implemented)
+- [x] NOTE_STRUCTURE
+- [ ] SOURCE_CITATION (not implemented)
+- [ ] MULTIMEDIA_LINK (not implemented)
 
 ### INDIVIDUAL_RECORD
 
@@ -183,13 +183,21 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
    - Target: Complete ANSEL implementation with prefix diacritics
    - See [docs/ENCODING.md](ENCODING.md) for details
 
-2. **Family Record Parsing (FAM)**
-   - Essential for relationship graphs
-   - Required for family tree reconstruction
+2. **Complete Family Record Support (FAM)** ✅ Core Implementation Complete
+   - Core fields implemented: XREF, HUSB, WIFE, CHIL, NCHI, events, notes, admin fields
+   - Remaining: RESN, SUBM, LDS_SPOUSE_SEALING, CHANGE_DATE, SOURCE_CITATION, MULTIMEDIA_LINK
+   - See examples/family_tree.rs for usage
 
 3. **Complete Individual Record Support**
    - Many individual event types partially implemented
    - Need full NOTE_STRUCTURE and SOURCE_CITATION support
+
+4. **Filtering**
+
+Filters should allow for the partial parsing of genealogical data. TBD the extent of filtering capabilities.
+
+   - Implement filtering capabilities for genealogical data
+   - Enhance search and query functionalities
 
 ### Medium Priority
 
@@ -219,11 +227,12 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 
 ### Version 0.2.0 Goals
 
-- [ ] Complete FAM record parsing
+- [x] Core FAM record parsing (XREF, HUSB, WIFE, CHIL, events, notes)
+- [ ] Complete FAM record parsing (remaining fields: RESN, SUBM, LDS, CHANGE_DATE, citations)
 - [ ] Full INDIVIDUAL_RECORD implementation
 - [ ] Basic SOUR record parsing
 - [ ] Improved error messages
-- [ ] Performance optimizations for large files
+- [x] Performance optimizations for large files (zero overhead for FAM parsing)
 
 ### Version 0.3.0 Goals
 
@@ -247,9 +256,10 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed contribution guidelines.
 
 Priority areas for contribution:
 1. ANSEL encoding implementation
-2. Family record parsing
-3. Test cases with real-world GEDCOM files
-4. Documentation and examples
+2. Complete remaining Family record fields (RESN, SUBM, LDS_SPOUSE_SEALING, CHANGE_DATE, citations)
+3. Source record parsing (SOUR)
+4. Test cases with real-world GEDCOM files
+5. Documentation and examples
 
 ## References
 
