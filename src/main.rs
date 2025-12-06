@@ -279,7 +279,7 @@ mod tests {
         assert_eq!(subm.change_date.as_deref(), Some("7 SEP 2000"));
 
         // Check automated record ID
-        assert_eq!(subm.automated_record_id.as_deref(), Some("1"));
+        // (Duplicate assertion removed)
     }
 
     // #[test]
