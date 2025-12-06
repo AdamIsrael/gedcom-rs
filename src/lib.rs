@@ -58,6 +58,17 @@
 //!         println!("  {}", note.note);
 //!     }
 //!     
+//!     // Access multimedia
+//!     println!("Found {} multimedia records", gedcom.multimedia.len());
+//!     for media in &gedcom.multimedia {
+//!         if let Some(ref xref) = media.xref {
+//!             println!("Multimedia {}", xref);
+//!         }
+//!         for file in &media.files {
+//!             println!("  File: {}", file.file_reference);
+//!         }
+//!     }
+//!     
 //!     Ok(())
 //! }
 //! ```
@@ -94,7 +105,8 @@
 //! - ✅ Family (FAM) record parsing
 //! - ✅ Source (SOUR) record parsing
 //! - ✅ Note (NOTE) record parsing
-//! - ⚠️ Repository (REPO) and Multimedia (OBJE) records recognized but not parsed
+//! - ✅ Multimedia (OBJE) record parsing
+//! - ⚠️ Repository (REPO) records recognized but not parsed
 //!
 //! ### ANSEL Encoding Limitation
 //!

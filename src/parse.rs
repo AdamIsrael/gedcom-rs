@@ -238,6 +238,7 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
         families: Vec::new(),
         sources: Vec::new(),
         notes: Vec::new(),
+        multimedia: Vec::new(),
     };
 
     // Capacity management constants
@@ -275,8 +276,12 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                                 gedcom.notes.push(note);
                             }
                         }
+                        "OBJE" => {
+                            if let Ok(multimedia) = MultimediaRecord::parse(&mut input) {
+                                gedcom.multimedia.push(multimedia);
+                            }
+                        }
                         "REPO" => {}
-                        "OBJE" => {}
                         "FAM" => {}
                         "SUBM" => {
                             // The record of the submitter of the family tree
@@ -319,6 +324,11 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                 "NOTE" => {
                     if let Ok(note) = NoteRecord::parse(&mut input) {
                         gedcom.notes.push(note);
+                    }
+                }
+                "OBJE" => {
+                    if let Ok(multimedia) = MultimediaRecord::parse(&mut input) {
+                        gedcom.multimedia.push(multimedia);
                     }
                 }
                 "SUBM" => {

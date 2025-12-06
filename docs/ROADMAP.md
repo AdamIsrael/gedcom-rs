@@ -97,19 +97,19 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 
 ### MULTIMEDIA_RECORD
 
-**Status:** ❌ Recognized but not parsed
+**Status:** ✅ Implemented and tested
 
-- [ ] OBJE
-- [ ] FILE
-  - [ ] FORM
-    - [ ] TYPE
-  - [ ] TITL
-- [ ] REFN
-  - [ ] TYPE
-- [ ] RIN
-- [ ] NOTE_STRUCTURE
-- [ ] SOURCE_CITATION
-- [ ] CHANGE_DATE
+- [x] OBJE (XREF)
+- [x] FILE (supports multiple files per record)
+  - [x] FORM
+    - [x] TYPE
+  - [x] TITL
+- [x] REFN (supports multiple)
+  - [x] TYPE
+- [x] RIN
+- [x] NOTE_STRUCTURE (supports multiple notes and note references)
+- [x] SOURCE_CITATION
+- [ ] CHANGE_DATE (basic parsing, skips structure)
 
 ### NOTE_RECORD
 
@@ -211,9 +211,11 @@ Filters should allow for the partial parsing of genealogical data. TBD the exten
    - Complements source records
    - Archive location tracking
 
-6. **Multimedia Record Parsing (OBJE)**
-   - Photo and document attachments
-   - Increasingly common in modern GEDCOM files
+6. **Multimedia Record Parsing (OBJE)** ✅ Complete
+   - Full GEDCOM 5.5.1 MULTIMEDIA_RECORD implementation
+   - Supports multiple files per record with format, media type, and title
+   - Source citations and reference numbers
+   - Access via `gedcom.multimedia` Vec
 
 ### Low Priority
 
@@ -236,13 +238,14 @@ Filters should allow for the partial parsing of genealogical data. TBD the exten
 - [ ] Full INDIVIDUAL_RECORD implementation
 - [x] Complete SOUR record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete NOTE record parsing (all GEDCOM 5.5.1 fields)
+- [x] Complete OBJE record parsing (all GEDCOM 5.5.1 fields)
 - [ ] Improved error messages
 - [x] Performance optimizations for large files (minimal overhead for new record types)
 
 ### Version 0.3.0 Goals
 
 - [ ] Full ANSEL encoding support
-- [ ] Complete REPO, OBJE record parsing
+- [ ] Complete REPO record parsing
 - [ ] Graph API for family relationships
 - [ ] GEDCOM 7.0 exploration
 
@@ -263,9 +266,8 @@ Priority areas for contribution:
 1. ANSEL encoding implementation
 2. Complete remaining Family record fields (RESN, SUBM, LDS_SPOUSE_SEALING, CHANGE_DATE, citations)
 3. Repository record parsing (REPO)
-4. Multimedia record parsing (OBJE)
-5. Test cases with real-world GEDCOM files
-6. Documentation and examples
+4. Test cases with real-world GEDCOM files
+5. Documentation and examples
 
 ## References
 

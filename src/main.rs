@@ -150,6 +150,31 @@ mod tests {
         assert_eq!(n2.source_citations[0].xref, Some("@S1@".to_string()));
     }
 
+    #[test]
+    fn test_multimedia_parsing() {
+        let gedcom = parse_gedcom("./data/complete.ged", &GedcomConfig::new()).unwrap();
+
+        // complete.ged has 16 MULTIMEDIA records
+        assert_eq!(gedcom.multimedia.len(), 16);
+
+        // Test first multimedia record
+        let m1 = &gedcom.multimedia[0];
+        assert!(m1.xref.is_some());
+        assert_eq!(m1.xref.as_ref().unwrap().to_string(), "@M1@");
+        assert_eq!(m1.files.len(), 1);
+        assert_eq!(m1.files[0].file_reference, "photo.jpeg");
+        assert_eq!(m1.files[0].format.as_deref(), Some("JPEG"));
+        assert_eq!(m1.files[0].media_type.as_deref(), Some("photo"));
+        assert_eq!(
+            m1.files[0].title.as_deref(),
+            Some("Picture of the book cover")
+        );
+
+        // Test second multimedia record
+        let m2 = &gedcom.multimedia[1];
+        assert_eq!(m2.xref.as_ref().unwrap().to_string(), "@M2@");
+    }
+
     // #[test]
     // /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
     // /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
