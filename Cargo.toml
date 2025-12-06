@@ -1,17 +1,18 @@
 [package]
 name = "gedcom-rs"
-description = "A Rust library to parse and interact with GEDCOM data."
+description = "A Rust library for parsing GEDCOM 5.5.1 genealogical data files with support for multiple character encodings"
 homepage = "https://github.com/AdamIsrael/gedcom-rs"
-documentation = "https://github.com/AdamIsrael/gedcom-rs"
+documentation = "https://docs.rs/gedcom-rs"
 repository = "https://github.com/AdamIsrael/gedcom-rs"
 readme = "README.md"
 version = "0.1.0"
 edition = "2018"
 license-file = "LICENSE"
-keywords = ["gedcom"]
-categories = ["data-structures", "parser-implementations", "parsing"]
+keywords = ["gedcom", "genealogy", "parser", "family-tree", "ancestry"]
+categories = ["data-structures", "parser-implementations", "parsing", "encoding"]
 exclude = [
     ".vscode/*",
+    "data/*",
 ]
 
 [lints.clippy]

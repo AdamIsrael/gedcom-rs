@@ -10,6 +10,26 @@ use std::path::Path;
 use encoding_rs::{Encoding, WINDOWS_1252};
 use winnow::prelude::*;
 
+/// Configuration options for parsing GEDCOM files
+#[derive(Debug, Clone, Default)]
+pub struct GedcomConfig {
+    /// Enable verbose output including detailed encoding warnings and diagnostics
+    pub verbose: bool,
+}
+
+impl GedcomConfig {
+    /// Create a new configuration with default settings (verbose = false)
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Enable verbose output
+    pub fn verbose(mut self) -> Self {
+        self.verbose = true;
+        self
+    }
+}
+
 // This is pretty much a kludge to strip out U+FEFF, a Zero Width No-Break Space
 // https://www.compart.com/en/unicode/U+FEFF
 //
@@ -50,7 +70,9 @@ pub fn get_tag_value(input: &mut &str) -> PResult<Option<String>> {
 
 /// Detect the character encoding declared in the GEDCOM header
 /// Scans the first part of the file (as ASCII) to find the CHAR tag
-fn detect_gedcom_encoding(bytes: &[u8]) -> &'static Encoding {
+///
+/// Returns a tuple of (encoding, encoding_name) where encoding_name is for logging
+fn detect_gedcom_encoding(bytes: &[u8]) -> (&'static Encoding, String) {
     // GEDCOM header tags are always ASCII-compatible, so we can safely
     // search for "1 CHAR" pattern in the first ~2KB of the file
     let search_limit = bytes.len().min(2048);
@@ -71,19 +93,19 @@ fn detect_gedcom_encoding(bytes: &[u8]) -> &'static Encoding {
 
             if let Some(encoding_slice) = search_bytes.get(start..end) {
                 if let Ok(encoding_name) = std::str::from_utf8(encoding_slice) {
-                    let encoding_name = encoding_name.trim();
+                    let encoding_name = encoding_name.trim().to_string();
 
                     // Map GEDCOM encoding names to Rust encoding_rs encodings
-                    return match encoding_name {
-                        "UTF-8" | "UTF8" => encoding_rs::UTF_8,
+                    return match encoding_name.as_str() {
+                        "UTF-8" | "UTF8" => (encoding_rs::UTF_8, encoding_name),
                         // ANSEL is a specialized character set for genealogy that combines
                         // ASCII with diacritical marks. We approximate it with Windows-1252
                         // which covers most common Latin characters, though some special
                         // ANSEL characters may not convert perfectly.
-                        "ANSEL" => WINDOWS_1252,
-                        "ASCII" => encoding_rs::UTF_8, // ASCII is a subset of UTF-8
-                        "UNICODE" => encoding_rs::UTF_16LE,
-                        "ANSI" => WINDOWS_1252,
+                        "ANSEL" => (WINDOWS_1252, encoding_name),
+                        "ASCII" => (encoding_rs::UTF_8, encoding_name), // ASCII is a subset of UTF-8
+                        "UNICODE" => (encoding_rs::UTF_16LE, encoding_name),
+                        "ANSI" => (WINDOWS_1252, encoding_name),
                         _ => {
                             // Default to Windows-1252 for unknown encodings
                             // as it's a superset of ISO-8859-1
@@ -91,7 +113,7 @@ fn detect_gedcom_encoding(bytes: &[u8]) -> &'static Encoding {
                                 "Warning: Unknown encoding '{}', defaulting to Windows-1252",
                                 encoding_name
                             );
-                            WINDOWS_1252
+                            (WINDOWS_1252, encoding_name)
                         }
                     };
                 }
@@ -100,27 +122,47 @@ fn detect_gedcom_encoding(bytes: &[u8]) -> &'static Encoding {
     }
 
     // If no CHAR tag found, default to UTF-8
-    encoding_rs::UTF_8
+    (encoding_rs::UTF_8, "UTF-8 (default)".to_string())
 }
 
 /// Read file as bytes and convert to UTF-8 String based on declared encoding
-fn read_file_with_encoding(filename: &str) -> Result<String> {
+fn read_file_with_encoding(filename: &str, config: &GedcomConfig) -> Result<String> {
     let mut file = File::open(filename)?;
 
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes)?;
 
     // Detect the encoding from the GEDCOM header
-    let encoding = detect_gedcom_encoding(&bytes);
+    let (encoding, encoding_name) = detect_gedcom_encoding(&bytes);
+
+    if config.verbose {
+        eprintln!("Detected encoding: {}", encoding_name);
+    }
+
+    // Warn about ANSEL limitations
+    if encoding_name == "ANSEL" && config.verbose {
+        eprintln!("\nWarning: ANSEL encoding detected");
+        eprintln!("  ANSEL is a specialized genealogical character set (ANSI/NISO Z39.47-1993)");
+        eprintln!("  that uses prefix diacritics and combining characters.");
+        eprintln!();
+        eprintln!(
+            "  Current implementation approximates ANSEL using Windows-1252, which may cause:"
+        );
+        eprintln!("  - Accented characters (é, ñ, ü, etc.) to display incorrectly");
+        eprintln!("  - Loss of combining diacritical marks");
+        eprintln!("  - Incorrect representation of special genealogical symbols");
+        eprintln!();
+        eprintln!("  For full ANSEL support, please see: https://github.com/adamgiacomelli/gedcom-rs/issues/[TBD]");
+        eprintln!();
+    }
 
     // Decode bytes to String using the detected encoding
     let (cow, _encoding_used, had_errors) = encoding.decode(&bytes);
 
     if had_errors {
         eprintln!(
-            "Warning: Encoding errors detected while converting '{}' from {:?} to UTF-8",
-            filename,
-            encoding.name()
+            "Warning: Encoding errors detected while converting '{}' from {} to UTF-8",
+            filename, encoding_name
         );
     }
 
@@ -150,11 +192,12 @@ fn read_file_with_encoding(filename: &str) -> Result<String> {
 //     }
 // }
 
-/// Parse a GEDCOM file
+/// Parse a GEDCOM file with custom configuration
 ///
 /// # Arguments
 ///
 /// * `filename` - Path to the GEDCOM file to parse
+/// * `config` - Configuration options (use `GedcomConfig::new()` for defaults)
 ///
 /// # Returns
 ///
@@ -166,14 +209,27 @@ fn read_file_with_encoding(filename: &str) -> Result<String> {
 /// - The file cannot be found or opened
 /// - The file cannot be read
 /// - The GEDCOM data is malformed
-pub fn parse_gedcom(filename: &str) -> Result<Gedcom> {
+///
+/// # Examples
+///
+/// ```no_run
+/// use gedcom_rs::parse::{parse_gedcom, GedcomConfig};
+///
+/// // Parse with default configuration
+/// let gedcom = parse_gedcom("file.ged", &GedcomConfig::new())?;
+///
+/// // Parse with verbose output
+/// let gedcom = parse_gedcom("file.ged", &GedcomConfig::new().verbose())?;
+/// # Ok::<(), gedcom_rs::error::GedcomError>(())
+/// ```
+pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
     // Check if file exists first for better error messages
     if !Path::new(filename).exists() {
         return Err(GedcomError::FileNotFound(filename.to_string()));
     }
 
     // Read the entire file with proper encoding handling
-    let content = read_file_with_encoding(filename)?;
+    let content = read_file_with_encoding(filename, config)?;
 
     // Initialize an empty gedcom with pre-allocated capacity
     let mut gedcom = Gedcom {

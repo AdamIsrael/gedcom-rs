@@ -1,22 +1,31 @@
 extern crate gedcom_rs;
 
-use gedcom_rs::parse::parse_gedcom;
+use gedcom_rs::parse::{parse_gedcom, GedcomConfig};
 
 use std::env;
 use std::process;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    match args.len() {
-        1 => usage("Missing filename."),
-        s if s > 2 => usage(&format!(
-            "Found more args than expected: {:?}",
-            args.get(1..).unwrap_or(&[])
-        )),
-        _ => (),
-    };
 
-    let filename = match args.get(1) {
+    // Parse flags and filename
+    let mut config = GedcomConfig::new();
+    let mut filename: Option<&String> = None;
+
+    for arg in args.iter().skip(1) {
+        match arg.as_str() {
+            "--help" | "-h" => usage(""),
+            "--verbose" | "-v" => config.verbose = true,
+            _ => {
+                if filename.is_some() {
+                    usage(&format!("Unexpected argument: {}", arg));
+                }
+                filename = Some(arg);
+            }
+        }
+    }
+
+    let filename = match filename {
         Some(f) => f,
         None => {
             usage("Missing filename.");
@@ -24,11 +33,7 @@ fn main() {
         }
     };
 
-    if filename == "--help" || filename == "-h" {
-        usage("");
-    }
-
-    match parse_gedcom(filename) {
+    match parse_gedcom(filename, &config) {
         Ok(gedcom) => {
             // TODO: print a pretty summary of the gedcom. Use `tabled` crate?
             println!("{:#?}", gedcom);
@@ -44,7 +49,14 @@ fn usage(msg: &str) {
     if !msg.is_empty() {
         println!("{msg}");
     }
-    println!("Usage: gedcom-test ./path/to/gedcom.ged");
+    println!("Usage: gedcom-test [OPTIONS] <FILE>");
+    println!();
+    println!("Arguments:");
+    println!("  <FILE>  Path to the GEDCOM file to parse");
+    println!();
+    println!("Options:");
+    println!("  -v, --verbose    Show detailed encoding warnings and diagnostics");
+    println!("  -h, --help       Show this help message");
     std::process::exit(0x0100);
 }
 
@@ -52,10 +64,11 @@ fn usage(msg: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gedcom_rs::parse::{parse_gedcom, GedcomConfig};
 
     #[test]
     fn test_complete_gedcom() {
-        let gedcom = parse_gedcom("./data/complete.ged").unwrap();
+        let gedcom = parse_gedcom("./data/complete.ged", &GedcomConfig::new()).unwrap();
 
         // Test the header
         // println!("Gedcom: {:?}", gedcom.header);
@@ -75,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_file_not_found() {
-        let result = parse_gedcom("./nonexistent.ged");
+        let result = parse_gedcom("./nonexistent.ged", &GedcomConfig::new());
         assert!(result.is_err());
         if let Err(e) = result {
             assert!(matches!(e, gedcom_rs::error::GedcomError::FileNotFound(_)));
