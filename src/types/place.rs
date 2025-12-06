@@ -199,4 +199,79 @@ mod tests {
         assert!(variation.name.unwrap() == "Salt Lake City, UT, USA");
         assert!(variation.r#type.unwrap() == "user defined");
     }
+
+    #[test]
+    fn test_parse_place_simple() {
+        let data = vec!["2 PLAC London, England"];
+        let input = data.join("\n");
+        let mut record = input.as_str();
+        let place = Place::parse(&mut record).unwrap();
+
+        assert_eq!(place.name, Some("London, England".to_string()));
+        assert!(place.form.is_empty());
+        assert!(place.phonetic.is_none());
+        assert!(place.roman.is_none());
+        assert!(place.map.is_none());
+    }
+
+    #[test]
+    fn test_parse_place_with_form() {
+        let data = vec!["2 PLAC London", "3 FORM city,country"];
+        let input = data.join("\n");
+        let mut record = input.as_str();
+        let place = Place::parse(&mut record).unwrap();
+
+        assert_eq!(place.name, Some("London".to_string()));
+        assert_eq!(place.form.len(), 2);
+        assert_eq!(place.form[0], "city");
+        assert_eq!(place.form[1], "country");
+    }
+
+    #[test]
+    fn test_parse_place_default() {
+        let place = Place::default();
+        assert!(place.name.is_none());
+        assert!(place.form.is_empty());
+        assert!(place.phonetic.is_none());
+        assert!(place.roman.is_none());
+        assert!(place.map.is_none());
+    }
+
+    #[test]
+    fn test_place_variation_default() {
+        let variation = PlaceVariation::default();
+        assert!(variation.name.is_none());
+        assert!(variation.r#type.is_none());
+    }
+
+    #[test]
+    fn test_parse_place_empty_input() {
+        let mut record = "";
+        let place = Place::parse(&mut record).unwrap();
+        assert_eq!(place, Place::default());
+    }
+
+    #[test]
+    fn test_place_clone() {
+        let place1 = Place {
+            name: Some("Test".to_string()),
+            form: vec!["city".to_string()],
+            phonetic: None,
+            roman: None,
+            map: None,
+            note: None,
+        };
+        let place2 = place1.clone();
+        assert_eq!(place1, place2);
+    }
+
+    #[test]
+    fn test_place_variation_clone() {
+        let var1 = PlaceVariation {
+            name: Some("Test".to_string()),
+            r#type: Some("type".to_string()),
+        };
+        let var2 = var1.clone();
+        assert_eq!(var1, var2);
+    }
 }
