@@ -236,6 +236,7 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
         header: Header::default(),
         individuals: Vec::with_capacity(100), // Pre-allocate for typical genealogy files
         families: Vec::new(),
+        sources: Vec::new(),
     };
 
     // Capacity management constants
@@ -263,7 +264,11 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                             let indi = Individual::parse(&mut input);
                             gedcom.individuals.push(indi);
                         }
-                        "SOUR" => {}
+                        "SOUR" => {
+                            if let Ok(source) = SourceRecord::parse(&mut input) {
+                                gedcom.sources.push(source);
+                            }
+                        }
                         "REPO" => {}
                         "OBJE" => {}
                         "FAM" => {}
@@ -299,6 +304,11 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                 "INDI" => {
                     let indi = Individual::parse(&mut input);
                     gedcom.individuals.push(indi);
+                }
+                "SOUR" => {
+                    if let Ok(source) = SourceRecord::parse(&mut input) {
+                        gedcom.sources.push(source);
+                    }
                 }
                 "SUBM" => {
                     if let Some(ref subm) = gedcom.header.submitter {

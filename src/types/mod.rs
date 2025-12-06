@@ -19,6 +19,7 @@ mod place;
 mod quay;
 mod source;
 mod source_citation;
+mod source_record;
 mod sourcedata;
 mod spouse;
 mod submission;
@@ -43,6 +44,7 @@ pub use place::Place;
 pub use quay::Quay;
 pub use source::Source;
 pub use source_citation::SourceCitation;
+pub use source_record::{SourceDataEvent, SourceRecord, SourceRecordData, UserReference};
 pub use sourcedata::SourceData;
 pub use spouse::Spouse;
 pub use submission::Submission;
@@ -54,4 +56,5 @@ pub struct Gedcom {
     pub header: Header,
     pub individuals: Vec<Individual>,
     pub families: Vec<Family>,
+    pub sources: Vec<SourceRecord>,
 }
