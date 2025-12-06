@@ -9,7 +9,7 @@ use winnow::stream::Stream;
 use winnow::token::{literal, take_till};
 
 /// A GEDCOM line
-/// level + delim (space) + [optional_xref_ID] + tag + [optional_line_value] + terminator
+/// level + delim (space) + \[optional_xref_ID\] + tag + \[optional_line_value\] + terminator
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Default)]
 pub struct Line<'a> {
     pub level: u8,

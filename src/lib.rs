@@ -1,3 +1,84 @@
+//! # gedcom-rs
+//!
+//! A Rust library for parsing GEDCOM (Genealogical Data Communication) 5.5.1 files.
+//!
+//! GEDCOM is the most widely used file format for exchanging genealogical data between
+//! different family history applications. This library provides a parser for reading
+//! GEDCOM files and extracting structured data about individuals, families, and sources.
+//!
+//! ## Quick Start
+//!
+//! ```no_run
+//! use gedcom_rs::parse::{parse_gedcom, GedcomConfig};
+//!
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Parse a GEDCOM file with default configuration
+//!     let gedcom = parse_gedcom("path/to/your/file.ged", &GedcomConfig::new())?;
+//!     
+//!     // Access individuals
+//!     println!("Found {} individuals", gedcom.individuals.len());
+//!     for individual in &gedcom.individuals {
+//!         if let Some(name) = individual.names.first() {
+//!             if let Some(value) = &name.name.value {
+//!                 println!("  {}", value);
+//!             }
+//!         }
+//!     }
+//!     
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Character Encoding Support
+//!
+//! The library automatically detects and handles multiple character encodings:
+//!
+//! - **UTF-8**: Full support (recommended for new files)
+//! - **ASCII**: Full support (subset of UTF-8)
+//! - **ANSI/Windows-1252**: Full support
+//! - **ANSEL**: Partial support (approximated with Windows-1252)
+//!
+//! For files using ANSEL encoding, use verbose mode to see detailed warnings:
+//!
+//! ```no_run
+//! use gedcom_rs::parse::{parse_gedcom, GedcomConfig};
+//!
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Parse with verbose warnings about encoding issues
+//!     let config = GedcomConfig::new().verbose();
+//!     let gedcom = parse_gedcom("path/to/ansel.ged", &config)?;
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Current Limitations
+//!
+//! This library is a work in progress. Currently implemented:
+//!
+//! - ✅ Header (HEAD) record parsing
+//! - ✅ Individual (INDI) record parsing
+//! - ✅ Submitter (SUBM) record parsing
+//! - ⚠️ Family (FAM) records recognized but not parsed
+//! - ⚠️ Source (SOUR), Repository (REPO), and Multimedia (OBJE) records recognized but not parsed
+//!
+//! ### ANSEL Encoding Limitation
+//!
+//! ANSEL (ANSI/NISO Z39.47-1993) is a specialized character set used in genealogy that
+//! uses prefix diacritics. The current implementation approximates ANSEL using Windows-1252,
+//! which may cause accented characters and special symbols to display incorrectly.
+//!
+//! See the [README](https://github.com/adamgiacomelli/gedcom-rs#known-limitations) for more details.
+//!
+//! ## Modules
+//!
+//! - [`parse`] - Functions for parsing GEDCOM files and configuration options
+//! - [`types`] - GEDCOM data structures (Header, Individual, Family, etc.)
+//! - [`error`] - Error types returned by the parser
+//!
+//! ## GEDCOM Specification
+//!
+//! This library implements the [GEDCOM 5.5.1 specification](https://gedcom.io/specifications/ged551.pdf).
+
 pub mod error;
 pub mod parse;
 pub mod types;
