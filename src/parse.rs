@@ -365,6 +365,7 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn parse_get_tag_value() {
@@ -375,6 +376,331 @@ mod tests {
         if let Some(value) = res {
             assert!(output == value);
         }
-        assert!(input.len() == 0);
+        assert!(input.is_empty());
+    }
+
+    #[test]
+    fn test_get_tag_value_simple() {
+        let mut input = "1 NAME John /Doe/\n";
+        let result = get_tag_value(&mut input).unwrap();
+        assert_eq!(result, Some("John /Doe/".to_string()));
+    }
+
+    #[test]
+    fn test_get_tag_value_with_conc() {
+        let mut input = "1 TEXT First part\n2 CONC Second part\n";
+        let result = get_tag_value(&mut input).unwrap();
+        assert_eq!(result, Some("First partSecond part".to_string()));
+    }
+
+    #[test]
+    fn test_get_tag_value_with_cont() {
+        let mut input = "1 TEXT First line\n2 CONT Second line\n";
+        let result = get_tag_value(&mut input).unwrap();
+        assert_eq!(result, Some("First line\nSecond line".to_string()));
+    }
+
+    #[test]
+    fn test_get_tag_value_multiple_conc_cont() {
+        let mut input = "1 TEXT Start\n2 CONC Middle\n2 CONT NewLine\n2 CONC End\n";
+        let result = get_tag_value(&mut input).unwrap();
+        assert_eq!(result, Some("StartMiddle\nNewLineEnd".to_string()));
+    }
+
+    #[test]
+    fn test_detect_gedcom_encoding_utf8() {
+        let content = b"0 HEAD\n1 CHAR UTF-8\n";
+        let (encoding, name) = detect_gedcom_encoding(content);
+        assert_eq!(encoding, encoding_rs::UTF_8);
+        assert_eq!(name, "UTF-8");
+    }
+
+    #[test]
+    fn test_detect_gedcom_encoding_ansel() {
+        let content = b"0 HEAD\n1 CHAR ANSEL\n";
+        let (encoding, name) = detect_gedcom_encoding(content);
+        assert_eq!(encoding, WINDOWS_1252);
+        assert_eq!(name, "ANSEL");
+    }
+
+    #[test]
+    fn test_detect_gedcom_encoding_ascii() {
+        let content = b"0 HEAD\n1 CHAR ASCII\n";
+        let (encoding, name) = detect_gedcom_encoding(content);
+        assert_eq!(encoding, encoding_rs::UTF_8);
+        assert_eq!(name, "ASCII");
+    }
+
+    #[test]
+    fn test_detect_gedcom_encoding_ansi() {
+        let content = b"0 HEAD\n1 CHAR ANSI\n";
+        let (encoding, name) = detect_gedcom_encoding(content);
+        assert_eq!(encoding, WINDOWS_1252);
+        assert_eq!(name, "ANSI");
+    }
+
+    #[test]
+    fn test_detect_gedcom_encoding_unicode() {
+        let content = b"0 HEAD\n1 CHAR UNICODE\n";
+        let (encoding, name) = detect_gedcom_encoding(content);
+        assert_eq!(encoding, encoding_rs::UTF_16LE);
+        assert_eq!(name, "UNICODE");
+    }
+
+    #[test]
+    fn test_detect_gedcom_encoding_unknown() {
+        let content = b"0 HEAD\n1 CHAR UNKNOWN_ENCODING\n";
+        let (encoding, name) = detect_gedcom_encoding(content);
+        assert_eq!(encoding, WINDOWS_1252);
+        assert_eq!(name, "UNKNOWN_ENCODING");
+    }
+
+    #[test]
+    fn test_detect_gedcom_encoding_no_char_tag() {
+        let content = b"0 HEAD\n1 SOUR Test\n";
+        let (encoding, name) = detect_gedcom_encoding(content);
+        assert_eq!(encoding, encoding_rs::UTF_8);
+        assert_eq!(name, "UTF-8 (default)");
+    }
+
+    #[test]
+    fn test_detect_gedcom_encoding_with_crlf() {
+        let content = b"0 HEAD\r\n1 CHAR UTF-8\r\n";
+        let (encoding, name) = detect_gedcom_encoding(content);
+        assert_eq!(encoding, encoding_rs::UTF_8);
+        assert_eq!(name, "UTF-8");
+    }
+
+    #[test]
+    fn test_gedcom_config_new() {
+        let config = GedcomConfig::new();
+        assert!(!config.verbose);
+    }
+
+    #[test]
+    fn test_gedcom_config_verbose() {
+        let config = GedcomConfig::new().verbose();
+        assert!(config.verbose);
+    }
+
+    #[test]
+    fn test_gedcom_config_default() {
+        let config = GedcomConfig::default();
+        assert!(!config.verbose);
+    }
+
+    #[test]
+    fn test_parse_gedcom_file_not_found() {
+        let config = GedcomConfig::new();
+        let result = parse_gedcom("nonexistent_file_12345.ged", &config);
+        assert!(result.is_err());
+        match result {
+            Err(GedcomError::FileNotFound(path)) => {
+                assert!(path.contains("nonexistent_file_12345.ged"));
+            }
+            _ => panic!("Expected FileNotFound error"),
+        }
+    }
+
+    #[test]
+    fn test_parse_minimal_gedcom() {
+        // Create a minimal GEDCOM file for testing
+        let temp_file = "test_minimal.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n1 GEDC\n2 VERS 5.5.1\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.individuals.len(), 0);
+        assert_eq!(gedcom.families.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_gedcom_with_individual() {
+        let temp_file = "test_individual.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME John /Doe/\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.individuals.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_gedcom_with_family() {
+        let temp_file = "test_family.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.families.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_gedcom_with_source() {
+        let temp_file = "test_source.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @S1@ SOUR\n1 TITL Test Source\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.sources.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_gedcom_with_note() {
+        let temp_file = "test_note.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @N1@ NOTE This is a test note\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.notes.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_gedcom_with_repository() {
+        let temp_file = "test_repo.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @R1@ REPO\n1 NAME Test Repository\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.repositories.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_gedcom_with_multimedia() {
+        let temp_file = "test_multimedia.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @M1@ OBJE\n1 FILE test.jpg\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.multimedia.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_gedcom_with_submitter() {
+        let temp_file = "test_submitter.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @U1@ SUBM\n1 NAME John Doe\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.submitters.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_gedcom_with_bom() {
+        let temp_file = "test_bom.ged";
+        // UTF-8 BOM is U+FEFF
+        let content = "\u{FEFF}0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Test /Person/\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.individuals.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_gedcom_empty_file() {
+        let temp_file = "test_empty.ged";
+        let content = "";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.individuals.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_gedcom_multiple_records() {
+        let temp_file = "test_multiple.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME First /Person/\n0 @I2@ INDI\n1 NAME Second /Person/\n0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+        assert_eq!(gedcom.individuals.len(), 2);
+        assert_eq!(gedcom.families.len(), 1);
     }
 }

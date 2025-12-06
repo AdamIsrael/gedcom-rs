@@ -109,4 +109,131 @@ mod tests {
         let xref = Xref::parse(&mut record).unwrap();
         assert_eq!("@I1@", xref.unwrap().as_str());
     }
+
+    #[test]
+    fn test_xref_new() {
+        let xref = Xref::new("@I1@");
+        assert_eq!(xref.as_str(), "@I1@");
+    }
+
+    #[test]
+    fn test_xref_from_string() {
+        let xref = Xref::from("@I1@".to_string());
+        assert_eq!(xref.as_str(), "@I1@");
+    }
+
+    #[test]
+    fn test_xref_from_str() {
+        let xref = Xref::from("@I1@");
+        assert_eq!(xref.as_str(), "@I1@");
+    }
+
+    #[test]
+    fn test_xref_is_valid() {
+        let xref = Xref::new("@I1@");
+        assert!(xref.is_valid());
+
+        let xref = Xref::new("I1");
+        assert!(!xref.is_valid());
+
+        let xref = Xref::new("@I1");
+        assert!(!xref.is_valid());
+
+        let xref = Xref::new("I1@");
+        assert!(!xref.is_valid());
+    }
+
+    #[test]
+    fn test_xref_display() {
+        let xref = Xref::new("@I1@");
+        assert_eq!(format!("{}", xref), "@I1@");
+    }
+
+    #[test]
+    fn test_xref_default() {
+        let xref = Xref::default();
+        assert_eq!(xref.as_str(), "");
+    }
+
+    #[test]
+    fn test_xref_eq_str() {
+        let xref = Xref::new("@I1@");
+        assert_eq!(xref, "@I1@");
+    }
+
+    #[test]
+    fn test_xref_eq_string() {
+        let xref = Xref::new("@I1@");
+        assert_eq!(xref, "@I1@".to_string());
+    }
+
+    #[test]
+    fn test_xref_eq_xref() {
+        let xref1 = Xref::new("@I1@");
+        let xref2 = Xref::new("@I1@");
+        assert_eq!(xref1, xref2);
+    }
+
+    #[test]
+    fn test_xref_ne() {
+        let xref1 = Xref::new("@I1@");
+        let xref2 = Xref::new("@I2@");
+        assert_ne!(xref1, xref2);
+    }
+
+    #[test]
+    fn test_xref_as_ref() {
+        let xref = Xref::new("@I1@");
+        let s: &str = xref.as_ref();
+        assert_eq!(s, "@I1@");
+    }
+
+    #[test]
+    fn test_xref_clone() {
+        let xref1 = Xref::new("@I1@");
+        let xref2 = xref1.clone();
+        assert_eq!(xref1, xref2);
+    }
+
+    #[test]
+    fn test_parse_xref_no_xref() {
+        let data = vec!["1 NAME John Doe"];
+        let input = data.join("\n");
+        let mut record = input.as_str();
+
+        let xref = Xref::parse(&mut record).unwrap();
+        assert!(xref.is_none());
+    }
+
+    #[test]
+    fn test_parse_xref_complex() {
+        let xref = Xref::new("@I1234@");
+        assert!(xref.is_valid());
+        assert_eq!(xref.as_str(), "@I1234@");
+    }
+
+    #[test]
+    fn test_xref_hash() {
+        use std::collections::HashSet;
+
+        let mut set = HashSet::new();
+        set.insert(Xref::new("@I1@"));
+        set.insert(Xref::new("@I2@"));
+        set.insert(Xref::new("@I1@")); // duplicate
+
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_xref_different_types() {
+        let indi_xref = Xref::new("@I1@");
+        let fam_xref = Xref::new("@F1@");
+        let sour_xref = Xref::new("@S1@");
+
+        assert!(indi_xref.is_valid());
+        assert!(fam_xref.is_valid());
+        assert!(sour_xref.is_valid());
+
+        assert_ne!(indi_xref, fam_xref);
+    }
 }

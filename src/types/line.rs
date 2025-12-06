@@ -281,4 +281,185 @@ mod tests {
         // TODO: Update this to include the wrapping @ when I figure out how to make nom do that.
         assert!(line.level == 0 && line.tag == "SUBM" && line.value == "" && line.xref == "@U1@");
     }
+
+    #[test]
+    fn test_parse_line_with_xref_in_tag() {
+        let mut input = "0 @I1@ INDI\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 0);
+        assert_eq!(line.xref, "@I1@");
+        assert_eq!(line.tag, "INDI");
+        assert_eq!(line.value, "");
+    }
+
+    #[test]
+    fn test_parse_line_with_xref_in_value() {
+        let mut input = "1 FAMC @F1@\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 1);
+        assert_eq!(line.xref, "");
+        assert_eq!(line.tag, "FAMC");
+        assert_eq!(line.value, "@F1@");
+    }
+
+    #[test]
+    fn test_parse_line_no_value() {
+        let mut input = "0 HEAD\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 0);
+        assert_eq!(line.tag, "HEAD");
+        assert_eq!(line.value, "");
+    }
+
+    #[test]
+    fn test_parse_line_with_spaces_in_value() {
+        let mut input = "1 NAME John    /Doe/\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 1);
+        assert_eq!(line.tag, "NAME");
+        assert_eq!(line.value, "John    /Doe/");
+    }
+
+    #[test]
+    fn test_parse_line_with_newline() {
+        let mut input = "1 NAME Test\n2 GIVN First\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 1);
+        assert_eq!(line.tag, "NAME");
+        assert_eq!(line.value, "Test");
+        // Input should be advanced to next line
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 2);
+    }
+
+    #[test]
+    fn test_parse_line_with_crlf() {
+        let mut input = "1 NAME Test\r\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 1);
+        assert_eq!(line.tag, "NAME");
+        assert_eq!(line.value, "Test");
+    }
+
+    #[test]
+    fn test_parse_empty_input() {
+        let mut input = "";
+        let line = Line::parse(&mut input).unwrap();
+        // Empty input returns default line
+        assert_eq!(line.level, 0);
+        assert_eq!(line.tag, "");
+    }
+
+    #[test]
+    fn test_parse_custom_tag() {
+        let mut input = "1 _CUSTOM Value\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 1);
+        assert_eq!(line.tag, "_CUSTOM");
+        assert_eq!(line.value, "Value");
+    }
+
+    #[test]
+    fn test_parse_numeric_tag() {
+        let mut input = "1 DATE1 Value\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 1);
+        assert_eq!(line.tag, "DATE1");
+        assert_eq!(line.value, "Value");
+    }
+
+    #[test]
+    fn test_peek_line() {
+        let mut input = "1 NAME Test\n2 GIVN First\n";
+        let peeked = Line::peek(&mut input).unwrap();
+        assert_eq!(peeked.level, 1);
+        assert_eq!(peeked.tag, "NAME");
+
+        // Input should not be consumed
+        let parsed = Line::parse(&mut input).unwrap();
+        assert_eq!(parsed.level, 1);
+        assert_eq!(parsed.tag, "NAME");
+    }
+
+    #[test]
+    fn test_line_display_with_xref() {
+        let line = Line {
+            level: 0,
+            xref: "@I1@",
+            tag: "INDI",
+            value: "",
+        };
+        assert_eq!(format!("{}", line), "0 @I1@ INDI ");
+    }
+
+    #[test]
+    fn test_line_display_without_xref() {
+        let line = Line {
+            level: 1,
+            xref: "",
+            tag: "NAME",
+            value: "John /Doe/",
+        };
+        assert_eq!(format!("{}", line), "1 NAME John /Doe/");
+    }
+
+    #[test]
+    fn test_line_default() {
+        let line = Line::default();
+        assert_eq!(line.level, 0);
+        assert_eq!(line.xref, "");
+        assert_eq!(line.tag, "");
+        assert_eq!(line.value, "");
+    }
+
+    #[test]
+    fn test_line_eq() {
+        let line1 = Line {
+            level: 1,
+            xref: "",
+            tag: "NAME",
+            value: "Test",
+        };
+        let line2 = Line {
+            level: 1,
+            xref: "",
+            tag: "NAME",
+            value: "Test",
+        };
+        assert_eq!(line1, line2);
+    }
+
+    #[test]
+    fn test_line_clone() {
+        let line1 = Line {
+            level: 1,
+            xref: "@I1@",
+            tag: "INDI",
+            value: "Value",
+        };
+        let line2 = line1.clone();
+        assert_eq!(line1, line2);
+    }
+
+    #[test]
+    fn test_parse_high_level_number() {
+        let mut input = "15 TAG Value\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.level, 15);
+        assert_eq!(line.tag, "TAG");
+    }
+
+    #[test]
+    fn test_parse_line_with_trailing_spaces() {
+        let mut input = "1 NAME Test   \n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.value, "Test   ");
+    }
+
+    #[test]
+    fn test_parse_line_multiple_spaces_before_value() {
+        let mut input = "1 NAME    Test\n";
+        let line = Line::parse(&mut input).unwrap();
+        assert_eq!(line.value, "Test");
+    }
 }
