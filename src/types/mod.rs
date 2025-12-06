@@ -53,4 +53,5 @@ pub use xref::Xref;
 pub struct Gedcom {
     pub header: Header,
     pub individuals: Vec<Individual>,
+    pub families: Vec<Family>,
 }

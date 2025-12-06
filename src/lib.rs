@@ -25,6 +25,19 @@
 //!         }
 //!     }
 //!     
+//!     // Access families
+//!     println!("Found {} families", gedcom.families.len());
+//!     for family in &gedcom.families {
+//!         println!("Family {}", family.xref);
+//!         if let Some(ref husband) = family.husband {
+//!             println!("  Husband: {}", husband);
+//!         }
+//!         if let Some(ref wife) = family.wife {
+//!             println!("  Wife: {}", wife);
+//!         }
+//!         println!("  Children: {}", family.children.len());
+//!     }
+//!     
 //!     Ok(())
 //! }
 //! ```
@@ -58,7 +71,7 @@
 //! - ✅ Header (HEAD) record parsing
 //! - ✅ Individual (INDI) record parsing
 //! - ✅ Submitter (SUBM) record parsing
-//! - ⚠️ Family (FAM) records recognized but not parsed
+//! - ✅ Family (FAM) record parsing
 //! - ⚠️ Source (SOUR), Repository (REPO), and Multimedia (OBJE) records recognized but not parsed
 //!
 //! ### ANSEL Encoding Limitation
