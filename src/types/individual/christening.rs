@@ -37,15 +37,7 @@ impl Christening {
 
             match line.tag {
                 "FAMC" => {
-                    let famc = Family {
-                        adopted_by: None,
-                        husband: None,
-                        wife: None,
-                        xref: Xref::new(line.value.to_string()),
-                        notes: vec![],
-                        pedigree: None,
-                    };
-                    christening.family = Some(famc);
+                    christening.family = Some(Family::with_xref(Xref::new(line.value.to_string())));
                 }
                 _ => {
                     // This works right now, in this use-case, but what if a struct

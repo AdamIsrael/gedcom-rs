@@ -235,6 +235,7 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
     let mut gedcom = Gedcom {
         header: Header::default(),
         individuals: Vec::with_capacity(100), // Pre-allocate for typical genealogy files
+        families: Vec::new(),
     };
 
     // Capacity management constants

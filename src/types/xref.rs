@@ -1,10 +1,17 @@
 // An xref is a cross-reference to another record in the GEDCOM file.
 use crate::types::Line;
+use std::fmt;
 use winnow::prelude::*;
 
 /// A cross-reference identifier in GEDCOM format (e.g., "@I1@", "@F1@")
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Xref(String);
+
+impl fmt::Display for Xref {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl Xref {
     /// Create a new Xref from a string
