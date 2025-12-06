@@ -19,6 +19,7 @@ mod object;
 mod pedigree;
 mod place;
 mod quay;
+mod repository_record;
 mod source;
 mod source_citation;
 mod source_record;
@@ -46,6 +47,7 @@ pub use object::Object;
 pub use pedigree::Pedigree;
 pub use place::Place;
 pub use quay::Quay;
+pub use repository_record::RepositoryRecord;
 pub use source::Source;
 pub use source_citation::SourceCitation;
 pub use source_record::{SourceDataEvent, SourceRecord, SourceRecordData, UserReference};
@@ -61,6 +63,7 @@ pub struct Gedcom {
     pub individuals: Vec<Individual>,
     pub families: Vec<Family>,
     pub sources: Vec<SourceRecord>,
+    pub repositories: Vec<RepositoryRecord>,
     pub notes: Vec<NoteRecord>,
     pub multimedia: Vec<MultimediaRecord>,
 }

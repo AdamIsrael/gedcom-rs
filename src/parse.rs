@@ -237,6 +237,7 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
         individuals: Vec::with_capacity(100), // Pre-allocate for typical genealogy files
         families: Vec::new(),
         sources: Vec::new(),
+        repositories: Vec::new(),
         notes: Vec::new(),
         multimedia: Vec::new(),
     };
@@ -271,6 +272,11 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                                 gedcom.sources.push(source);
                             }
                         }
+                        "REPO" => {
+                            if let Ok(repository) = RepositoryRecord::parse(&mut input) {
+                                gedcom.repositories.push(repository);
+                            }
+                        }
                         "NOTE" => {
                             if let Ok(note) = NoteRecord::parse(&mut input) {
                                 gedcom.notes.push(note);
@@ -281,7 +287,6 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                                 gedcom.multimedia.push(multimedia);
                             }
                         }
-                        "REPO" => {}
                         "FAM" => {}
                         "SUBM" => {
                             // The record of the submitter of the family tree
@@ -319,6 +324,11 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                 "SOUR" => {
                     if let Ok(source) = SourceRecord::parse(&mut input) {
                         gedcom.sources.push(source);
+                    }
+                }
+                "REPO" => {
+                    if let Ok(repository) = RepositoryRecord::parse(&mut input) {
+                        gedcom.repositories.push(repository);
                     }
                 }
                 "NOTE" => {

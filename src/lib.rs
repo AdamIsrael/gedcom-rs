@@ -69,6 +69,17 @@
 //!         }
 //!     }
 //!     
+//!     // Access repositories
+//!     println!("Found {} repositories", gedcom.repositories.len());
+//!     for repo in &gedcom.repositories {
+//!         if let Some(ref xref) = repo.xref {
+//!             println!("Repository {}", xref);
+//!         }
+//!         if let Some(ref name) = repo.name {
+//!             println!("  Name: {}", name);
+//!         }
+//!     }
+//!     
 //!     Ok(())
 //! }
 //! ```
@@ -106,7 +117,7 @@
 //! - ✅ Source (SOUR) record parsing
 //! - ✅ Note (NOTE) record parsing
 //! - ✅ Multimedia (OBJE) record parsing
-//! - ⚠️ Repository (REPO) records recognized but not parsed
+//! - ✅ Repository (REPO) record parsing
 //!
 //! ### ANSEL Encoding Limitation
 //!
