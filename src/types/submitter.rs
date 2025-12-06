@@ -1,5 +1,6 @@
-use crate::types::{Address, DateTime, Line, Note};
+use crate::types::{Address, Line, Note, Object, Xref};
 
+// SUBMITTER_RECORD:=
 // n @<XREF:SUBM>@ SUBM {1:1}
 // +1 NAME <SUBMITTER_NAME> {1:1} p.63
 // +1 <<ADDRESS_STRUCTURE>> {0:1}* p.31
@@ -8,133 +9,142 @@ use crate::types::{Address, DateTime, Line, Note};
 // +1 RFN <SUBMITTER_REGISTERED_RFN> {0:1} p.63
 // +1 RIN <AUTOMATED_RECORD_ID> {0:1} p.43
 // +1 <<NOTE_STRUCTURE>> {0:M} p.37
-// +1 <<CHANGE_DATE>>
+// +1 <<CHANGE_DATE>> {0:1} p.31
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Submitter {
-    /// The pointer to the SUBM record
-    pub xref: Option<String>,
+    /// The cross-reference identifier (e.g., @U1@)
+    pub xref: Xref,
+
+    /// Name of the submitter (required)
     pub name: Option<String>,
+
+    /// Address structure
     pub address: Option<Address>,
-    pub media: Vec<String>,
-    /// A list of languages in which the submitter prefers to communicate
-    /// listed in order of priority.
-    pub lang: Vec<String>,
-    pub rfn: Option<String>,
-    pub rin: Option<String>,
-    pub note: Option<Note>,
-    pub change_date: Option<DateTime>,
+
+    /// Multimedia links
+    pub multimedia_links: Vec<Object>,
+
+    /// Language preferences (up to 3)
+    pub languages: Vec<String>,
+
+    /// Submitter registered RFN
+    pub registered_rfn: Option<String>,
+
+    /// Automated record ID
+    pub automated_record_id: Option<String>,
+
+    /// Notes
+    pub notes: Vec<Note>,
+
+    /// Change date - stores the DATE value from CHAN/DATE
+    pub change_date: Option<String>,
 }
 
 impl Submitter {
-    // TODO: Move this to a utility module, since it could be called from
-    // multiple places.
-    pub fn find_by_xref(mut buffer: &str, xref: &str) -> Option<Submitter> {
-        // println!("find_by_xref::buffer: {:?}", buffer);
-        let mut submitter = Submitter {
-            xref: Some(xref.to_string()),
-            ..Default::default()
-        };
-        let Ok(mut line) = Line::peek(&mut buffer) else {
-            return Some(submitter);
+    /// Parse a SUBMITTER_RECORD (level 0 SUBM record)
+    pub fn parse(record: &mut &str) -> Submitter {
+        let mut submitter = Submitter::default();
+
+        let Ok(line) = Line::peek(record) else {
+            return submitter;
         };
 
-        while !buffer.is_empty() {
-            // this is only going to match one line. We want to skip forward
-            // until we reach this line, and then process until we hit either EOF or a new 0 level
-            // if line.level == 0 && xref == line.xref.unwrap() {
+        // Must be a level 0 SUBM record
+        if line.level != 0 || line.tag != "SUBM" {
+            return submitter;
+        }
+
+        // Extract xref from the level 0 line
+        if !line.xref.is_empty() {
+            submitter.xref = Xref::new(line.xref.to_string());
+        }
+        let _ = Line::parse(record);
+
+        // Parse SUBM record fields
+        while !record.is_empty() {
+            let Ok(line) = Line::peek(record) else {
+                break;
+            };
+
+            // Stop if we hit another level-0 record
             if line.level == 0 {
-                // Peek at the next line so we know how to parse it.
-                let Ok(peek_line) = Line::peek(&mut buffer) else {
-                    break;
-                };
-                line = peek_line;
+                break;
+            }
 
-                // Loop through the rest of the record
-                while line.level > 0 || !buffer.is_empty() {
-                    match line.tag {
-                        "NAME" => {
-                            submitter.name = Some(line.value.to_string());
-                            let _ = Line::parse(&mut buffer);
-                        }
-                        "ADDR" => {
-                            if let Ok(addr) = Address::parse(&mut buffer) {
-                                submitter.address = Some(addr);
-                            }
-                        }
-                        "OBJE" => {
-                            // Parse the object id and add it to the list
-                            let media_xref = line.value;
-                            submitter.media.push(media_xref.to_string());
-                            let _ = Line::parse(&mut buffer);
-                            // TODO: find the media object and parse it
-                        }
-                        "RIN" => {
-                            if let Ok(parsed_line) = Line::parse(&mut buffer) {
-                                line = parsed_line;
-                                submitter.rin = Some(line.value.to_string());
-                            }
-                            // println!("!! {:}", line.tag);
-                        }
-                        "CHAN" => {
-                            // Parse the date/time
-                            let _ = Line::parse(&mut buffer);
-                            (buffer, submitter.change_date) = DateTime::parse(buffer);
-                        }
-                        "LANG" => {
-                            let lang = line.value;
-                            submitter.lang.push(lang.to_string());
-                            let _ = Line::parse(&mut buffer);
-                        }
-                        "NOTE" => {
-                            if let Ok(note) = Note::parse(&mut buffer) {
-                                submitter.note = Some(note);
-                            }
-                        }
-                        "RFN" => {
-                            let rfn = line.value;
-                            submitter.rfn = Some(rfn.to_string());
-                            let _ = Line::parse(&mut buffer);
-                        }
-                        _ => {
-                            // Advance the buffer past the unknown line
-                            let _ = Line::parse(&mut buffer);
-                        }
+            // Only process direct children (level 1)
+            if line.level != 1 {
+                let _ = Line::parse(record);
+                continue;
+            }
+
+            let mut consume = true;
+
+            match line.tag {
+                "NAME" => {
+                    submitter.name = Some(line.value.to_string());
+                }
+                "ADDR" => {
+                    if let Ok(addr) = Address::parse(record) {
+                        submitter.address = Some(addr);
                     }
-                    let Ok(peek_line) = Line::peek(&mut buffer) else {
-                        break;
-                    };
-                    line = peek_line;
+                    consume = false;
                 }
-            } else {
-                let Ok(parsed_line) = Line::parse(&mut buffer) else {
-                    break;
-                };
-                line = parsed_line;
+                "OBJE" => {
+                    if let Ok(obj) = Object::parse(record) {
+                        submitter.multimedia_links.push(obj);
+                    }
+                    consume = false;
+                }
+                "LANG" => {
+                    // GEDCOM 5.5.1 allows up to 3 language preferences
+                    if submitter.languages.len() < 3 {
+                        submitter.languages.push(line.value.to_string());
+                    }
+                }
+                "RFN" => {
+                    submitter.registered_rfn = Some(line.value.to_string());
+                }
+                "RIN" => {
+                    submitter.automated_record_id = Some(line.value.to_string());
+                }
+                "NOTE" => {
+                    if let Ok(note) = Note::parse(record) {
+                        submitter.notes.push(note);
+                    }
+                    consume = false;
+                }
+                "CHAN" => {
+                    // Parse CHAN structure to get DATE value
+                    let level = line.level;
+                    let _ = Line::parse(record);
+
+                    while !record.is_empty() {
+                        let Ok(inner_line) = Line::peek(record) else {
+                            break;
+                        };
+
+                        if inner_line.level <= level {
+                            break;
+                        }
+
+                        if inner_line.level == level + 1 && inner_line.tag == "DATE" {
+                            submitter.change_date = Some(inner_line.value.to_string());
+                        }
+
+                        let _ = Line::parse(record);
+                    }
+                    consume = false;
+                }
+                _ => {}
+            }
+
+            if consume {
+                let _ = Line::parse(record);
             }
         }
 
-        Some(submitter)
-    }
-
-    /// Parses a SUBM block
-    pub fn parse(mut buffer: &str) -> (&str, Option<Submitter>) {
-        let mut submitter: Option<Submitter> = None;
-        if let Ok(mut line) = Line::peek(&mut buffer) {
-            if line.level == 1 && line.tag == "SUBM" {
-                // advance our position in the buffer
-                if let Ok(parsed_line) = Line::parse(&mut buffer) {
-                    line = parsed_line;
-                    // This is a temporary hack, because parse::xref strips @ from the id
-                    let xref = line.value;
-
-                    // Find by xref
-                    submitter = Submitter::find_by_xref(buffer, xref);
-                }
-            }
-        }
-
-        (buffer, submitter)
+        submitter
     }
 }
 
@@ -144,13 +154,8 @@ mod tests {
     use super::Submitter;
 
     #[test]
-    fn parse_submitter() {
+    fn test_submitter_complete() {
         let data = vec![
-            "1 SUBM @U1@",
-            // other records that we need to skip over
-            "1 FILE TGC55C.ged",
-            "1 COPR © 1997 by H. Eichmann, parts © 1999-2000 by J. A. Nairn.",
-            // The submitter record
             "0 @U1@ SUBM",
             "1 NAME Adam Israel",
             "1 ADDR",
@@ -164,9 +169,9 @@ mod tests {
             "1 PHON +1-800-555-1111",
             "1 PHON +1-800-555-1212",
             "1 PHON +1-800-555-1313",
-            "1 EMAIL a@@example.com",
-            "1 EMAIL b@@example.com",
-            "1 EMAIL c@@example.com",
+            "1 EMAIL a@example.com",
+            "1 EMAIL b@example.com",
+            "1 EMAIL c@example.com",
             "1 FAX +1-800-555-1414",
             "1 FAX +1-800-555-1515",
             "1 FAX +1-800-555-1616",
@@ -185,31 +190,27 @@ mod tests {
             "1 LANG German",
         ];
 
-        let (_, submitter) = Submitter::parse(data.join("\n").as_str());
-        // let xref = submitter.unwrap().xref;
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let submitter = Submitter::parse(&mut record);
 
-        // Now, find the xref
-        // submitter = Submitter::find_by_xref(data.join("\n").as_str(), xref.unwrap());
-        let s = submitter.unwrap();
+        assert_eq!(submitter.xref.as_str(), "@U1@");
+        assert_eq!(submitter.name.as_ref().unwrap(), "Adam Israel");
 
-        assert!(s.xref == Some("@U1@".to_string()));
-        assert!(s.name == Some("Adam Israel".to_string()));
-
-        let addr = s.address.unwrap();
-
-        assert!(addr.addr1 == Some("Example Software".to_string()));
-        assert!(addr.addr2 == Some("123 Main Street".to_string()));
-        assert!(addr.addr3 == Some("Ste 1".to_string()));
-        assert!(addr.city == Some("Anytown".to_string()));
-        assert!(addr.state == Some("IL".to_string()));
-        assert!(addr.postal_code == Some("55555".to_string()));
-        assert!(addr.country == Some("USA".to_string()));
+        let addr = submitter.address.unwrap();
+        assert_eq!(addr.addr1.as_ref().unwrap(), "Example Software");
+        assert_eq!(addr.addr2.as_ref().unwrap(), "123 Main Street");
+        assert_eq!(addr.addr3.as_ref().unwrap(), "Ste 1");
+        assert_eq!(addr.city.as_ref().unwrap(), "Anytown");
+        assert_eq!(addr.state.as_ref().unwrap(), "IL");
+        assert_eq!(addr.postal_code.as_ref().unwrap(), "55555");
+        assert_eq!(addr.country.as_ref().unwrap(), "USA");
         assert!(addr.phone.contains(&"+1-800-555-1111".to_string()));
         assert!(addr.phone.contains(&"+1-800-555-1212".to_string()));
         assert!(addr.phone.contains(&"+1-800-555-1313".to_string()));
-        assert!(addr.email.contains(&"a@@example.com".to_string()));
-        assert!(addr.email.contains(&"b@@example.com".to_string()));
-        assert!(addr.email.contains(&"c@@example.com".to_string()));
+        assert!(addr.email.contains(&"a@example.com".to_string()));
+        assert!(addr.email.contains(&"b@example.com".to_string()));
+        assert!(addr.email.contains(&"c@example.com".to_string()));
         assert!(addr.fax.contains(&"+1-800-555-1414".to_string()));
         assert!(addr.fax.contains(&"+1-800-555-1515".to_string()));
         assert!(addr.fax.contains(&"+1-800-555-1616".to_string()));
@@ -217,23 +218,103 @@ mod tests {
         assert!(addr.www.contains(&"https://www.example.org".to_string()));
         assert!(addr.www.contains(&"https://www.example.net".to_string()));
 
-        // TODO: Make sure this resolves to a Media record
-        assert!(s.media.contains(&"@M1@".to_string()));
+        assert_eq!(submitter.multimedia_links.len(), 1);
+        assert_eq!(submitter.multimedia_links[0].xref.as_ref().unwrap(), "@M1@");
 
-        assert!(s.lang.contains(&"English".to_string()));
-        assert!(s.lang.contains(&"German".to_string()));
+        assert_eq!(submitter.languages.len(), 2);
+        assert!(submitter.languages.contains(&"English".to_string()));
+        assert!(submitter.languages.contains(&"German".to_string()));
 
-        assert!(s.rin == Some("1".to_string()));
+        assert_eq!(submitter.registered_rfn.as_ref().unwrap(), "123456789");
+        assert_eq!(submitter.automated_record_id.as_ref().unwrap(), "1");
 
-        let date = s.change_date.unwrap();
-        assert!(date.date == Some("7 SEP 2000".to_string()));
-        assert!(date.time == Some("8:35:36".to_string()));
+        assert_eq!(submitter.change_date.as_ref().unwrap(), "7 SEP 2000");
 
-        // TODO: Implement these once the fields are implemented.
-        assert!(s.rfn == Some("123456789".to_string()));
-
-        let note = s.note.unwrap().note.unwrap();
+        assert_eq!(submitter.notes.len(), 1);
+        let note = submitter.notes[0].note.as_ref().unwrap();
         assert!(note.starts_with("This is a test note."));
         assert!(note.ends_with("And so is this."));
+    }
+
+    #[test]
+    fn test_submitter_minimal() {
+        let data = vec!["0 @U2@ SUBM", "1 NAME John Doe"];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let submitter = Submitter::parse(&mut record);
+
+        assert_eq!(submitter.xref.as_str(), "@U2@");
+        assert_eq!(submitter.name.as_ref().unwrap(), "John Doe");
+        assert_eq!(submitter.address, None);
+        assert_eq!(submitter.multimedia_links.len(), 0);
+        assert_eq!(submitter.languages.len(), 0);
+        assert_eq!(submitter.registered_rfn, None);
+        assert_eq!(submitter.automated_record_id, None);
+        assert_eq!(submitter.notes.len(), 0);
+        assert_eq!(submitter.change_date, None);
+    }
+
+    #[test]
+    fn test_submitter_with_multiple_notes() {
+        let data = vec![
+            "0 @U3@ SUBM",
+            "1 NAME Jane Smith",
+            "1 NOTE First note",
+            "1 NOTE Second note",
+            "1 NOTE @N1@",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let submitter = Submitter::parse(&mut record);
+
+        assert_eq!(submitter.xref.as_str(), "@U3@");
+        assert_eq!(submitter.notes.len(), 3);
+        assert_eq!(submitter.notes[0].note.as_ref().unwrap(), "First note");
+        assert_eq!(submitter.notes[1].note.as_ref().unwrap(), "Second note");
+        assert_eq!(submitter.notes[2].note.as_ref().unwrap(), "@N1@");
+    }
+
+    #[test]
+    fn test_submitter_language_limit() {
+        let data = vec![
+            "0 @U4@ SUBM",
+            "1 NAME Test User",
+            "1 LANG English",
+            "1 LANG Spanish",
+            "1 LANG French",
+            "1 LANG German", // This should be ignored (max 3)
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let submitter = Submitter::parse(&mut record);
+
+        assert_eq!(submitter.languages.len(), 3);
+        assert!(submitter.languages.contains(&"English".to_string()));
+        assert!(submitter.languages.contains(&"Spanish".to_string()));
+        assert!(submitter.languages.contains(&"French".to_string()));
+        assert!(!submitter.languages.contains(&"German".to_string()));
+    }
+
+    #[test]
+    fn test_submitter_with_multiple_multimedia() {
+        let data = vec![
+            "0 @U5@ SUBM",
+            "1 NAME Media User",
+            "1 OBJE @M1@",
+            "1 OBJE @M2@",
+            "1 OBJE @M3@",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let submitter = Submitter::parse(&mut record);
+
+        assert_eq!(submitter.multimedia_links.len(), 3);
+        assert_eq!(submitter.multimedia_links[0].xref.as_ref().unwrap(), "@M1@");
+        assert_eq!(submitter.multimedia_links[1].xref.as_ref().unwrap(), "@M2@");
+        assert_eq!(submitter.multimedia_links[2].xref.as_ref().unwrap(), "@M3@");
     }
 }

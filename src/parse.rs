@@ -240,6 +240,7 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
         repositories: Vec::new(),
         notes: Vec::new(),
         multimedia: Vec::new(),
+        submitters: Vec::new(),
     };
 
     // Capacity management constants
@@ -292,13 +293,8 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                             gedcom.families.push(family);
                         }
                         "SUBM" => {
-                            // The record of the submitter of the family tree
-                            // Not always present (it exists in complete.ged)
-                            if let Some(ref subm) = gedcom.header.submitter {
-                                if let Some(xref) = &subm.xref {
-                                    gedcom.header.submitter = Submitter::find_by_xref(input, xref);
-                                }
-                            }
+                            let submitter = Submitter::parse(&mut input);
+                            gedcom.submitters.push(submitter);
                         }
                         _ => {}
                     }
@@ -349,11 +345,8 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                     gedcom.families.push(family);
                 }
                 "SUBM" => {
-                    if let Some(ref subm) = gedcom.header.submitter {
-                        if let Some(xref) = &subm.xref {
-                            gedcom.header.submitter = Submitter::find_by_xref(input, xref);
-                        }
-                    }
+                    let submitter = Submitter::parse(&mut input);
+                    gedcom.submitters.push(submitter);
                 }
                 _ => {}
             }

@@ -236,6 +236,52 @@ mod tests {
         assert_eq!(f3.automated_record_id, Some("3".to_string()));
     }
 
+    #[test]
+    fn test_submitter_parsing() {
+        let gedcom = parse_gedcom("./data/complete.ged", &GedcomConfig::new()).unwrap();
+
+        // complete.ged has 1 SUBMITTER record
+        assert_eq!(gedcom.submitters.len(), 1);
+
+        let subm = &gedcom.submitters[0];
+        assert_eq!(subm.xref.to_string(), "@U1@");
+        assert_eq!(subm.name.as_deref(), Some("John A. Nairn"));
+
+        // Check address
+        assert!(subm.address.is_some());
+        let addr = subm.address.as_ref().unwrap();
+        assert_eq!(addr.addr1.as_deref(), Some("RSAC Software"));
+        assert_eq!(addr.addr2.as_deref(), Some("7108 South Pine Cone Street"));
+        assert_eq!(addr.addr3.as_deref(), Some("Ste 1"));
+        assert_eq!(addr.city.as_deref(), Some("Salt Lake City"));
+        assert_eq!(addr.state.as_deref(), Some("UT"));
+        assert_eq!(addr.postal_code.as_deref(), Some("84121"));
+        assert_eq!(addr.country.as_deref(), Some("USA"));
+
+        // Check phone numbers (3 phones in file)
+        assert_eq!(addr.phone.len(), 3);
+        assert_eq!(addr.phone[0], "+1-801-942-7768");
+        assert_eq!(addr.phone[1], "+1-801-555-1212");
+        assert_eq!(addr.phone[2], "+1-801-942-1148");
+
+        // Check languages (2 in file: English, German)
+        assert_eq!(subm.languages.len(), 2);
+        assert_eq!(subm.languages[0], "English");
+        assert_eq!(subm.languages[1], "German");
+
+        // Check multimedia links
+        assert_eq!(subm.multimedia_links.len(), 1);
+
+        // Check automated record id
+        assert_eq!(subm.automated_record_id.as_deref(), Some("1"));
+
+        // Check change date
+        assert_eq!(subm.change_date.as_deref(), Some("7 SEP 2000"));
+
+        // Check automated record ID
+        assert_eq!(subm.automated_record_id.as_deref(), Some("1"));
+    }
+
     // #[test]
     // /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
     // /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.

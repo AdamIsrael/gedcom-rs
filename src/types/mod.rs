@@ -66,4 +66,5 @@ pub struct Gedcom {
     pub repositories: Vec<RepositoryRecord>,
     pub notes: Vec<NoteRecord>,
     pub multimedia: Vec<MultimediaRecord>,
+    pub submitters: Vec<Submitter>,
 }
