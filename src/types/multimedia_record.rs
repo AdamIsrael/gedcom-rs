@@ -40,7 +40,7 @@ pub struct MultimediaRecord {
     /// Source citations for this multimedia object
     pub source_citations: Vec<SourceCitation>,
 
-    /// Change date (basic parsing, skips structure for now)
+    /// Change date - stores the DATE value from CHAN/DATE (skips TIME and other structure)
     pub change_date: Option<String>,
 }
 
@@ -140,15 +140,17 @@ impl MultimediaRecord {
                     multimedia.automated_record_id = Some(line.value.to_string());
                 }
                 "CHAN" => {
-                    // For now, just skip CHAN and its children
-                    // TODO: Implement full CHANGE_DATE parsing
+                    // Basic parsing - extract DATE value and skip rest of structure
                     let chan_level = line.level;
                     let _ = Line::parse(input);
 
-                    // Skip all child tags
+                    // Look for DATE tag at next level
                     while let Ok(peek) = Line::peek(input) {
                         if peek.level <= chan_level {
                             break;
+                        }
+                        if peek.tag == "DATE" && peek.level == chan_level + 1 {
+                            multimedia.change_date = Some(peek.value.to_string());
                         }
                         let _ = Line::parse(input);
                     }
@@ -359,7 +361,7 @@ mod tests {
         let multimedia = MultimediaRecord::parse(&mut input).unwrap();
 
         assert_eq!(multimedia.files.len(), 1);
-        // CHAN is parsed but not fully stored yet
+        assert_eq!(multimedia.change_date, Some("14 JAN 2001".to_string()));
     }
 
     #[test]
