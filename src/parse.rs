@@ -237,6 +237,7 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
         individuals: Vec::with_capacity(100), // Pre-allocate for typical genealogy files
         families: Vec::new(),
         sources: Vec::new(),
+        notes: Vec::new(),
     };
 
     // Capacity management constants
@@ -267,6 +268,11 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                         "SOUR" => {
                             if let Ok(source) = SourceRecord::parse(&mut input) {
                                 gedcom.sources.push(source);
+                            }
+                        }
+                        "NOTE" => {
+                            if let Ok(note) = NoteRecord::parse(&mut input) {
+                                gedcom.notes.push(note);
                             }
                         }
                         "REPO" => {}
@@ -308,6 +314,11 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                 "SOUR" => {
                     if let Ok(source) = SourceRecord::parse(&mut input) {
                         gedcom.sources.push(source);
+                    }
+                }
+                "NOTE" => {
+                    if let Ok(note) = NoteRecord::parse(&mut input) {
+                        gedcom.notes.push(note);
                     }
                 }
                 "SUBM" => {

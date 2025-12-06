@@ -13,6 +13,7 @@ mod individual;
 mod line;
 mod map;
 mod note;
+mod note_record;
 mod object;
 mod pedigree;
 mod place;
@@ -38,6 +39,7 @@ pub use individual::*;
 pub use line::Line;
 pub use map::Map;
 pub use note::Note;
+pub use note_record::NoteRecord;
 pub use object::Object;
 pub use pedigree::Pedigree;
 pub use place::Place;
@@ -57,4 +59,5 @@ pub struct Gedcom {
     pub individuals: Vec<Individual>,
     pub families: Vec<Family>,
     pub sources: Vec<SourceRecord>,
+    pub notes: Vec<NoteRecord>,
 }

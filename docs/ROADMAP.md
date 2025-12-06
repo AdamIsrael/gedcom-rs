@@ -113,14 +113,14 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 
 ### NOTE_RECORD
 
-**Status:** ❌ Recognized but not parsed
+**Status:** ✅ Implemented and tested
 
-- [ ] NOTE
-- [ ] REFN
-  - [ ] TYPE
-- [ ] RIN
-- [ ] SOURCE_CITATION
-- [ ] CHANGE_DATE
+- [x] NOTE (XREF with CONC/CONT support)
+- [x] SOURCE_CITATION (supports multiple citations)
+- [x] REFN (supports multiple)
+  - [x] TYPE
+- [x] RIN
+- [ ] CHANGE_DATE (basic parsing, skips structure)
 
 ### REPOSITORY_RECORD
 
@@ -217,9 +217,11 @@ Filters should allow for the partial parsing of genealogical data. TBD the exten
 
 ### Low Priority
 
-7. **Note Record Parsing (NOTE)**
-   - Shared notes across records
-   - Less commonly used standalone
+7. **Note Record Parsing (NOTE)** ✅ Complete
+   - Full GEDCOM 5.5.1 NOTE_RECORD implementation
+   - Supports multi-line notes with CONC/CONT
+   - Source citations and reference numbers
+   - Access via `gedcom.notes` Vec
 
 8. **Submitter Record Enhancement**
    - Basic support exists
@@ -233,13 +235,14 @@ Filters should allow for the partial parsing of genealogical data. TBD the exten
 - [ ] Complete FAM record parsing (remaining fields: RESN, SUBM, LDS, CHANGE_DATE, citations)
 - [ ] Full INDIVIDUAL_RECORD implementation
 - [x] Complete SOUR record parsing (all GEDCOM 5.5.1 fields)
+- [x] Complete NOTE record parsing (all GEDCOM 5.5.1 fields)
 - [ ] Improved error messages
 - [x] Performance optimizations for large files (minimal overhead for new record types)
 
 ### Version 0.3.0 Goals
 
 - [ ] Full ANSEL encoding support
-- [ ] Complete SOUR, REPO, OBJE record parsing
+- [ ] Complete REPO, OBJE record parsing
 - [ ] Graph API for family relationships
 - [ ] GEDCOM 7.0 exploration
 
