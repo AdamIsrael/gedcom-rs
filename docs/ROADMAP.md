@@ -52,48 +52,82 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 **Status:** ✅ Implemented and tested
 
 - [x] XREF
-- [ ] RESN (not implemented)
+- [x] RESN
 - [x] FAMILY_EVENT_STRUCTURE (MARR, ENGA, DIV, ANUL, CENS, DIVF, EVEN)
 - [x] HUSB
 - [x] WIFE
 - [x] CHIL
 - [x] NCHI
-- [ ] SUBM (not implemented)
-- [ ] LDS_SPOUSE_SEALING (not implemented)
-- [x] REFN
+- [x] SUBM
+- [x] LDS_SPOUSE_SEALING
+- [x] REFN (supports multiple)
   - [x] TYPE
 - [x] RIN
-- [ ] CHANGE_DATE (not implemented)
+- [x] CHANGE_DATE (basic parsing - stores DATE value, skips TIME and other structure)
 - [x] NOTE_STRUCTURE
-- [ ] SOURCE_CITATION (not implemented)
-- [ ] MULTIMEDIA_LINK (not implemented)
+- [x] SOURCE_CITATION
+- [x] MULTIMEDIA_LINK
 
 ### INDIVIDUAL_RECORD
 
-**Status:** 🚧 Partially implemented
+**Status:** ✅ Implemented and tested
 
-- [ ] XREF
-- [ ] PERSONAL_NAME_STRUCTURE
-- [ ] SEX
-- [ ] INDIVIDUAL_EVENT_STRUCTURE
-- [ ] INDIVIDUAL_ATTRIBUTE_STRUCTURE
-- [ ] LDS_INDIVIDUAL_ORDINANCE
-- [ ] CHILD_TO_FAMILY_LINK
-- [ ] SPOUSE_TO_FAMILY_LINK
-- [ ] SUBM
-- [ ] ASSOCIATION_STRUCTURE
-- [ ] ALIA
-- [ ] ANCI
-- [ ] DESI
-- [ ] RFN
-- [ ] AFN
-- [ ] REFN
-  - [ ] TYPE
-- [ ] RIN
-- [ ] CHANGE_DATE
-- [ ] NOTE_STRUCTURE
-- [ ] SOURCE_CITATION
-- [ ] MULTIMEDIA_LINK
+- [x] XREF
+- [x] PERSONAL_NAME_STRUCTURE (full support including phonetic, romanized variants, source citations)
+- [x] SEX
+- [x] INDIVIDUAL_EVENT_STRUCTURE (full support - see event details below)
+  - [x] BIRT (Birth) - with source citations, media, notes, place, address
+  - [x] DEAT (Death) - with source citations, media, notes, place, address
+  - [x] CHR (Christening) - with source citations, family link
+  - [x] BAPM (Baptism) - with source citations, media, notes
+  - [x] BARM (Bar Mitzvah)
+  - [x] BASM (Bas Mitzvah)
+  - [x] ADOP (Adoption) - with family link and ADOP type (BOTH/HUSB/WIFE)
+  - [x] CHRA (Adult Christening)
+  - [x] CONF (Confirmation)
+  - [x] FCOM (First Communion)
+  - [x] GRAD (Graduation)
+  - [x] EMIG (Emigration)
+  - [x] IMMI (Immigration)
+  - [x] NATU (Naturalization)
+  - [x] CENS (Census)
+  - [x] RETI (Retirement)
+  - [x] PROB (Probate)
+  - [x] BURI (Burial)
+  - [x] WILL (Will)
+  - [x] CREM (Cremation)
+  - [x] EVEN (Generic events)
+- [x] INDIVIDUAL_ATTRIBUTE_STRUCTURE (full support)
+  - [x] RESI (Residence) - with address, phone, source citations
+  - [x] OCCU (Occupation) - stored as events
+  - [x] EDUC (Education) - with TYPE, DATE, PLAC, NOTE, SOUR
+  - [x] DSCR (Physical description)
+  - [x] RELI (Religion)
+  - [x] IDNO (National ID)
+  - [x] PROP (Property)
+  - [x] CAST (Caste)
+  - [x] NCHI (Number of children)
+  - [x] NMR (Number of marriages)
+  - [x] TITL (Nobility title)
+  - [x] NATI (Nationality)
+- [ ] LDS_INDIVIDUAL_ORDINANCE - not implemented
+- [x] CHILD_TO_FAMILY_LINK (FAMC) - with notes, pedigree (adopted, birth, foster, sealing)
+- [x] SPOUSE_TO_FAMILY_LINK (FAMS) - with notes
+- [x] SUBM (submitter references)
+- [x] ASSOCIATION_STRUCTURE (ASSO) - with RELA, NOTE, SOUR
+- [x] ALIA (Alias)
+- [x] ANCI (Ancestor interest)
+- [x] DESI (Descendant interest)
+- [x] RFN (Permanent record file number)
+- [x] AFN (Ancestral file number)
+- [x] REFN (User reference numbers - supports multiple)
+  - [x] TYPE
+- [x] RIN (automated record ID)
+- [x] RESN (restriction notice)
+- [x] CHANGE_DATE (CHAN - stores DATE value)
+- [x] NOTE_STRUCTURE (supports multiple notes and note references)
+- [x] SOURCE_CITATION (supports multiple citations)
+- [x] MULTIMEDIA_LINK (supports multiple object references)
 
 ### MULTIMEDIA_RECORD
 
@@ -183,14 +217,21 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
    - Target: Complete ANSEL implementation with prefix diacritics
    - See [docs/ENCODING.md](ENCODING.md) for details
 
-2. **Complete Family Record Support (FAM)** ✅ Core Implementation Complete
-   - Core fields implemented: XREF, HUSB, WIFE, CHIL, NCHI, events, notes, admin fields
-   - Remaining: RESN, SUBM, LDS_SPOUSE_SEALING, CHANGE_DATE, SOURCE_CITATION, MULTIMEDIA_LINK
+2. **Complete Family Record Support (FAM)** ✅ Complete
+   - All GEDCOM 5.5.1 FAM_RECORD fields implemented
+   - Supports RESN, SUBM, LDS_SPOUSE_SEALING, CHANGE_DATE, SOURCE_CITATION, MULTIMEDIA_LINK
    - See examples/family_tree.rs for usage
 
-3. **Complete Individual Record Support**
-   - Many individual event types partially implemented
-   - Need full NOTE_STRUCTURE and SOURCE_CITATION support
+3. **Complete Individual Record Support** ✅ Complete
+   - All GEDCOM 5.5.1 INDIVIDUAL_RECORD fields implemented
+   - Full event support: BIRT, DEAT, CHR, BAPM, and 20+ other event types
+   - PERSONAL_NAME_STRUCTURE fully implemented with phonetic/romanized variants
+   - All attributes: EDUC, DSCR, RELI, IDNO, PROP, CAST, NCHI, NMR, TITL, NATI
+   - Family links (FAMC/FAMS) with pedigree support
+   - Record-level SOURCE_CITATION, NOTE_STRUCTURE, MULTIMEDIA_LINK
+   - Admin fields: REFN, RIN, CHAN, RESN, SUBM
+   - Associations and references: ASSO, ALIA, ANCI, DESI, RFN, AFN
+   - LDS ordinances not yet implemented (low priority)
 
 4. **Repository Record Parsing (REPO)** ✅ Complete
    - Full GEDCOM 5.5.1 REPOSITORY_RECORD implementation
@@ -236,8 +277,8 @@ Filters should allow for the partial parsing of genealogical data. TBD the exten
 ### Version 0.2.0 Goals
 
 - [x] Core FAM record parsing (XREF, HUSB, WIFE, CHIL, events, notes)
-- [ ] Complete FAM record parsing (remaining fields: RESN, SUBM, LDS, CHANGE_DATE, citations)
-- [ ] Full INDIVIDUAL_RECORD implementation
+- [x] Complete FAM record parsing (all GEDCOM 5.5.1 fields including RESN, SUBM, LDS, CHANGE_DATE, citations)
+- [x] Full INDIVIDUAL_RECORD implementation (all GEDCOM 5.5.1 fields except LDS ordinances)
 - [x] Complete SOUR record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete NOTE record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete OBJE record parsing (all GEDCOM 5.5.1 fields)
@@ -266,7 +307,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed contribution guidelines.
 
 Priority areas for contribution:
 1. ANSEL encoding implementation
-2. Complete remaining Family record fields (RESN, SUBM, LDS_SPOUSE_SEALING, CHANGE_DATE, citations)
+2. LDS ordinances for INDIVIDUAL_RECORD (low priority feature)
 3. Test cases with real-world GEDCOM files
 4. Documentation and examples
 

@@ -2,8 +2,12 @@ use std::str::FromStr;
 
 use crate::{
     parse,
-    types::{AdoptedBy, FamilyEventDetail, Line, Note, Pedigree, Xref},
+    types::{
+        AdoptedBy, FamilyEventDetail, Line, Note, Object, Pedigree, SourceCitation, UserReference,
+        Xref,
+    },
 };
+use winnow::prelude::*;
 
 // TODO: implement full parsing of the family record
 // TODO: Need to create a trait? to find_by_xref that can be used in these
@@ -28,6 +32,107 @@ use crate::{
 // +1 <<SOURCE_CITATION>> {0:M} p.39
 // +1 <<MULTIMEDIA_LINK>> {0:M} p.37, 26
 
+// LDS_SPOUSE_SEALING:=
+// n SLGS {1:1}
+//   +1 STAT <LDS_SPOUSE_SEALING_DATE_STATUS> {0:1}
+//   +1 DATE <DATE_LDS_ORD> {0:1}
+//   +1 TEMP <TEMPLE_CODE> {0:1}
+//   +1 PLAC <PLACE_LIVING_ORDINANCE> {0:1}
+//   +1 <<SOURCE_CITATION>> {0:M}
+//   +1 <<NOTE_STRUCTURE>> {0:M}
+
+/// LDS Spouse Sealing ordinance
+#[derive(Debug, Clone, Default)]
+pub struct LdsSpouseSealing {
+    /// Status of the ordinance
+    pub status: Option<String>,
+
+    /// Date of the ordinance
+    pub date: Option<String>,
+
+    /// Temple code where performed
+    pub temple: Option<String>,
+
+    /// Place where ordinance was performed
+    pub place: Option<String>,
+
+    /// Source citations for this ordinance
+    pub source_citations: Vec<SourceCitation>,
+
+    /// Notes about this ordinance
+    pub notes: Vec<Note>,
+}
+
+impl LdsSpouseSealing {
+    /// Parse an LDS spouse sealing ordinance (SLGS tag)
+    fn parse(record: &mut &str) -> PResult<LdsSpouseSealing> {
+        let mut sealing = LdsSpouseSealing::default();
+
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(sealing);
+        };
+
+        if level_line.tag != "SLGS" {
+            return Ok(sealing);
+        }
+
+        let sealing_level = level_line.level;
+        let _ = Line::parse(record);
+
+        // Parse SLGS subfields
+        while !record.is_empty() {
+            let Ok(line) = Line::peek(record) else {
+                break;
+            };
+
+            if line.level <= sealing_level {
+                break;
+            }
+
+            if line.level != sealing_level + 1 {
+                let _ = Line::parse(record);
+                continue;
+            }
+
+            let mut consume = true;
+
+            match line.tag {
+                "STAT" => {
+                    sealing.status = Some(line.value.to_string());
+                }
+                "DATE" => {
+                    sealing.date = Some(line.value.to_string());
+                }
+                "TEMP" => {
+                    sealing.temple = Some(line.value.to_string());
+                }
+                "PLAC" => {
+                    sealing.place = Some(line.value.to_string());
+                }
+                "SOUR" => {
+                    if let Ok(citation) = SourceCitation::parse(record) {
+                        sealing.source_citations.push(citation);
+                    }
+                    consume = false;
+                }
+                "NOTE" => {
+                    if let Ok(Some(note)) = parse::get_tag_value(record) {
+                        sealing.notes.push(Note { note: Some(note) });
+                    }
+                    consume = false;
+                }
+                _ => {}
+            }
+
+            if consume {
+                let _ = Line::parse(record);
+            }
+        }
+
+        Ok(sealing)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 /// The Family structure representing a FAM record
 ///
@@ -35,6 +140,9 @@ use crate::{
 pub struct Family {
     /// Cross-reference identifier for this family (e.g., @F1@)
     pub xref: Xref,
+
+    /// Restriction notice (RESN)
+    pub restriction: Option<String>,
 
     /// Reference to husband individual
     pub husband: Option<Xref>,
@@ -51,17 +159,29 @@ pub struct Family {
     /// Family events (marriage, engagement, divorce, etc.)
     pub events: Vec<FamilyEventDetail>,
 
+    /// References to submitters (SUBM)
+    pub submitters: Vec<Xref>,
+
+    /// LDS spouse sealing ordinances
+    pub lds_spouse_sealings: Vec<LdsSpouseSealing>,
+
     /// Notes about this family
     pub notes: Vec<Note>,
+
+    /// Source citations
+    pub source_citations: Vec<SourceCitation>,
+
+    /// Multimedia links
+    pub multimedia_links: Vec<Object>,
+
+    /// User reference numbers (supports multiple)
+    pub user_reference_numbers: Vec<UserReference>,
 
     /// Automated record ID
     pub automated_record_id: Option<String>,
 
-    /// User reference number
-    pub user_reference_number: Option<String>,
-
-    /// User reference type
-    pub user_reference_type: Option<String>,
+    /// Change date - stores the DATE value from CHAN/DATE
+    pub change_date: Option<String>,
 
     // Legacy fields used for FAMC/FAMS child-to-family links
     // These are kept for backward compatibility with Individual parsing
@@ -75,15 +195,20 @@ impl Family {
     pub(crate) fn with_xref(xref: Xref) -> Self {
         Family {
             xref,
+            restriction: None,
             husband: None,
             wife: None,
             children: Vec::new(),
             child_count: None,
             events: Vec::new(),
+            submitters: Vec::new(),
+            lds_spouse_sealings: Vec::new(),
             notes: Vec::new(),
+            source_citations: Vec::new(),
+            multimedia_links: Vec::new(),
+            user_reference_numbers: Vec::new(),
             automated_record_id: None,
-            user_reference_number: None,
-            user_reference_type: None,
+            change_date: None,
             adopted_by: None,
             pedigree: None,
         }
@@ -127,24 +252,28 @@ impl Family {
                     continue;
                 }
 
+                let mut consume = true;
+
                 match line.tag {
+                    "RESN" => {
+                        family.restriction = Some(line.value.to_string());
+                    }
                     "HUSB" => {
                         family.husband = Some(Xref::new(line.value.to_string()));
-                        let _ = Line::parse(record);
                     }
                     "WIFE" => {
                         family.wife = Some(Xref::new(line.value.to_string()));
-                        let _ = Line::parse(record);
                     }
                     "CHIL" => {
                         family.children.push(Xref::new(line.value.to_string()));
-                        let _ = Line::parse(record);
                     }
                     "NCHI" => {
                         if let Ok(count) = line.value.parse::<u32>() {
                             family.child_count = Some(count);
                         }
-                        let _ = Line::parse(record);
+                    }
+                    "SUBM" => {
+                        family.submitters.push(Xref::new(line.value.to_string()));
                     }
                     "MARR" | "ENGA" | "DIV" | "ANUL" | "CENS" | "DIVF" | "EVEN" => {
                         // Consume the event tag line
@@ -173,30 +302,76 @@ impl Family {
                                 family.events.push(event);
                             }
                         }
+                        consume = false;
+                    }
+                    "SLGS" => {
+                        if let Ok(sealing) = LdsSpouseSealing::parse(record) {
+                            family.lds_spouse_sealings.push(sealing);
+                        }
+                        consume = false;
                     }
                     "NOTE" => {
                         if let Ok(Some(note)) = parse::get_tag_value(record) {
                             family.notes.push(Note { note: Some(note) });
                         }
+                        consume = false;
+                    }
+                    "SOUR" => {
+                        if let Ok(citation) = SourceCitation::parse(record) {
+                            family.source_citations.push(citation);
+                        }
+                        consume = false;
+                    }
+                    "OBJE" => {
+                        if let Ok(obj) = Object::parse(record) {
+                            family.multimedia_links.push(obj);
+                        }
+                        consume = false;
                     }
                     "RIN" => {
                         family.automated_record_id = Some(line.value.to_string());
-                        let _ = Line::parse(record);
                     }
                     "REFN" => {
-                        family.user_reference_number = Some(line.value.to_string());
+                        let number = line.value.to_string();
+                        let refn_level = line.level;
                         let _ = Line::parse(record);
+
                         // Check for TYPE subfield
+                        let mut ref_type = None;
                         if let Ok(subline) = Line::peek(record) {
-                            if subline.level == 2 && subline.tag == "TYPE" {
-                                family.user_reference_type = Some(subline.value.to_string());
+                            if subline.tag == "TYPE" && subline.level == refn_level + 1 {
+                                ref_type = Some(subline.value.to_string());
                                 let _ = Line::parse(record);
                             }
                         }
+
+                        family
+                            .user_reference_numbers
+                            .push(UserReference { number, ref_type });
+                        consume = false;
                     }
-                    _ => {
+                    "CHAN" => {
+                        // Basic parsing - extract DATE value and skip rest of structure
+                        let chan_level = line.level;
                         let _ = Line::parse(record);
+
+                        // Look for DATE tag at next level
+                        while let Ok(peek) = Line::peek(record) {
+                            if peek.level <= chan_level {
+                                break;
+                            }
+                            if peek.tag == "DATE" && peek.level == chan_level + 1 {
+                                family.change_date = Some(peek.value.to_string());
+                            }
+                            let _ = Line::parse(record);
+                        }
+                        consume = false;
                     }
+                    _ => {}
+                }
+
+                if consume {
+                    let _ = Line::parse(record);
                 }
             }
         }
@@ -386,11 +561,12 @@ mod tests {
         let family = Family::parse(&mut record);
         assert_eq!(family.xref, Xref::new("@F3@".to_string()));
         assert_eq!(family.automated_record_id, Some("12345".to_string()));
+        assert_eq!(family.user_reference_numbers.len(), 1);
+        assert_eq!(family.user_reference_numbers[0].number, "USER-REF-001");
         assert_eq!(
-            family.user_reference_number,
-            Some("USER-REF-001".to_string())
+            family.user_reference_numbers[0].ref_type,
+            Some("genealogy".to_string())
         );
-        assert_eq!(family.user_reference_type, Some("genealogy".to_string()));
     }
 
     #[test]
@@ -406,5 +582,149 @@ mod tests {
         assert_eq!(family.child_count, None);
         assert_eq!(family.events.len(), 0);
         assert_eq!(family.notes.len(), 0);
+    }
+
+    #[test]
+    fn parse_fam_record_with_change_date() {
+        let data = vec![
+            "0 @F2@ FAM",
+            "1 HUSB @I5@",
+            "1 CHIL @I1@",
+            "1 CHAN",
+            "2 DATE 13 JUN 2000",
+            "3 TIME 17:00:35",
+            "1 RIN 2",
+        ]
+        .join("\n");
+        let mut record = data.as_str();
+
+        let family = Family::parse(&mut record);
+        assert_eq!(family.xref, Xref::new("@F2@".to_string()));
+        assert_eq!(family.change_date, Some("13 JUN 2000".to_string()));
+        assert_eq!(family.automated_record_id, Some("2".to_string()));
+    }
+
+    #[test]
+    fn parse_fam_record_with_source_citation() {
+        let data = vec![
+            "0 @F1@ FAM",
+            "1 HUSB @I1@",
+            "1 MARR",
+            "2 DATE 31 DEC 1997",
+            "2 SOUR @S1@",
+            "3 PAGE 42",
+            "3 DATA",
+            "4 DATE 31 DEC 1900",
+            "4 TEXT Text from marriage source.",
+            "3 QUAY 3",
+        ]
+        .join("\n");
+        let mut record = data.as_str();
+
+        let family = Family::parse(&mut record);
+        assert_eq!(family.xref, Xref::new("@F1@".to_string()));
+        assert_eq!(family.events.len(), 1);
+        // Source citation is within the event, not at the family level
+        // This test just ensures it parses without error
+    }
+
+    #[test]
+    fn parse_fam_record_with_multimedia_link() {
+        let data = vec![
+            "0 @F1@ FAM",
+            "1 HUSB @I1@",
+            "1 MARR",
+            "2 DATE 31 DEC 1997",
+            "2 OBJE @M8@",
+        ]
+        .join("\n");
+        let mut record = data.as_str();
+
+        let family = Family::parse(&mut record);
+        assert_eq!(family.xref, Xref::new("@F1@".to_string()));
+        assert_eq!(family.events.len(), 1);
+        // Multimedia link is within the event, not at the family level
+    }
+
+    #[test]
+    fn parse_fam_record_with_resn() {
+        let data = vec![
+            "0 @F1@ FAM",
+            "1 RESN confidential",
+            "1 HUSB @I1@",
+            "1 WIFE @I2@",
+        ]
+        .join("\n");
+        let mut record = data.as_str();
+
+        let family = Family::parse(&mut record);
+        assert_eq!(family.xref, Xref::new("@F1@".to_string()));
+        assert_eq!(family.restriction, Some("confidential".to_string()));
+    }
+
+    #[test]
+    fn parse_fam_record_with_submitters() {
+        let data = vec!["0 @F1@ FAM", "1 HUSB @I1@", "1 SUBM @U1@", "1 SUBM @U2@"].join("\n");
+        let mut record = data.as_str();
+
+        let family = Family::parse(&mut record);
+        assert_eq!(family.xref, Xref::new("@F1@".to_string()));
+        assert_eq!(family.submitters.len(), 2);
+        assert_eq!(family.submitters[0], Xref::new("@U1@".to_string()));
+        assert_eq!(family.submitters[1], Xref::new("@U2@".to_string()));
+    }
+
+    #[test]
+    fn parse_fam_record_with_lds_sealing() {
+        let data = vec![
+            "0 @F1@ FAM",
+            "1 HUSB @I1@",
+            "1 WIFE @I2@",
+            "1 SLGS",
+            "2 STAT COMPLETED",
+            "2 DATE 15 JAN 2000",
+            "2 TEMP SLAKE",
+            "2 PLAC Salt Lake Temple",
+        ]
+        .join("\n");
+        let mut record = data.as_str();
+
+        let family = Family::parse(&mut record);
+        assert_eq!(family.xref, Xref::new("@F1@".to_string()));
+        assert_eq!(family.lds_spouse_sealings.len(), 1);
+
+        let sealing = &family.lds_spouse_sealings[0];
+        assert_eq!(sealing.status, Some("COMPLETED".to_string()));
+        assert_eq!(sealing.date, Some("15 JAN 2000".to_string()));
+        assert_eq!(sealing.temple, Some("SLAKE".to_string()));
+        assert_eq!(sealing.place, Some("Salt Lake Temple".to_string()));
+    }
+
+    #[test]
+    fn parse_fam_record_with_multiple_refn() {
+        let data = vec![
+            "0 @F1@ FAM",
+            "1 HUSB @I1@",
+            "1 REFN USER-REF-001",
+            "2 TYPE genealogy",
+            "1 REFN USER-REF-002",
+            "2 TYPE archive",
+        ]
+        .join("\n");
+        let mut record = data.as_str();
+
+        let family = Family::parse(&mut record);
+        assert_eq!(family.xref, Xref::new("@F1@".to_string()));
+        assert_eq!(family.user_reference_numbers.len(), 2);
+        assert_eq!(family.user_reference_numbers[0].number, "USER-REF-001");
+        assert_eq!(
+            family.user_reference_numbers[0].ref_type,
+            Some("genealogy".to_string())
+        );
+        assert_eq!(family.user_reference_numbers[1].number, "USER-REF-002");
+        assert_eq!(
+            family.user_reference_numbers[1].ref_type,
+            Some("archive".to_string())
+        );
     }
 }

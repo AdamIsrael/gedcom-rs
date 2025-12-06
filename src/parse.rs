@@ -287,7 +287,10 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                                 gedcom.multimedia.push(multimedia);
                             }
                         }
-                        "FAM" => {}
+                        "FAM" => {
+                            let family = Family::parse(&mut input);
+                            gedcom.families.push(family);
+                        }
                         "SUBM" => {
                             // The record of the submitter of the family tree
                             // Not always present (it exists in complete.ged)
@@ -340,6 +343,10 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
                     if let Ok(multimedia) = MultimediaRecord::parse(&mut input) {
                         gedcom.multimedia.push(multimedia);
                     }
+                }
+                "FAM" => {
+                    let family = Family::parse(&mut input);
+                    gedcom.families.push(family);
                 }
                 "SUBM" => {
                     if let Some(ref subm) = gedcom.header.submitter {

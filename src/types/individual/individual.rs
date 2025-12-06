@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
+use crate::parse;
 use crate::types::individual::name::*;
-use crate::types::{Family, Line, Xref};
+use crate::types::{Family, Line, Note, Object, SourceCitation, UserReference, Xref};
+use winnow::prelude::*;
 
 use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residence};
 
@@ -26,7 +28,179 @@ use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residenc
 // +1 RIN <AUTOMATED_RECORD_ID>
 // +1 <<CHANGE_DATE>>
 // +1 <<NOTE_STRUCTURE>>
-// +1 <<SOURCE_CITATION>> +1 <<MULTIMEDIA_LINK>>
+// +1 <<SOURCE_CITATION>>
+// +1 <<MULTIMEDIA_LINK>>
+
+// ASSOCIATION_STRUCTURE:=
+// n ASSO @<XREF:INDI>@
+//   +1 RELA <RELATION_IS_DESCRIPTOR>
+//   +1 <<NOTE_STRUCTURE>>
+//   +1 <<SOURCE_CITATION>>
+
+/// Association to another individual
+#[derive(Debug, Clone, Default)]
+pub struct Association {
+    /// Reference to associated individual
+    pub xref: Xref,
+
+    /// Relationship descriptor
+    pub relation: Option<String>,
+
+    /// Notes about this association
+    pub notes: Vec<Note>,
+
+    /// Source citations
+    pub source_citations: Vec<SourceCitation>,
+}
+
+impl Association {
+    fn parse(record: &mut &str) -> PResult<Association> {
+        let mut assoc = Association::default();
+
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(assoc);
+        };
+
+        if level_line.tag != "ASSO" {
+            return Ok(assoc);
+        }
+
+        assoc.xref = Xref::new(level_line.value.to_string());
+        let assoc_level = level_line.level;
+        let _ = Line::parse(record);
+
+        // Parse ASSO subfields
+        while !record.is_empty() {
+            let Ok(line) = Line::peek(record) else {
+                break;
+            };
+
+            if line.level <= assoc_level {
+                break;
+            }
+
+            if line.level != assoc_level + 1 {
+                let _ = Line::parse(record);
+                continue;
+            }
+
+            let mut consume = true;
+
+            match line.tag {
+                "RELA" => {
+                    assoc.relation = Some(line.value.to_string());
+                }
+                "NOTE" => {
+                    if let Ok(Some(note)) = parse::get_tag_value(record) {
+                        assoc.notes.push(Note { note: Some(note) });
+                    }
+                    consume = false;
+                }
+                "SOUR" => {
+                    if let Ok(citation) = SourceCitation::parse(record) {
+                        assoc.source_citations.push(citation);
+                    }
+                    consume = false;
+                }
+                _ => {}
+            }
+
+            if consume {
+                let _ = Line::parse(record);
+            }
+        }
+
+        Ok(assoc)
+    }
+}
+
+/// Individual attribute (EDUC, DSCR, RELI, etc.)
+#[derive(Debug, Clone, Default)]
+pub struct IndividualAttribute {
+    /// The attribute value
+    pub value: String,
+
+    /// Type descriptor
+    pub attribute_type: Option<String>,
+
+    /// Date of attribute
+    pub date: Option<String>,
+
+    /// Place of attribute
+    pub place: Option<String>,
+
+    /// Source citations
+    pub source_citations: Vec<SourceCitation>,
+
+    /// Notes
+    pub notes: Vec<Note>,
+}
+
+impl IndividualAttribute {
+    fn parse(record: &mut &str, value: &str) -> PResult<IndividualAttribute> {
+        let mut attr = IndividualAttribute {
+            value: value.to_string(),
+            ..Default::default()
+        };
+
+        let Ok(level_line) = Line::peek(record) else {
+            return Ok(attr);
+        };
+
+        let attr_level = level_line.level;
+        let _ = Line::parse(record);
+
+        // Parse attribute subfields
+        while !record.is_empty() {
+            let Ok(line) = Line::peek(record) else {
+                break;
+            };
+
+            if line.level <= attr_level {
+                break;
+            }
+
+            if line.level != attr_level + 1 {
+                let _ = Line::parse(record);
+                continue;
+            }
+
+            let mut consume = true;
+
+            match line.tag {
+                "TYPE" => {
+                    attr.attribute_type = Some(line.value.to_string());
+                }
+                "DATE" => {
+                    attr.date = Some(line.value.to_string());
+                }
+                "PLAC" => {
+                    attr.place = Some(line.value.to_string());
+                }
+                "NOTE" => {
+                    if let Ok(Some(note)) = parse::get_tag_value(record) {
+                        attr.notes.push(Note { note: Some(note) });
+                    }
+                    consume = false;
+                }
+                "SOUR" => {
+                    if let Ok(citation) = SourceCitation::parse(record) {
+                        attr.source_citations.push(citation);
+                    }
+                    consume = false;
+                }
+                _ => {}
+            }
+
+            if consume {
+                let _ = Line::parse(record);
+            }
+        }
+
+        Ok(attr)
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Individual {
     // Common events - keep as Vec
@@ -64,6 +238,80 @@ pub struct Individual {
 
     /// The XRef pointer associated with this individual
     pub xref: Option<Xref>,
+
+    // Record-level fields (GEDCOM 5.5.1)
+    /// Restriction notice
+    pub restriction: Option<String>,
+
+    /// Record-level notes
+    pub notes: Vec<Note>,
+
+    /// Record-level source citations
+    pub source_citations: Vec<SourceCitation>,
+
+    /// Record-level multimedia links
+    pub multimedia_links: Vec<Object>,
+
+    /// User reference numbers
+    pub user_reference_numbers: Vec<UserReference>,
+
+    /// Automated record ID
+    pub automated_record_id: Option<String>,
+
+    /// Change date - stores the DATE value from CHAN/DATE
+    pub change_date: Option<String>,
+
+    /// Submitter references
+    pub submitters: Vec<Xref>,
+
+    /// Associations to other individuals
+    pub associations: Vec<Association>,
+
+    /// Alias (link to another individual record)
+    pub alias: Vec<Xref>,
+
+    /// Ancestor interest (submitter interested in ancestors)
+    pub ancestor_interest: Vec<Xref>,
+
+    /// Descendant interest (submitter interested in descendants)
+    pub descendant_interest: Vec<Xref>,
+
+    /// Permanent record file number
+    pub permanent_record_file_number: Option<String>,
+
+    /// Ancestral file number
+    pub ancestral_file_number: Option<String>,
+
+    // Attributes
+    /// Education
+    pub education: Option<Vec<IndividualAttribute>>,
+
+    /// Physical description
+    pub physical_description: Option<Vec<IndividualAttribute>>,
+
+    /// Religion
+    pub religion: Option<Vec<IndividualAttribute>>,
+
+    /// National ID number
+    pub national_id_number: Option<Vec<IndividualAttribute>>,
+
+    /// Property/possessions
+    pub property: Option<Vec<IndividualAttribute>>,
+
+    /// Caste name
+    pub caste: Option<Vec<IndividualAttribute>>,
+
+    /// Number of children
+    pub number_of_children: Option<Vec<IndividualAttribute>>,
+
+    /// Number of marriages
+    pub number_of_marriages: Option<Vec<IndividualAttribute>>,
+
+    /// Nobility title
+    pub nobility_title: Option<Vec<IndividualAttribute>>,
+
+    /// National or tribal origin
+    pub national_origin: Option<Vec<IndividualAttribute>>,
 }
 
 // Macro to handle repetitive event parsing with proper error handling
@@ -93,6 +341,22 @@ macro_rules! parse_event {
 
 // impl<'a> Individual<'a> {
 impl Individual {
+    /// Helper function to extract xref from either the xref or value field
+    #[inline]
+    fn extract_xref(line: &Line) -> Option<Xref> {
+        let xref_str = if !line.xref.is_empty() {
+            line.xref
+        } else {
+            line.value
+        };
+
+        if !xref_str.is_empty() {
+            Some(Xref::new(xref_str.to_string()))
+        } else {
+            None
+        }
+    }
+
     pub fn parse(record: &mut &str) -> Individual {
         // pub fn parse(mut record: String) -> Individual {
         let mut individual = Individual::default();
@@ -313,34 +577,192 @@ impl Individual {
                                 IndividualEventDetail
                             );
                         }
-                        "EDUC" => {}
+                        "EDUC" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual.education.get_or_insert_with(Vec::new).push(attr);
+                            }
+                            parse = false;
+                        }
                         // physical description
-                        "DSCR" => {}
+                        "DSCR" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual
+                                    .physical_description
+                                    .get_or_insert_with(Vec::new)
+                                    .push(attr);
+                            }
+                            parse = false;
+                        }
                         // religion
-                        "RELI" => {}
+                        "RELI" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual.religion.get_or_insert_with(Vec::new).push(attr);
+                            }
+                            parse = false;
+                        }
                         // national identification number
-                        "IDNO" => {}
+                        "IDNO" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual
+                                    .national_id_number
+                                    .get_or_insert_with(Vec::new)
+                                    .push(attr);
+                            }
+                            parse = false;
+                        }
                         // property/possessions
-                        "PROP" => {}
+                        "PROP" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual.property.get_or_insert_with(Vec::new).push(attr);
+                            }
+                            parse = false;
+                        }
                         // cast(e) name?
-                        "CAST" => {}
+                        "CAST" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual.caste.get_or_insert_with(Vec::new).push(attr);
+                            }
+                            parse = false;
+                        }
                         // number of children
-                        "NCHI" => {}
+                        "NCHI" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual
+                                    .number_of_children
+                                    .get_or_insert_with(Vec::new)
+                                    .push(attr);
+                            }
+                            parse = false;
+                        }
                         // number of marriages
-                        "NMR" => {}
+                        "NMR" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual
+                                    .number_of_marriages
+                                    .get_or_insert_with(Vec::new)
+                                    .push(attr);
+                            }
+                            parse = false;
+                        }
                         // nobility title
-                        "TITL" => {}
+                        "TITL" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual
+                                    .nobility_title
+                                    .get_or_insert_with(Vec::new)
+                                    .push(attr);
+                            }
+                            parse = false;
+                        }
                         // national or tribe origin
-                        "NATI" => {}
-                        "NOTE" => {}
+                        "NATI" => {
+                            if let Ok(attr) = IndividualAttribute::parse(record, line.value) {
+                                individual
+                                    .national_origin
+                                    .get_or_insert_with(Vec::new)
+                                    .push(attr);
+                            }
+                            parse = false;
+                        }
+                        "NOTE" => {
+                            if let Ok(note) = Note::parse(record) {
+                                individual.notes.push(note);
+                            }
+                            parse = false;
+                        }
                         // source records
-                        "SOUR" => {}
+                        "SOUR" => {
+                            if let Ok(citation) = SourceCitation::parse(record) {
+                                individual.source_citations.push(citation);
+                            }
+                            parse = false;
+                        }
                         // multimedia links
-                        "OBJE" => {}
-                        "ASSO" => {}
-                        "REFN" => {}
-                        "RIN" => {}
-                        "CHAN" => {}
+                        "OBJE" => {
+                            if let Ok(obj) = Object::parse(record) {
+                                individual.multimedia_links.push(obj);
+                            }
+                            parse = false;
+                        }
+                        "ASSO" => {
+                            if let Ok(assoc) = Association::parse(record) {
+                                individual.associations.push(assoc);
+                            }
+                            parse = false;
+                        }
+                        "REFN" => {
+                            let number = line.value.to_string();
+                            let refn_level = line.level;
+                            let _ = Line::parse(record);
+
+                            // Check for TYPE subfield
+                            let mut ref_type = None;
+                            if let Ok(subline) = Line::peek(record) {
+                                if subline.tag == "TYPE" && subline.level == refn_level + 1 {
+                                    ref_type = Some(subline.value.to_string());
+                                    let _ = Line::parse(record);
+                                }
+                            }
+
+                            individual
+                                .user_reference_numbers
+                                .push(UserReference { number, ref_type });
+                            parse = false;
+                        }
+                        "RIN" => {
+                            individual.automated_record_id = Some(line.value.to_string());
+                        }
+                        "CHAN" => {
+                            // Parse CHAN structure to get DATE value
+                            let level = line.level;
+                            let _ = Line::parse(record); // consume CHAN line
+
+                            while !record.is_empty() {
+                                let Ok(inner_line) = Line::peek(record) else {
+                                    break;
+                                };
+
+                                if inner_line.level <= level {
+                                    break;
+                                }
+
+                                if inner_line.level == level + 1 && inner_line.tag == "DATE" {
+                                    individual.change_date = Some(inner_line.value.to_string());
+                                }
+
+                                let _ = Line::parse(record);
+                            }
+                            parse = false;
+                        }
+                        "RESN" => {
+                            individual.restriction = Some(line.value.to_string());
+                        }
+                        "SUBM" => {
+                            if let Some(xref) = Self::extract_xref(&line) {
+                                individual.submitters.push(xref);
+                            }
+                        }
+                        "ALIA" => {
+                            if let Some(xref) = Self::extract_xref(&line) {
+                                individual.alias.push(xref);
+                            }
+                        }
+                        "ANCI" => {
+                            if let Some(xref) = Self::extract_xref(&line) {
+                                individual.ancestor_interest.push(xref);
+                            }
+                        }
+                        "DESI" => {
+                            if let Some(xref) = Self::extract_xref(&line) {
+                                individual.descendant_interest.push(xref);
+                            }
+                        }
+                        "RFN" => {
+                            individual.permanent_record_file_number = Some(line.value.to_string());
+                        }
+                        "AFN" => {
+                            individual.ancestral_file_number = Some(line.value.to_string());
+                        }
                         _ => {}
                     }
                 }
@@ -1638,5 +2060,329 @@ mod tests {
 
         // First Communion
         assert!(indi.first_communion.is_some());
+    }
+
+    #[test]
+    fn test_individual_record_level_notes() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 NOTE This is a record-level note",
+            "1 NOTE @N1@",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.notes.len(), 2);
+    }
+
+    #[test]
+    fn test_individual_source_citations() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 SOUR @S1@",
+            "2 PAGE 42",
+            "1 SOUR @S2@",
+            "2 PAGE 84",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.source_citations.len(), 2);
+        assert_eq!(indi.source_citations[0].xref.as_ref().unwrap(), "@S1@");
+        assert_eq!(indi.source_citations[0].page.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_individual_multimedia_links() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 OBJE @M1@",
+            "1 OBJE @M2@",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.multimedia_links.len(), 2);
+    }
+
+    #[test]
+    fn test_individual_user_references() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 REFN 12345",
+            "2 TYPE user_id",
+            "1 REFN ABC-123",
+            "2 TYPE custom",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.user_reference_numbers.len(), 2);
+        assert_eq!(indi.user_reference_numbers[0].number, "12345");
+        assert_eq!(
+            indi.user_reference_numbers[0].ref_type.as_ref().unwrap(),
+            "user_id"
+        );
+    }
+
+    #[test]
+    fn test_individual_automated_record_id() {
+        let data = vec!["0 @I1@ INDI", "1 NAME Test /Person/", "1 RIN 54321"];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.automated_record_id.as_ref().unwrap(), "54321");
+    }
+
+    #[test]
+    fn test_individual_change_date() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 CHAN",
+            "2 DATE 15 JAN 2024",
+            "3 TIME 14:30:00",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.change_date.as_ref().unwrap(), "15 JAN 2024");
+    }
+
+    #[test]
+    fn test_individual_restriction() {
+        let data = vec!["0 @I1@ INDI", "1 NAME Test /Person/", "1 RESN confidential"];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.restriction.as_ref().unwrap(), "confidential");
+    }
+
+    #[test]
+    fn test_individual_submitters() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 SUBM @U1@",
+            "1 SUBM @U2@",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.submitters.len(), 2);
+        assert_eq!(indi.submitters[0].as_str(), "@U1@");
+    }
+
+    #[test]
+    fn test_individual_associations() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 ASSO @I2@",
+            "2 RELA Godfather",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.associations.len(), 1);
+        assert_eq!(indi.associations[0].xref.as_str(), "@I2@");
+        assert_eq!(indi.associations[0].relation.as_ref().unwrap(), "Godfather");
+    }
+
+    #[test]
+    fn test_individual_alias() {
+        let data = vec!["0 @I1@ INDI", "1 NAME Test /Person/", "1 ALIA @I2@"];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.alias.len(), 1);
+        assert_eq!(indi.alias[0].as_str(), "@I2@");
+    }
+
+    #[test]
+    fn test_individual_ancestor_interest() {
+        let data = vec!["0 @I1@ INDI", "1 NAME Test /Person/", "1 ANCI @U1@"];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.ancestor_interest.len(), 1);
+        assert_eq!(indi.ancestor_interest[0].as_str(), "@U1@");
+    }
+
+    #[test]
+    fn test_individual_descendant_interest() {
+        let data = vec!["0 @I1@ INDI", "1 NAME Test /Person/", "1 DESI @U1@"];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.descendant_interest.len(), 1);
+        assert_eq!(indi.descendant_interest[0].as_str(), "@U1@");
+    }
+
+    #[test]
+    fn test_individual_permanent_record_file_number() {
+        let data = vec!["0 @I1@ INDI", "1 NAME Test /Person/", "1 RFN AF12345"];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(
+            indi.permanent_record_file_number.as_ref().unwrap(),
+            "AF12345"
+        );
+    }
+
+    #[test]
+    fn test_individual_ancestral_file_number() {
+        let data = vec!["0 @I1@ INDI", "1 NAME Test /Person/", "1 AFN 1234-5678"];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert_eq!(indi.ancestral_file_number.as_ref().unwrap(), "1234-5678");
+    }
+
+    #[test]
+    fn test_individual_attributes() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 EDUC Bachelor of Science",
+            "2 DATE 2010",
+            "1 DSCR Tall with brown hair",
+            "1 RELI Catholic",
+            "1 IDNO 123-45-6789",
+            "2 TYPE SSN",
+            "1 PROP House and land",
+            "1 CAST Brahmin",
+            "1 NCHI 3",
+            "1 NMR 2",
+            "1 TITL Duke",
+            "1 NATI American",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        // Education
+        assert!(indi.education.is_some());
+        let education = indi.education.as_ref().unwrap();
+        assert_eq!(education.len(), 1);
+        assert_eq!(education[0].value, "Bachelor of Science");
+        assert_eq!(education[0].date.as_ref().unwrap(), "2010");
+
+        // Physical description
+        assert!(indi.physical_description.is_some());
+        assert_eq!(
+            indi.physical_description.as_ref().unwrap()[0].value,
+            "Tall with brown hair"
+        );
+
+        // Religion
+        assert!(indi.religion.is_some());
+        assert_eq!(indi.religion.as_ref().unwrap()[0].value, "Catholic");
+
+        // National ID
+        assert!(indi.national_id_number.is_some());
+        let natid = &indi.national_id_number.as_ref().unwrap()[0];
+        assert_eq!(natid.value, "123-45-6789");
+        assert_eq!(natid.attribute_type.as_ref().unwrap(), "SSN");
+
+        // Property
+        assert!(indi.property.is_some());
+        assert_eq!(indi.property.as_ref().unwrap()[0].value, "House and land");
+
+        // Caste
+        assert!(indi.caste.is_some());
+        assert_eq!(indi.caste.as_ref().unwrap()[0].value, "Brahmin");
+
+        // Number of children
+        assert!(indi.number_of_children.is_some());
+        assert_eq!(indi.number_of_children.as_ref().unwrap()[0].value, "3");
+
+        // Number of marriages
+        assert!(indi.number_of_marriages.is_some());
+        assert_eq!(indi.number_of_marriages.as_ref().unwrap()[0].value, "2");
+
+        // Nobility title
+        assert!(indi.nobility_title.is_some());
+        assert_eq!(indi.nobility_title.as_ref().unwrap()[0].value, "Duke");
+
+        // National origin
+        assert!(indi.national_origin.is_some());
+        assert_eq!(indi.national_origin.as_ref().unwrap()[0].value, "American");
+    }
+
+    #[test]
+    fn test_association_parse() {
+        let data = vec![
+            "1 ASSO @I2@",
+            "2 RELA Godfather",
+            "2 NOTE Association note",
+            "2 SOUR @S1@",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let assoc = Association::parse(&mut record).unwrap();
+
+        assert_eq!(assoc.xref.as_str(), "@I2@");
+        assert_eq!(assoc.relation.as_ref().unwrap(), "Godfather");
+        assert_eq!(assoc.notes.len(), 1);
+        assert_eq!(assoc.source_citations.len(), 1);
+    }
+
+    #[test]
+    fn test_individual_attribute_parse() {
+        let data = vec![
+            "1 EDUC PhD in Computer Science",
+            "2 TYPE Doctorate",
+            "2 DATE 2015",
+            "2 PLAC Stanford University",
+            "2 NOTE Educational achievement",
+            "2 SOUR @S1@",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let attr = IndividualAttribute::parse(&mut record, "PhD in Computer Science").unwrap();
+
+        assert_eq!(attr.value, "PhD in Computer Science");
+        assert_eq!(attr.attribute_type.as_ref().unwrap(), "Doctorate");
+        assert_eq!(attr.date.as_ref().unwrap(), "2015");
+        assert_eq!(attr.place.as_ref().unwrap(), "Stanford University");
+        assert_eq!(attr.notes.len(), 1);
+        assert_eq!(attr.source_citations.len(), 1);
     }
 }
