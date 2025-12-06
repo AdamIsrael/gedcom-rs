@@ -95,8 +95,19 @@ impl MultimediaRecord {
                     consume = false;
                 }
                 "NOTE" => {
-                    if let Ok(Some(text)) = parse::get_tag_value(input) {
-                        multimedia.notes.push(Note { note: Some(text) });
+                    // NOTE can be either inline text or a reference (@N1@)
+                    // If it's a reference, it starts with @
+                    if line.value.starts_with('@') && line.value.ends_with('@') {
+                        // It's a note reference - store as-is
+                        let _ = Line::parse(input);
+                        multimedia.notes.push(Note {
+                            note: Some(line.value.to_string()),
+                        });
+                    } else {
+                        // It's inline text - use get_tag_value to handle CONC/CONT
+                        if let Ok(Some(text)) = parse::get_tag_value(input) {
+                            multimedia.notes.push(Note { note: Some(text) });
+                        }
                     }
                     consume = false;
                 }
@@ -108,12 +119,13 @@ impl MultimediaRecord {
                 }
                 "REFN" => {
                     let number = line.value.to_string();
+                    let refn_level = line.level;
                     let _ = Line::parse(input);
 
                     // Check for TYPE at next level
                     let mut ref_type = None;
                     if let Ok(next_line) = Line::peek(input) {
-                        if next_line.tag == "TYPE" && next_line.level > line.level {
+                        if next_line.tag == "TYPE" && next_line.level > refn_level {
                             let _ = Line::parse(input);
                             ref_type = Some(next_line.value.to_string());
                         }
@@ -194,11 +206,12 @@ impl MultimediaFile {
             match line.tag {
                 "FORM" => {
                     file.format = Some(line.value.to_string());
+                    let form_level = line.level;
                     let _ = Line::parse(input);
 
                     // Check for TYPE at next level
                     if let Ok(next_line) = Line::peek(input) {
-                        if next_line.tag == "TYPE" && next_line.level > line.level {
+                        if next_line.tag == "TYPE" && next_line.level > form_level {
                             let _ = Line::parse(input);
                             file.media_type = Some(next_line.value.to_string());
                         }
