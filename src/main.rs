@@ -175,6 +175,35 @@ mod tests {
         assert_eq!(m2.xref.as_ref().unwrap().to_string(), "@M2@");
     }
 
+    #[test]
+    fn test_repository_parsing() {
+        let gedcom = parse_gedcom("./data/complete.ged", &GedcomConfig::new()).unwrap();
+
+        // complete.ged has 1 REPOSITORY record
+        assert_eq!(gedcom.repositories.len(), 1);
+
+        // Test the repository record
+        let r1 = &gedcom.repositories[0];
+        assert!(r1.xref.is_some());
+        assert_eq!(r1.xref.as_ref().unwrap().to_string(), "@R1@");
+        assert_eq!(r1.name, Some("Family History Library".to_string()));
+
+        // Check address
+        assert!(r1.address.is_some());
+        let addr = r1.address.as_ref().unwrap();
+        assert_eq!(addr.addr1.as_deref(), Some("35 North West Temple"));
+        assert_eq!(addr.city.as_deref(), Some("Salt Lake City"));
+        assert_eq!(addr.state.as_deref(), Some("UT"));
+
+        // Check phones (part of address)
+        assert_eq!(addr.phone.len(), 3);
+        assert_eq!(addr.phone[0], "+1-801-240-2331");
+
+        // Check note reference
+        assert_eq!(r1.notes.len(), 1);
+        assert_eq!(r1.notes[0].note, Some("@N2@".to_string()));
+    }
+
     // #[test]
     // /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
     // /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.

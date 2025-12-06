@@ -124,16 +124,16 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 
 ### REPOSITORY_RECORD
 
-**Status:** ❌ Recognized but not parsed
+**Status:** ✅ Implemented and tested
 
-- [ ] REPO
-- [ ] NAME
-- [ ] ADDRESS_STRUCTURE
-- [ ] NOTE_STRUCTURE
-- [ ] REFN
-  - [ ] TYPE
-- [ ] RIN
-- [ ] CHANGE_DATE
+- [x] REPO (XREF)
+- [x] NAME
+- [x] ADDRESS_STRUCTURE (with phone, email, fax, www support)
+- [x] NOTE_STRUCTURE (supports both inline text and note references)
+- [x] REFN (supports multiple)
+  - [x] TYPE
+- [x] RIN
+- [x] CHANGE_DATE (basic parsing - stores DATE value, skips TIME and other structure)
 
 ### SOURCE_RECORD
 
@@ -192,7 +192,13 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
    - Many individual event types partially implemented
    - Need full NOTE_STRUCTURE and SOURCE_CITATION support
 
-4. **Filtering**
+4. **Repository Record Parsing (REPO)** ✅ Complete
+   - Full GEDCOM 5.5.1 REPOSITORY_RECORD implementation
+   - Supports address structure with contact information
+   - Note references and inline notes
+   - Access via `gedcom.repositories` Vec
+
+5. **Filtering**
 
 Filters should allow for the partial parsing of genealogical data. TBD the extent of filtering capabilities.
 
@@ -207,11 +213,7 @@ Filters should allow for the partial parsing of genealogical data. TBD the exten
    - See `src/types/source_record.rs` for implementation details
    - Access via `gedcom.sources` Vec
 
-5. **Repository Record Parsing (REPO)**
-   - Complements source records
-   - Archive location tracking
-
-6. **Multimedia Record Parsing (OBJE)** ✅ Complete
+5. **Multimedia Record Parsing (OBJE)** ✅ Complete
    - Full GEDCOM 5.5.1 MULTIMEDIA_RECORD implementation
    - Supports multiple files per record with format, media type, and title
    - Source citations and reference numbers
@@ -239,13 +241,13 @@ Filters should allow for the partial parsing of genealogical data. TBD the exten
 - [x] Complete SOUR record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete NOTE record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete OBJE record parsing (all GEDCOM 5.5.1 fields)
+- [x] Complete REPO record parsing (all GEDCOM 5.5.1 fields)
 - [ ] Improved error messages
 - [x] Performance optimizations for large files (minimal overhead for new record types)
 
 ### Version 0.3.0 Goals
 
 - [ ] Full ANSEL encoding support
-- [ ] Complete REPO record parsing
 - [ ] Graph API for family relationships
 - [ ] GEDCOM 7.0 exploration
 
@@ -265,9 +267,8 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed contribution guidelines.
 Priority areas for contribution:
 1. ANSEL encoding implementation
 2. Complete remaining Family record fields (RESN, SUBM, LDS_SPOUSE_SEALING, CHANGE_DATE, citations)
-3. Repository record parsing (REPO)
-4. Test cases with real-world GEDCOM files
-5. Documentation and examples
+3. Test cases with real-world GEDCOM files
+4. Documentation and examples
 
 ## References
 
