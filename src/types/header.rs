@@ -2,7 +2,7 @@ use crate::parse;
 // use crate::types::corporation;
 // use crate::types::Copyright;
 // use crate::types::Note;
-use crate::types::{CharacterSet, Source, Submission, Submitter};
+use crate::types::{CharacterSet, Source, Submission, Xref};
 
 use super::Gedc;
 use super::Line;
@@ -51,7 +51,8 @@ pub struct Header {
     pub note: Option<String>,
     pub place: Option<Place>,
     pub source: Option<Source>,
-    pub submitter: Option<Submitter>,
+    /// Reference to submitter record (xref only)
+    pub submitter_xref: Option<Xref>,
     pub submission: Option<Submission>,
 }
 
@@ -114,7 +115,10 @@ impl Header {
                         (buffer, header.source) = Source::parse(buffer);
                     }
                     "SUBM" => {
-                        (buffer, header.submitter) = Submitter::parse(buffer);
+                        // Just extract the xref reference to the submitter
+                        if let Ok(line) = Line::parse(&mut buffer) {
+                            header.submitter_xref = Some(Xref::new(line.value.to_string()));
+                        }
                     }
                     "SUBN" => {
                         (buffer, header.submission) = Submission::parse(buffer);
@@ -332,7 +336,7 @@ mod tests {
         );
 
         // submitter
-        assert!(header.submitter.is_some());
+        assert!(header.submitter_xref.is_some());
 
         // submission
         assert!(header.submission.is_some());

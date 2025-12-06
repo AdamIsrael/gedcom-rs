@@ -195,18 +195,17 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 
 ### SUBMITTER_RECORD
 
-**Status:** ❌ Not implemented
+**Status:** ✅ Implemented and tested
 
-- [ ] SUBN
-- [ ] SUBM
-- [ ] FAMF
-- [ ] TEMP
-- [ ] ANCE
-- [ ] DESC
-- [ ] ORDI
-- [ ] RIN
-- [ ] NOTE_STRUCTURE
-- [ ] CHANGE_DATE
+- [x] SUBM (XREF)
+- [x] NAME
+- [x] ADDRESS_STRUCTURE (with phone, email, fax, www support)
+- [x] MULTIMEDIA_LINK (supports multiple)
+- [x] LANG (supports up to 3 language preferences)
+- [x] RFN (registered RFN)
+- [x] RIN (automated record ID)
+- [x] NOTE_STRUCTURE (supports multiple notes and note references)
+- [x] CHANGE_DATE (basic parsing - stores DATE value, skips TIME and other structure)
 
 ## Priority Features
 
