@@ -49,6 +49,15 @@
 //!         }
 //!     }
 //!     
+//!     // Access notes
+//!     println!("Found {} notes", gedcom.notes.len());
+//!     for note in &gedcom.notes {
+//!         if let Some(ref xref) = note.xref {
+//!             println!("Note {}", xref);
+//!         }
+//!         println!("  {}", note.note);
+//!     }
+//!     
 //!     Ok(())
 //! }
 //! ```
@@ -84,6 +93,7 @@
 //! - ✅ Submitter (SUBM) record parsing
 //! - ✅ Family (FAM) record parsing
 //! - ✅ Source (SOUR) record parsing
+//! - ✅ Note (NOTE) record parsing
 //! - ⚠️ Repository (REPO) and Multimedia (OBJE) records recognized but not parsed
 //!
 //! ### ANSEL Encoding Limitation
