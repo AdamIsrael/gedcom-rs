@@ -95,6 +95,35 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_source_parsing() {
+        let gedcom = parse_gedcom("./data/complete.ged", &GedcomConfig::new()).unwrap();
+
+        // complete.ged has 2 SOURCE records
+        assert_eq!(gedcom.sources.len(), 2);
+
+        // Test first source record
+        let s1 = &gedcom.sources[0];
+        assert!(s1.xref.is_some());
+        assert_eq!(s1.xref.as_ref().unwrap().to_string(), "@S1@");
+        assert!(s1.title.is_some());
+        let title = s1.title.as_ref().unwrap();
+        assert!(title.starts_with("Everything You Every Wanted to Know about GEDCOM Tags"));
+        assert!(title.contains("Were Afraid to Ask!"));
+        assert_eq!(s1.abbreviation.as_deref(), Some("All About GEDCOM Tags"));
+
+        // Test second source record
+        let s2 = &gedcom.sources[1];
+        assert!(s2.xref.is_some());
+        assert_eq!(s2.xref.as_ref().unwrap().to_string(), "@S2@");
+        assert_eq!(
+            s2.title.as_deref(),
+            Some("All I Know About GEDCOM, I Learned on the Internet")
+        );
+        assert_eq!(s2.abbreviation.as_deref(), Some("What I Know About GEDCOM"));
+        assert_eq!(s2.author.as_deref(), Some("Second Source Author"));
+    }
+
     // #[test]
     // /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
     // /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.

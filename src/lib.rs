@@ -38,6 +38,17 @@
 //!         println!("  Children: {}", family.children.len());
 //!     }
 //!     
+//!     // Access sources
+//!     println!("Found {} sources", gedcom.sources.len());
+//!     for source in &gedcom.sources {
+//!         if let Some(ref xref) = source.xref {
+//!             println!("Source {}", xref);
+//!         }
+//!         if let Some(ref title) = source.title {
+//!             println!("  Title: {}", title);
+//!         }
+//!     }
+//!     
 //!     Ok(())
 //! }
 //! ```
@@ -72,7 +83,8 @@
 //! - ✅ Individual (INDI) record parsing
 //! - ✅ Submitter (SUBM) record parsing
 //! - ✅ Family (FAM) record parsing
-//! - ⚠️ Source (SOUR), Repository (REPO), and Multimedia (OBJE) records recognized but not parsed
+//! - ✅ Source (SOUR) record parsing
+//! - ⚠️ Repository (REPO) and Multimedia (OBJE) records recognized but not parsed
 //!
 //! ### ANSEL Encoding Limitation
 //!
