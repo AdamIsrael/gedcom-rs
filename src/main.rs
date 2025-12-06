@@ -204,6 +204,38 @@ mod tests {
         assert_eq!(r1.notes[0].note, Some("@N2@".to_string()));
     }
 
+    #[test]
+    fn test_family_record_parsing() {
+        let gedcom = parse_gedcom("./data/complete.ged", &GedcomConfig::new()).unwrap();
+
+        // complete.ged has 6 FAMILY records
+        assert_eq!(gedcom.families.len(), 6);
+
+        // Test @F1@ - has marriage event with source citation
+        let f1 = &gedcom.families[0];
+        assert_eq!(f1.xref.to_string(), "@F1@");
+        assert_eq!(f1.husband, Some("@I1@".into()));
+        assert_eq!(f1.wife, Some("@I2@".into()));
+        assert_eq!(f1.children.len(), 2);
+        assert_eq!(f1.children[0].to_string(), "@I3@");
+        assert_eq!(f1.children[1].to_string(), "@I4@");
+        assert_eq!(f1.child_count, Some(42));
+        // complete.ged has 7 family events: MARR, ENGA, DIV, DIVF, ANUL, CENS, EVEN
+        assert_eq!(f1.events.len(), 7);
+
+        // Test @F2@ - has CHANGE_DATE
+        let f2 = &gedcom.families[1];
+        assert_eq!(f2.xref.to_string(), "@F2@");
+        assert_eq!(f2.change_date, Some("13 JUN 2000".to_string()));
+        assert_eq!(f2.automated_record_id, Some("2".to_string()));
+
+        // Test @F3@ - has CHANGE_DATE
+        let f3 = &gedcom.families[2];
+        assert_eq!(f3.xref.to_string(), "@F3@");
+        assert_eq!(f3.change_date, Some("13 JUN 2000".to_string()));
+        assert_eq!(f3.automated_record_id, Some("3".to_string()));
+    }
+
     // #[test]
     // /// Tests a possible bug in Ancestry's format, if a line break is embedded within the content of a note
     // /// As far as I can tell, it's a \n embedded into the note, at least, from a hex dump of that content.
