@@ -12,6 +12,7 @@ mod header;
 mod individual;
 mod line;
 mod map;
+mod multimedia_record;
 mod note;
 mod note_record;
 mod object;
@@ -38,6 +39,7 @@ pub use header::Header;
 pub use individual::*;
 pub use line::Line;
 pub use map::Map;
+pub use multimedia_record::{MultimediaFile, MultimediaRecord};
 pub use note::Note;
 pub use note_record::NoteRecord;
 pub use object::Object;
@@ -60,4 +62,5 @@ pub struct Gedcom {
     pub families: Vec<Family>,
     pub sources: Vec<SourceRecord>,
     pub notes: Vec<NoteRecord>,
+    pub multimedia: Vec<MultimediaRecord>,
 }
