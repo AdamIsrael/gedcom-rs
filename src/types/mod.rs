@@ -1140,23 +1140,21 @@ impl Gedcom {
             for (f1, m1) in &parents1 {
                 for (f2, m2) in &parents2 {
                     if let (Some(father1), Some(father2)) = (f1, f2) {
-                        if father1.xref.as_ref() == father2.xref.as_ref() {
-                            if !common_parents
+                        if father1.xref.as_ref() == father2.xref.as_ref()
+                            && !common_parents
                                 .iter()
                                 .any(|p: &&Individual| p.xref.as_ref() == father1.xref.as_ref())
-                            {
-                                common_parents.push(*father1);
-                            }
+                        {
+                            common_parents.push(*father1);
                         }
                     }
                     if let (Some(mother1), Some(mother2)) = (m1, m2) {
-                        if mother1.xref.as_ref() == mother2.xref.as_ref() {
-                            if !common_parents
+                        if mother1.xref.as_ref() == mother2.xref.as_ref()
+                            && !common_parents
                                 .iter()
                                 .any(|p: &&Individual| p.xref.as_ref() == mother1.xref.as_ref())
-                            {
-                                common_parents.push(*mother1);
-                            }
+                        {
+                            common_parents.push(*mother1);
                         }
                     }
                 }
@@ -1249,11 +1247,10 @@ impl Gedcom {
         }
 
         // Find the most recent common ancestor(s) - those with minimum total distance
-        let min_total_distance = common_ancestors
-            .iter()
-            .map(|(_, g1, g2)| g1 + g2)
-            .min()
-            .unwrap();
+        let min_total_distance = match common_ancestors.iter().map(|(_, g1, g2)| g1 + g2).min() {
+            Some(min) => min,
+            None => return RelationshipResult::none(), // No common ancestors
+        };
 
         let mrca: Vec<&Individual> = common_ancestors
             .iter()
@@ -1262,10 +1259,13 @@ impl Gedcom {
             .collect();
 
         // Get the generations for the first MRCA (they should all be the same distance)
-        let (_, gen1, gen2) = common_ancestors
+        let (_, gen1, gen2) = match common_ancestors
             .iter()
             .find(|(_, g1, g2)| g1 + g2 == min_total_distance)
-            .unwrap();
+        {
+            Some(result) => result,
+            None => return RelationshipResult::none(), // Should not happen, but be safe
+        };
 
         let description = self.describe_relationship(*gen1, *gen2);
 
@@ -1277,6 +1277,19 @@ impl Gedcom {
         }
     }
 
+    /// Helper function to format ordinal numbers (1st, 2nd, 3rd, etc.)
+    fn format_ordinal(n: usize) -> String {
+        match n {
+            1 => "1st".to_string(),
+            2 => "2nd".to_string(),
+            3 => "3rd".to_string(),
+            n if n % 10 == 1 && n % 100 != 11 => format!("{}st", n),
+            n if n % 10 == 2 && n % 100 != 12 => format!("{}nd", n),
+            n if n % 10 == 3 && n % 100 != 13 => format!("{}rd", n),
+            n => format!("{}th", n),
+        }
+    }
+
     /// Generate a human-readable relationship description based on generational distances
     fn describe_relationship(&self, generations1: usize, generations2: usize) -> String {
         // Direct ancestor/descendant relationships
@@ -1285,7 +1298,7 @@ impl Gedcom {
                 1 => "Parent".to_string(),
                 2 => "Grandparent".to_string(),
                 3 => "Great-Grandparent".to_string(),
-                n => format!("{}Great-Grandparent", "Great-".repeat(n - 3)),
+                n => format!("{} Great-Grandparent", Self::format_ordinal(n - 3)),
             };
         }
 
@@ -1294,7 +1307,7 @@ impl Gedcom {
                 1 => "Child".to_string(),
                 2 => "Grandchild".to_string(),
                 3 => "Great-Grandchild".to_string(),
-                n => format!("{}Great-Grandchild", "Great-".repeat(n - 3)),
+                n => format!("{} Great-Grandchild", Self::format_ordinal(n - 3)),
             };
         }
 
@@ -1308,12 +1321,24 @@ impl Gedcom {
 
         // Grand-Aunt/Grand-Uncle and Grand-Niece/Grand-Nephew
         if generations1 == 1 && generations2 >= 3 {
-            let greats = "Great-".repeat(generations2 - 3);
-            return format!("{}Grand-Niece/Grand-Nephew", greats);
+            return if generations2 == 3 {
+                "Grand-Niece/Grand-Nephew".to_string()
+            } else {
+                format!(
+                    "{} Grand-Niece/Grand-Nephew",
+                    Self::format_ordinal(generations2 - 3)
+                )
+            };
         }
         if generations1 >= 3 && generations2 == 1 {
-            let greats = "Great-".repeat(generations1 - 3);
-            return format!("{}Grand-Aunt/Grand-Uncle", greats);
+            return if generations1 == 3 {
+                "Grand-Aunt/Grand-Uncle".to_string()
+            } else {
+                format!(
+                    "{} Grand-Aunt/Grand-Uncle",
+                    Self::format_ordinal(generations1 - 3)
+                )
+            };
         }
 
         // Cousin relationships
@@ -1328,15 +1353,7 @@ impl Gedcom {
             return "Not related".to_string();
         }
 
-        let cousin_ordinal = match cousin_degree {
-            1 => "1st".to_string(),
-            2 => "2nd".to_string(),
-            3 => "3rd".to_string(),
-            n if n % 10 == 1 && n % 100 != 11 => format!("{}st", n),
-            n if n % 10 == 2 && n % 100 != 12 => format!("{}nd", n),
-            n if n % 10 == 3 && n % 100 != 13 => format!("{}rd", n),
-            n => format!("{}th", n),
-        };
+        let cousin_ordinal = Self::format_ordinal(cousin_degree);
 
         if removed == 0 {
             format!("{} Cousin", cousin_ordinal)
@@ -1380,10 +1397,7 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(1, 0), "Parent");
         assert_eq!(gedcom.describe_relationship(2, 0), "Grandparent");
         assert_eq!(gedcom.describe_relationship(3, 0), "Great-Grandparent");
-        assert_eq!(
-            gedcom.describe_relationship(4, 0),
-            "Great-Great-Grandparent"
-        );
+        assert_eq!(gedcom.describe_relationship(4, 0), "1st Great-Grandparent");
     }
 
     #[test]
@@ -1392,7 +1406,7 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(0, 1), "Child");
         assert_eq!(gedcom.describe_relationship(0, 2), "Grandchild");
         assert_eq!(gedcom.describe_relationship(0, 3), "Great-Grandchild");
-        assert_eq!(gedcom.describe_relationship(0, 4), "Great-Great-Grandchild");
+        assert_eq!(gedcom.describe_relationship(0, 4), "1st Great-Grandchild");
     }
 
     #[test]
@@ -1402,7 +1416,7 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(3, 1), "Grand-Aunt/Grand-Uncle");
         assert_eq!(
             gedcom.describe_relationship(4, 1),
-            "Great-Grand-Aunt/Grand-Uncle"
+            "1st Grand-Aunt/Grand-Uncle"
         );
     }
 
@@ -1416,7 +1430,7 @@ mod relationship_tests {
         );
         assert_eq!(
             gedcom.describe_relationship(1, 4),
-            "Great-Grand-Niece/Grand-Nephew"
+            "1st Grand-Niece/Grand-Nephew"
         );
     }
 
