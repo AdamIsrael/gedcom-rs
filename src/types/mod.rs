@@ -268,11 +268,10 @@ impl Gedcom {
                             Self::event_date_matches(&e.event.detail.date, &pattern_lower)
                         }),
                         EventType::Death => individual.death.iter().any(|e| {
-                            e.event
-                                .as_ref()
-                                .and_then(|ev| ev.date.as_ref())
-                                .map(|d| d.to_lowercase().contains(&pattern_lower))
-                                .unwrap_or(false)
+                            Self::event_date_matches(
+                                &e.event.as_ref().and_then(|ev| ev.date.clone()),
+                                &pattern_lower,
+                            )
                         }),
                         EventType::Christening => individual.christening.iter().any(|e| {
                             Self::event_date_matches(&e.event.detail.date, &pattern_lower)
