@@ -245,6 +245,14 @@ Filters should allow for the partial parsing of genealogical data. TBD the exten
    - Implement filtering capabilities for genealogical data
    - Enhance search and query functionalities
 
+6. **Date Parsing**
+
+Dates are a freeform field, with some common conventions. We need to implement parsing and validation, as much as it's possible, to enable searching through events by date.
+
+   - Implement date parsing and validation
+   - Support various date formats and ranges
+   - Enhance date-related functionalities
+
 ### Medium Priority
 
 4. **Source Record Parsing (SOUR)** ✅ Complete
