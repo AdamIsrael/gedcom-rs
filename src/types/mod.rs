@@ -1343,9 +1343,9 @@ impl Gedcom {
         if generations1 >= 3 && generations2 == 1 {
             return match generations1 {
                 3 => "Grand-Aunt/Grand-Uncle".to_string(),
-                4 => "Great-Grand-Aunt/Grand-Uncle".to_string(),
+                4 => "Great-Grand-Aunt/Great-Grand-Uncle".to_string(),
                 n => format!(
-                    "{} Great-Grand-Aunt/Grand-Uncle",
+                    "{} Great-Grand-Aunt/Great-Grand-Uncle",
                     Self::format_ordinal(n - 3)
                 ),
             };
@@ -1426,7 +1426,7 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(3, 1), "Grand-Aunt/Grand-Uncle");
         assert_eq!(
             gedcom.describe_relationship(4, 1),
-            "Great-Grand-Aunt/Grand-Uncle"
+            "Great-Grand-Aunt/Great-Grand-Uncle"
         );
     }
 
