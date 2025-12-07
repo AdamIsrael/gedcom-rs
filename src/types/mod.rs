@@ -1109,16 +1109,26 @@ impl Gedcom {
         // Check if person2 is parent of person1 (inverse)
         for (father, mother) in self.get_parents(person2) {
             if father.and_then(|f| f.xref.as_ref()).map(|x| x.as_str()) == Some(xref1) {
+                let description = match &person2.gender {
+                    individual::Gender::Male => "Son",
+                    individual::Gender::Female => "Daughter",
+                    _ => "Child",
+                };
                 return RelationshipResult {
-                    description: "Son".to_string(),
+                    description: description.to_string(),
                     mrca: Vec::new(),
                     generations_to_mrca_1: Some(0),
                     generations_to_mrca_2: Some(1),
                 };
             }
             if mother.and_then(|m| m.xref.as_ref()).map(|x| x.as_str()) == Some(xref1) {
+                let description = match &person2.gender {
+                    individual::Gender::Male => "Son",
+                    individual::Gender::Female => "Daughter",
+                    _ => "Child",
+                };
                 return RelationshipResult {
-                    description: "Daughter".to_string(),
+                    description: description.to_string(),
                     mrca: Vec::new(),
                     generations_to_mrca_1: Some(0),
                     generations_to_mrca_2: Some(1),
@@ -1323,9 +1333,9 @@ impl Gedcom {
         if generations1 == 1 && generations2 >= 3 {
             return match generations2 {
                 3 => "Grand-Niece/Grand-Nephew".to_string(),
-                4 => "Great-Grand-Niece/Grand-Nephew".to_string(),
+                4 => "Great-Grand-Niece/Great-Grand-Nephew".to_string(),
                 n => format!(
-                    "{} Great-Grand-Niece/Grand-Nephew",
+                    "{} Great-Grand-Niece/Great-Grand-Nephew",
                     Self::format_ordinal(n - 3)
                 ),
             };
@@ -1430,7 +1440,7 @@ mod relationship_tests {
         );
         assert_eq!(
             gedcom.describe_relationship(1, 4),
-            "Great-Grand-Niece/Grand-Nephew"
+            "Great-Grand-Niece/Great-Grand-Nephew"
         );
     }
 
