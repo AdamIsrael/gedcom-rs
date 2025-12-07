@@ -13,8 +13,8 @@ A Rust library for parsing [GEDCOM 5.5.1](https://gedcom.io/specifications/ged55
 - ✅ Automatic encoding detection from GEDCOM header
 - ✅ Individual (INDI) record parsing
 - ✅ Header (HEAD) metadata parsing
-- ⚠️ Family (FAM) records recognized but not fully parsed
-- ⚠️ Source (SOUR), Repository (REPO), and Multimedia (OBJE) records recognized but not parsed
+- ✅ Family (FAM) records parsing
+- ✅ Source (SOUR), Repository (REPO), and Multimedia (OBJE) records parsing
 
 ## Installation
 
