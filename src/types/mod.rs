@@ -1321,23 +1321,23 @@ impl Gedcom {
 
         // Grand-Aunt/Grand-Uncle and Grand-Niece/Grand-Nephew
         if generations1 == 1 && generations2 >= 3 {
-            return if generations2 == 3 {
-                "Grand-Niece/Grand-Nephew".to_string()
-            } else {
-                format!(
-                    "{} Grand-Niece/Grand-Nephew",
-                    Self::format_ordinal(generations2 - 2)
-                )
+            return match generations2 {
+                3 => "Grand-Niece/Grand-Nephew".to_string(),
+                4 => "Great-Grand-Niece/Grand-Nephew".to_string(),
+                n => format!(
+                    "{} Great-Grand-Niece/Grand-Nephew",
+                    Self::format_ordinal(n - 3)
+                ),
             };
         }
         if generations1 >= 3 && generations2 == 1 {
-            return if generations1 == 3 {
-                "Grand-Aunt/Grand-Uncle".to_string()
-            } else {
-                format!(
-                    "{} Grand-Aunt/Grand-Uncle",
-                    Self::format_ordinal(generations1 - 2)
-                )
+            return match generations1 {
+                3 => "Grand-Aunt/Grand-Uncle".to_string(),
+                4 => "Great-Grand-Aunt/Grand-Uncle".to_string(),
+                n => format!(
+                    "{} Great-Grand-Aunt/Grand-Uncle",
+                    Self::format_ordinal(n - 3)
+                ),
             };
         }
 
@@ -1416,7 +1416,7 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(3, 1), "Grand-Aunt/Grand-Uncle");
         assert_eq!(
             gedcom.describe_relationship(4, 1),
-            "2nd Grand-Aunt/Grand-Uncle"
+            "Great-Grand-Aunt/Grand-Uncle"
         );
     }
 
@@ -1430,7 +1430,7 @@ mod relationship_tests {
         );
         assert_eq!(
             gedcom.describe_relationship(1, 4),
-            "2nd Grand-Niece/Grand-Nephew"
+            "Great-Grand-Niece/Grand-Nephew"
         );
     }
 
