@@ -1298,7 +1298,7 @@ impl Gedcom {
                 1 => "Parent".to_string(),
                 2 => "Grandparent".to_string(),
                 3 => "Great-Grandparent".to_string(),
-                n => format!("{} Great-Grandparent", Self::format_ordinal(n - 3)),
+                n => format!("{} Great-Grandparent", Self::format_ordinal(n - 2)),
             };
         }
 
@@ -1307,7 +1307,7 @@ impl Gedcom {
                 1 => "Child".to_string(),
                 2 => "Grandchild".to_string(),
                 3 => "Great-Grandchild".to_string(),
-                n => format!("{} Great-Grandchild", Self::format_ordinal(n - 3)),
+                n => format!("{} Great-Grandchild", Self::format_ordinal(n - 2)),
             };
         }
 
@@ -1326,7 +1326,7 @@ impl Gedcom {
             } else {
                 format!(
                     "{} Grand-Niece/Grand-Nephew",
-                    Self::format_ordinal(generations2 - 3)
+                    Self::format_ordinal(generations2 - 2)
                 )
             };
         }
@@ -1336,7 +1336,7 @@ impl Gedcom {
             } else {
                 format!(
                     "{} Grand-Aunt/Grand-Uncle",
-                    Self::format_ordinal(generations1 - 3)
+                    Self::format_ordinal(generations1 - 2)
                 )
             };
         }
@@ -1397,7 +1397,7 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(1, 0), "Parent");
         assert_eq!(gedcom.describe_relationship(2, 0), "Grandparent");
         assert_eq!(gedcom.describe_relationship(3, 0), "Great-Grandparent");
-        assert_eq!(gedcom.describe_relationship(4, 0), "1st Great-Grandparent");
+        assert_eq!(gedcom.describe_relationship(4, 0), "2nd Great-Grandparent");
     }
 
     #[test]
@@ -1406,7 +1406,7 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(0, 1), "Child");
         assert_eq!(gedcom.describe_relationship(0, 2), "Grandchild");
         assert_eq!(gedcom.describe_relationship(0, 3), "Great-Grandchild");
-        assert_eq!(gedcom.describe_relationship(0, 4), "1st Great-Grandchild");
+        assert_eq!(gedcom.describe_relationship(0, 4), "2nd Great-Grandchild");
     }
 
     #[test]
@@ -1416,7 +1416,7 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(3, 1), "Grand-Aunt/Grand-Uncle");
         assert_eq!(
             gedcom.describe_relationship(4, 1),
-            "1st Grand-Aunt/Grand-Uncle"
+            "2nd Grand-Aunt/Grand-Uncle"
         );
     }
 
@@ -1430,7 +1430,7 @@ mod relationship_tests {
         );
         assert_eq!(
             gedcom.describe_relationship(1, 4),
-            "1st Grand-Niece/Grand-Nephew"
+            "2nd Grand-Niece/Grand-Nephew"
         );
     }
 
