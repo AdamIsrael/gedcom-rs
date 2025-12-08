@@ -279,6 +279,18 @@ Dates are a freeform field, with some common conventions. We need to implement p
    - Basic support exists
    - Complete implementation needed
 
+## Known Issues / Technical Debt
+
+### Error Handling and Validation (PR #16)
+The following validation logic branches need dedicated unit test coverage:
+- [ ] Individual validation (empty names check) - Currently only covered by integration tests
+- [ ] Family validation (empty family check) - Missing unit test for all three fields empty
+- [ ] Submitter validation (missing NAME field) - No dedicated unit test for validation branch
+- [ ] Repository validation (missing NAME field) - No test verifying ValidationError generation
+- [ ] Multimedia validation (missing FILE field) - No test verifying MissingRequiredField error
+
+Note: These validation features work correctly and are tested via integration tests, but lack isolated unit tests for better maintainability.
+
 ## Future Enhancements
 
 ### Version 0.2.0 Goals
@@ -290,7 +302,7 @@ Dates are a freeform field, with some common conventions. We need to implement p
 - [x] Complete NOTE record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete OBJE record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete REPO record parsing (all GEDCOM 5.5.1 fields)
-- [ ] Improved error messages
+- [x] Improved error messages (enhanced error types, validation warnings, better formatting)
 - [x] Performance optimizations for large files (minimal overhead for new record types)
 
 ### Version 0.3.0 Goals

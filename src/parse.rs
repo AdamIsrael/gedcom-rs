@@ -126,7 +126,10 @@ fn detect_gedcom_encoding(bytes: &[u8]) -> (&'static Encoding, String) {
 }
 
 /// Read file as bytes and convert to UTF-8 String based on declared encoding
-fn read_file_with_encoding(filename: &str, config: &GedcomConfig) -> Result<String> {
+fn read_file_with_encoding(
+    filename: &str,
+    config: &GedcomConfig,
+) -> Result<(String, Option<GedcomError>)> {
     let mut file = File::open(filename)?;
 
     let mut bytes = Vec::new();
@@ -159,14 +162,27 @@ fn read_file_with_encoding(filename: &str, config: &GedcomConfig) -> Result<Stri
     // Decode bytes to String using the detected encoding
     let (cow, _encoding_used, had_errors) = encoding.decode(&bytes);
 
-    if had_errors {
-        eprintln!(
-            "Warning: Encoding errors detected while converting '{}' from {} to UTF-8",
-            filename, encoding_name
-        );
-    }
+    let warning = if had_errors {
+        if config.verbose {
+            eprintln!(
+                "Warning: Encoding errors detected while converting '{}' from {} to UTF-8",
+                filename, encoding_name
+            );
+        }
+        Some(GedcomError::EncodingError {
+            declared_encoding: encoding_name.clone(),
+            detected_encoding: None,
+            message: format!(
+                "Errors detected during conversion from {} to UTF-8",
+                encoding_name
+            ),
+            had_errors: true,
+        })
+    } else {
+        None
+    };
 
-    Ok(cow.into_owned())
+    Ok((cow.into_owned(), warning))
 }
 
 // Parse the buffer if the CONC tag is found and return the resulting string.
@@ -229,7 +245,7 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
     }
 
     // Read the entire file with proper encoding handling
-    let content = read_file_with_encoding(filename, config)?;
+    let (content, encoding_warning) = read_file_with_encoding(filename, config)?;
 
     // Initialize an empty gedcom with pre-allocated capacity
     let mut gedcom = Gedcom {
@@ -241,7 +257,13 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
         notes: Vec::new(),
         multimedia: Vec::new(),
         submitters: Vec::new(),
+        warnings: Vec::new(),
     };
+
+    // Add encoding warning if present
+    if let Some(warning) = encoding_warning {
+        gedcom.warnings.push(warning);
+    }
 
     // Capacity management constants
     const INITIAL_RECORD_CAPACITY: usize = 2048; // Typical record ~1-2KB
@@ -358,7 +380,74 @@ pub fn parse_gedcom(filename: &str, config: &GedcomConfig) -> Result<Gedcom> {
     // TODO: sources
     // TODO: multimedia
 
+    // Validate records and collect warnings
+    validate_gedcom(&mut gedcom);
+
     Ok(gedcom)
+}
+
+/// Validate GEDCOM records and add warnings for missing required fields
+fn validate_gedcom(gedcom: &mut Gedcom) {
+    // Validate individuals - NAME is recommended but not strictly required in GEDCOM 5.5.1
+    // We'll warn about individuals without names as it's a common data quality issue
+    for individual in &gedcom.individuals {
+        if individual.names.is_empty() {
+            gedcom.warnings.push(GedcomError::ValidationError {
+                record_type: "INDI".to_string(),
+                record_xref: individual.xref.as_ref().map(|x| x.to_string()),
+                field: "NAME".to_string(),
+                message: "Individual has no name - this may indicate incomplete data".to_string(),
+            });
+        }
+    }
+
+    // Validate families - at least one spouse (HUSB or WIFE) is recommended
+    for family in &gedcom.families {
+        if family.husband.is_none() && family.wife.is_none() && family.children.is_empty() {
+            gedcom.warnings.push(GedcomError::ValidationError {
+                record_type: "FAM".to_string(),
+                record_xref: Some(family.xref.to_string()),
+                field: "HUSB/WIFE/CHIL".to_string(),
+                message:
+                    "Family has no husband, wife, or children - this may indicate incomplete data"
+                        .to_string(),
+            });
+        }
+    }
+
+    // Validate submitters - NAME is required in GEDCOM 5.5.1
+    for submitter in &gedcom.submitters {
+        if submitter.name.is_none() {
+            gedcom.warnings.push(GedcomError::MissingRequiredField {
+                record_type: "SUBM".to_string(),
+                record_xref: Some(submitter.xref.to_string()),
+                field: "NAME".to_string(),
+            });
+        }
+    }
+
+    // Validate repositories - NAME is recommended
+    for repository in &gedcom.repositories {
+        if repository.name.is_none() {
+            gedcom.warnings.push(GedcomError::ValidationError {
+                record_type: "REPO".to_string(),
+                record_xref: repository.xref.as_ref().map(|x| x.to_string()),
+                field: "NAME".to_string(),
+                message: "Repository has no name - this may indicate incomplete data".to_string(),
+            });
+        }
+    }
+
+    // Validate multimedia records - at least one FILE is required
+    for multimedia in &gedcom.multimedia {
+        if multimedia.files.is_empty() {
+            gedcom.warnings.push(GedcomError::MissingRequiredField {
+                record_type: "OBJE".to_string(),
+                record_xref: multimedia.xref.as_ref().map(|x| x.to_string()),
+                field: "FILE".to_string(),
+            });
+        }
+    }
 }
 
 #[allow(clippy::unwrap_used)]

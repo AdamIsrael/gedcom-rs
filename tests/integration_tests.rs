@@ -411,3 +411,83 @@ fn test_parse_gedcom_with_all_record_types() {
     assert_eq!(gedcom.notes.len(), 1);
     assert_eq!(gedcom.multimedia.len(), 1);
 }
+
+#[test]
+fn test_parse_gedcom_with_validation_warnings() {
+    use std::fs;
+    let temp_file = "test_validation_warnings.ged";
+    let content = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n0 @F1@ FAM\n0 @U1@ SUBM\n0 TRLR\n";
+
+    fs::write(temp_file, content).unwrap();
+
+    let config = GedcomConfig::new();
+    let result = parse_gedcom(temp_file, &config);
+
+    // Cleanup
+    let _ = fs::remove_file(temp_file);
+
+    assert!(result.is_ok());
+    let gedcom = result.unwrap();
+
+    // Should have validation warnings
+    assert!(!gedcom.warnings.is_empty(), "Expected validation warnings");
+
+    // Check for individual without name warning
+    let has_indi_warning = gedcom.warnings.iter().any(|w| {
+        matches!(w, gedcom_rs::error::GedcomError::ValidationError {
+            record_type, field, ..
+        } if record_type == "INDI" && field == "NAME")
+    });
+    assert!(
+        has_indi_warning,
+        "Expected warning for individual without name"
+    );
+
+    // Check for family without members warning
+    let has_fam_warning = gedcom.warnings.iter().any(|w| {
+        matches!(w, gedcom_rs::error::GedcomError::ValidationError {
+            record_type, field, ..
+        } if record_type == "FAM" && field == "HUSB/WIFE/CHIL")
+    });
+    assert!(has_fam_warning, "Expected warning for empty family");
+
+    // Check for submitter without name error
+    let has_subm_error = gedcom.warnings.iter().any(|w| {
+        matches!(w, gedcom_rs::error::GedcomError::MissingRequiredField {
+            record_type, field, ..
+        } if record_type == "SUBM" && field == "NAME")
+    });
+    assert!(
+        has_subm_error,
+        "Expected error for submitter without required name"
+    );
+}
+
+#[test]
+fn test_parse_gedcom_warnings_do_not_prevent_parsing() {
+    use std::fs;
+    let temp_file = "test_warnings_nonfatal.ged";
+    // File with warnings but still parseable
+    let content =
+        "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 SEX M\n0 @I2@ INDI\n1 NAME Test /Person/\n0 TRLR\n";
+
+    fs::write(temp_file, content).unwrap();
+
+    let config = GedcomConfig::new();
+    let result = parse_gedcom(temp_file, &config);
+
+    // Cleanup
+    let _ = fs::remove_file(temp_file);
+
+    assert!(result.is_ok(), "Parsing should succeed despite warnings");
+    let gedcom = result.unwrap();
+
+    // Should have 2 individuals
+    assert_eq!(gedcom.individuals.len(), 2);
+
+    // But should have warning for one without name
+    let name_warnings = gedcom.warnings.iter().filter(|w| {
+        matches!(w, gedcom_rs::error::GedcomError::ValidationError { field, .. } if field == "NAME")
+    }).count();
+    assert_eq!(name_warnings, 1, "Expected exactly one NAME warning");
+}
