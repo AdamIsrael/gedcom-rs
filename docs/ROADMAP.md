@@ -290,7 +290,7 @@ Dates are a freeform field, with some common conventions. We need to implement p
 - [x] Complete NOTE record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete OBJE record parsing (all GEDCOM 5.5.1 fields)
 - [x] Complete REPO record parsing (all GEDCOM 5.5.1 fields)
-- [ ] Improved error messages
+- [x] Improved error messages (enhanced error types, validation warnings, better formatting)
 - [x] Performance optimizations for large files (minimal overhead for new record types)
 
 ### Version 0.3.0 Goals

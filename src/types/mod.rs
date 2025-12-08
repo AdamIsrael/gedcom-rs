@@ -158,9 +158,36 @@ pub struct Gedcom {
     pub notes: Vec<NoteRecord>,
     pub multimedia: Vec<MultimediaRecord>,
     pub submitters: Vec<Submitter>,
+
+    /// Validation warnings encountered during parsing
+    /// These are non-fatal issues that don't prevent parsing but indicate
+    /// potential problems with the GEDCOM file
+    pub warnings: Vec<crate::error::GedcomError>,
 }
 
 impl Gedcom {
+    // ===== Validation Functions =====
+
+    /// Returns whether the GEDCOM file has any validation warnings
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use gedcom_rs::parse::{parse_gedcom, GedcomConfig};
+    ///
+    /// let gedcom = parse_gedcom("file.ged", &GedcomConfig::new())?;
+    /// if gedcom.has_warnings() {
+    ///     println!("File has {} validation warnings", gedcom.warnings.len());
+    ///     for warning in &gedcom.warnings {
+    ///         eprintln!("Warning: {}", warning);
+    ///     }
+    /// }
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn has_warnings(&self) -> bool {
+        !self.warnings.is_empty()
+    }
+
     // ===== Search Functions =====
 
     /// Find an individual by their cross-reference ID (xref)
