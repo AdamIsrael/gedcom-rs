@@ -63,7 +63,7 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 - [x] REFN (supports multiple)
   - [x] TYPE
 - [x] RIN
-- [x] CHANGE_DATE (basic parsing - stores DATE value, skips TIME and other structure)
+- [x] CHANGE_DATE (full support: DATE, TIME, NOTE)
 - [x] NOTE_STRUCTURE
 - [x] SOURCE_CITATION
 - [x] MULTIMEDIA_LINK
@@ -124,7 +124,7 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
   - [x] TYPE
 - [x] RIN (automated record ID)
 - [x] RESN (restriction notice)
-- [x] CHANGE_DATE (CHAN - stores DATE value)
+- [x] CHANGE_DATE (full support: DATE, TIME, NOTE)
 - [x] NOTE_STRUCTURE (supports multiple notes and note references)
 - [x] SOURCE_CITATION (supports multiple citations)
 - [x] MULTIMEDIA_LINK (supports multiple object references)
@@ -143,7 +143,7 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 - [x] RIN
 - [x] NOTE_STRUCTURE (supports multiple notes and note references)
 - [x] SOURCE_CITATION
-- [ ] CHANGE_DATE (basic parsing, skips structure)
+- [x] CHANGE_DATE (full support: DATE, TIME, NOTE)
 
 ### NOTE_RECORD
 
@@ -154,7 +154,7 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 - [x] REFN (supports multiple)
   - [x] TYPE
 - [x] RIN
-- [ ] CHANGE_DATE (basic parsing, skips structure)
+- [x] CHANGE_DATE (full support: DATE, TIME, NOTE)
 
 ### REPOSITORY_RECORD
 
@@ -167,7 +167,7 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 - [x] REFN (supports multiple)
   - [x] TYPE
 - [x] RIN
-- [x] CHANGE_DATE (basic parsing - stores DATE value, skips TIME and other structure)
+- [x] CHANGE_DATE (full support: DATE, TIME, NOTE)
 
 ### SOURCE_RECORD
 
@@ -189,7 +189,7 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 - [x] REFN (supports multiple)
   - [x] TYPE
 - [x] RIN
-- [ ] CHANGE_DATE (basic parsing, skips structure)
+- [x] CHANGE_DATE (full support: DATE, TIME, NOTE)
 - [x] NOTE_STRUCTURE (supports multiple notes)
 - [x] MULTIMEDIA_LINK (OBJE references)
 
@@ -205,7 +205,7 @@ This document tracks the implementation status of GEDCOM 5.5.1 specification fea
 - [x] RFN (registered RFN)
 - [x] RIN (automated record ID)
 - [x] NOTE_STRUCTURE (supports multiple notes and note references)
-- [x] CHANGE_DATE (basic parsing - stores DATE value, skips TIME and other structure)
+- [x] CHANGE_DATE (full support: DATE, TIME, NOTE)
 
 ## Priority Features
 

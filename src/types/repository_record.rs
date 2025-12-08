@@ -1,4 +1,4 @@
-use super::{Address, Line, Note, UserReference, Xref};
+use super::{Address, ChangeDate, Line, Note, UserReference, Xref};
 use crate::parse;
 use winnow::prelude::*;
 
@@ -37,8 +37,8 @@ pub struct RepositoryRecord {
     /// Automated record ID
     pub automated_record_id: Option<String>,
 
-    /// Change date - stores the DATE value from CHAN/DATE (skips TIME and other structure)
-    pub change_date: Option<String>,
+    /// Change date - full CHANGE_DATE structure with DATE, TIME, and NOTE
+    pub change_date: Option<ChangeDate>,
 }
 
 impl RepositoryRecord {
@@ -117,19 +117,11 @@ impl RepositoryRecord {
                     repository.automated_record_id = Some(line.value.to_string());
                 }
                 "CHAN" => {
-                    // Basic parsing - extract DATE value and skip rest of structure
-                    let chan_level = line.level;
-                    let _ = Line::parse(input);
-
-                    // Look for DATE tag at next level
-                    while let Ok(peek) = Line::peek(input) {
-                        if peek.level <= chan_level {
-                            break;
+                    if let Ok(change_date) = ChangeDate::parse(input) {
+                        // Only set if we actually got data
+                        if change_date.date.is_some() || !change_date.notes.is_empty() {
+                            repository.change_date = Some(change_date);
                         }
-                        if peek.tag == "DATE" && peek.level == chan_level + 1 {
-                            repository.change_date = Some(peek.value.to_string());
-                        }
-                        let _ = Line::parse(input);
                     }
                     consume = false;
                 }
@@ -279,7 +271,11 @@ mod tests {
         let mut input = data.as_str();
         let repository = RepositoryRecord::parse(&mut input).unwrap();
 
-        assert_eq!(repository.change_date, Some("12 MAR 2000".to_string()));
+        assert!(repository.change_date.is_some());
+        let cd = repository.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("12 MAR 2000".to_string()));
+        assert_eq!(cd.time, Some("10:36:02".to_string()));
+        assert_eq!(cd.notes.len(), 0);
     }
 
     #[test]
@@ -319,6 +315,9 @@ mod tests {
         assert_eq!(repository.notes.len(), 1);
         assert_eq!(repository.user_reference_numbers.len(), 1);
         assert_eq!(repository.automated_record_id, Some("1".to_string()));
-        assert_eq!(repository.change_date, Some("12 MAR 2000".to_string()));
+        assert!(repository.change_date.is_some());
+        let cd = repository.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("12 MAR 2000".to_string()));
+        assert_eq!(cd.time, Some("10:36:02".to_string()));
     }
 }

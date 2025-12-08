@@ -1,4 +1,4 @@
-use crate::types::{Address, Line, Note, Object, Xref};
+use crate::types::{Address, ChangeDate, Line, Note, Object, Xref};
 
 // SUBMITTER_RECORD:=
 // n @<XREF:SUBM>@ SUBM {1:1}
@@ -37,8 +37,8 @@ pub struct Submitter {
     /// Notes
     pub notes: Vec<Note>,
 
-    /// Change date - stores the DATE value from CHAN/DATE
-    pub change_date: Option<String>,
+    /// Change date - full CHANGE_DATE structure with DATE, TIME, and NOTE
+    pub change_date: Option<ChangeDate>,
 }
 
 impl Submitter {
@@ -115,24 +115,11 @@ impl Submitter {
                     consume = false;
                 }
                 "CHAN" => {
-                    // Parse CHAN structure to get DATE value
-                    let level = line.level;
-                    let _ = Line::parse(record);
-
-                    while !record.is_empty() {
-                        let Ok(inner_line) = Line::peek(record) else {
-                            break;
-                        };
-
-                        if inner_line.level <= level {
-                            break;
+                    if let Ok(change_date) = ChangeDate::parse(record) {
+                        // Only set if we actually got data
+                        if change_date.date.is_some() || !change_date.notes.is_empty() {
+                            submitter.change_date = Some(change_date);
                         }
-
-                        if inner_line.level == level + 1 && inner_line.tag == "DATE" {
-                            submitter.change_date = Some(inner_line.value.to_string());
-                        }
-
-                        let _ = Line::parse(record);
                     }
                     consume = false;
                 }
@@ -228,7 +215,11 @@ mod tests {
         assert_eq!(submitter.registered_rfn.as_ref().unwrap(), "123456789");
         assert_eq!(submitter.automated_record_id.as_ref().unwrap(), "1");
 
-        assert_eq!(submitter.change_date.as_ref().unwrap(), "7 SEP 2000");
+        assert!(submitter.change_date.is_some());
+        let cd = submitter.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("7 SEP 2000".to_string()));
+        assert_eq!(cd.time, Some("8:35:36".to_string()));
+        assert_eq!(cd.notes.len(), 0);
 
         assert_eq!(submitter.notes.len(), 1);
         let note = submitter.notes[0].note.as_ref().unwrap();

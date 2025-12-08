@@ -226,13 +226,21 @@ mod tests {
         // Test @F2@ - has CHANGE_DATE
         let f2 = &gedcom.families[1];
         assert_eq!(f2.xref.to_string(), "@F2@");
-        assert_eq!(f2.change_date, Some("13 JUN 2000".to_string()));
+        assert!(f2.change_date.is_some());
+        assert_eq!(
+            f2.change_date.as_ref().unwrap().date,
+            Some("13 JUN 2000".to_string())
+        );
         assert_eq!(f2.automated_record_id, Some("2".to_string()));
 
         // Test @F3@ - has CHANGE_DATE
         let f3 = &gedcom.families[2];
         assert_eq!(f3.xref.to_string(), "@F3@");
-        assert_eq!(f3.change_date, Some("13 JUN 2000".to_string()));
+        assert!(f3.change_date.is_some());
+        assert_eq!(
+            f3.change_date.as_ref().unwrap().date,
+            Some("13 JUN 2000".to_string())
+        );
         assert_eq!(f3.automated_record_id, Some("3".to_string()));
     }
 
@@ -276,7 +284,11 @@ mod tests {
         assert_eq!(subm.automated_record_id.as_deref(), Some("1"));
 
         // Check change date
-        assert_eq!(subm.change_date.as_deref(), Some("7 SEP 2000"));
+        assert!(subm.change_date.is_some());
+        assert_eq!(
+            subm.change_date.as_ref().unwrap().date,
+            Some("7 SEP 2000".to_string())
+        );
 
         // Check automated record ID
         // (Duplicate assertion removed)

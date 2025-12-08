@@ -1,4 +1,4 @@
-use super::{Line, Note, SourceCitation, UserReference, Xref};
+use super::{ChangeDate, Line, Note, SourceCitation, UserReference, Xref};
 use crate::parse;
 use winnow::prelude::*;
 
@@ -40,8 +40,8 @@ pub struct MultimediaRecord {
     /// Source citations for this multimedia object
     pub source_citations: Vec<SourceCitation>,
 
-    /// Change date - stores the DATE value from CHAN/DATE (skips TIME and other structure)
-    pub change_date: Option<String>,
+    /// Change date - full CHANGE_DATE structure with DATE, TIME, and NOTE
+    pub change_date: Option<ChangeDate>,
 }
 
 /// Represents a multimedia file within a MULTIMEDIA_RECORD
@@ -140,19 +140,11 @@ impl MultimediaRecord {
                     multimedia.automated_record_id = Some(line.value.to_string());
                 }
                 "CHAN" => {
-                    // Basic parsing - extract DATE value and skip rest of structure
-                    let chan_level = line.level;
-                    let _ = Line::parse(input);
-
-                    // Look for DATE tag at next level
-                    while let Ok(peek) = Line::peek(input) {
-                        if peek.level <= chan_level {
-                            break;
+                    if let Ok(change_date) = ChangeDate::parse(input) {
+                        // Only set if we actually got data
+                        if change_date.date.is_some() || !change_date.notes.is_empty() {
+                            multimedia.change_date = Some(change_date);
                         }
-                        if peek.tag == "DATE" && peek.level == chan_level + 1 {
-                            multimedia.change_date = Some(peek.value.to_string());
-                        }
-                        let _ = Line::parse(input);
                     }
                     consume = false;
                 }
@@ -361,7 +353,11 @@ mod tests {
         let multimedia = MultimediaRecord::parse(&mut input).unwrap();
 
         assert_eq!(multimedia.files.len(), 1);
-        assert_eq!(multimedia.change_date, Some("14 JAN 2001".to_string()));
+        assert!(multimedia.change_date.is_some());
+        let cd = multimedia.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("14 JAN 2001".to_string()));
+        assert_eq!(cd.time, Some("14:10:31".to_string()));
+        assert_eq!(cd.notes.len(), 0);
     }
 
     #[test]
