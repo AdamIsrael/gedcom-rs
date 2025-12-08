@@ -2,6 +2,7 @@
 // top-level record types
 mod address;
 mod adopted_by;
+mod change_date;
 mod character_set;
 mod corporation;
 mod datetime;
@@ -31,6 +32,7 @@ mod xref;
 
 pub use address::*;
 pub use adopted_by::AdoptedBy;
+pub use change_date::ChangeDate;
 pub use character_set::CharacterSet;
 pub use datetime::DateTime;
 pub use event::{EventDetail, EventTypeCitedFrom, FamilyEventDetail};

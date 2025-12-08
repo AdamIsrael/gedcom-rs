@@ -1,4 +1,4 @@
-use super::{Line, SourceCitation, UserReference, Xref};
+use super::{ChangeDate, Line, SourceCitation, UserReference, Xref};
 use winnow::prelude::*;
 
 // NOTE_RECORD:=
@@ -32,8 +32,8 @@ pub struct NoteRecord {
     /// Automated record ID
     pub automated_record_id: Option<String>,
 
-    /// Change date (basic parsing, skips structure for now)
-    pub change_date: Option<String>,
+    /// Change date - full CHANGE_DATE structure with DATE, TIME, and NOTE
+    pub change_date: Option<ChangeDate>,
 }
 
 impl NoteRecord {
@@ -104,17 +104,11 @@ impl NoteRecord {
                     note_record.automated_record_id = Some(line.value.to_string());
                 }
                 "CHAN" => {
-                    // For now, just skip CHAN and its children
-                    // TODO: Implement full CHANGE_DATE parsing
-                    let chan_level = line.level;
-                    let _ = Line::parse(input);
-
-                    // Skip all child tags
-                    while let Ok(peek) = Line::peek(input) {
-                        if peek.level <= chan_level {
-                            break;
+                    if let Ok(change_date) = ChangeDate::parse(input) {
+                        // Only set if we actually got data
+                        if change_date.date.is_some() || !change_date.notes.is_empty() {
+                            note_record.change_date = Some(change_date);
                         }
-                        let _ = Line::parse(input);
                     }
                     consume = false;
                 }
@@ -235,7 +229,11 @@ mod tests {
         let note = NoteRecord::parse(&mut input).unwrap();
 
         assert_eq!(note.note, "Test note");
-        // CHAN is parsed but not fully stored yet
+        assert!(note.change_date.is_some());
+        let cd = note.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("24 MAY 1999".to_string()));
+        assert_eq!(cd.time, Some("16:39:55".to_string()));
+        assert_eq!(cd.notes.len(), 0);
     }
 
     #[test]

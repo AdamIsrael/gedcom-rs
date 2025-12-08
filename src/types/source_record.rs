@@ -1,4 +1,4 @@
-use super::{Line, Note, Object, Xref};
+use super::{ChangeDate, Line, Note, Object, Xref};
 use crate::parse;
 use winnow::prelude::*;
 
@@ -70,8 +70,8 @@ pub struct SourceRecord {
     /// Automated record ID
     pub automated_record_id: Option<String>,
 
-    /// Change date (not yet fully parsed)
-    pub change_date: Option<String>,
+    /// Change date - full CHANGE_DATE structure with DATE, TIME, and NOTE
+    pub change_date: Option<ChangeDate>,
 }
 
 /// Data about events recorded in a source
@@ -218,17 +218,11 @@ impl SourceRecord {
                     source.automated_record_id = Some(line.value.to_string());
                 }
                 "CHAN" => {
-                    // For now, just skip CHAN and its children
-                    // TODO: Implement full CHANGE_DATE parsing
-                    let chan_level = line.level;
-                    let _ = Line::parse(input);
-
-                    // Skip all child tags
-                    while let Ok(peek) = Line::peek(input) {
-                        if peek.level <= chan_level {
-                            break;
+                    if let Ok(change_date) = ChangeDate::parse(input) {
+                        // Only set if we actually got data
+                        if change_date.date.is_some() || !change_date.notes.is_empty() {
+                            source.change_date = Some(change_date);
                         }
-                        let _ = Line::parse(input);
                     }
                     consume = false;
                 }

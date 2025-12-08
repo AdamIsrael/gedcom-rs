@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::parse;
 use crate::types::individual::name::*;
-use crate::types::{Family, Line, Note, Object, SourceCitation, UserReference, Xref};
+use crate::types::{ChangeDate, Family, Line, Note, Object, SourceCitation, UserReference, Xref};
 use winnow::prelude::*;
 
 use super::{Adoption, Birth, Christening, Death, IndividualEventDetail, Residence};
@@ -258,8 +258,8 @@ pub struct Individual {
     /// Automated record ID
     pub automated_record_id: Option<String>,
 
-    /// Change date - stores the DATE value from CHAN/DATE
-    pub change_date: Option<String>,
+    /// Change date - full CHANGE_DATE structure with DATE, TIME, and NOTE
+    pub change_date: Option<ChangeDate>,
 
     /// Submitter references
     pub submitters: Vec<Xref>,
@@ -713,24 +713,11 @@ impl Individual {
                             individual.automated_record_id = Some(line.value.to_string());
                         }
                         "CHAN" => {
-                            // Parse CHAN structure to get DATE value
-                            let level = line.level;
-                            let _ = Line::parse(record); // consume CHAN line
-
-                            while !record.is_empty() {
-                                let Ok(inner_line) = Line::peek(record) else {
-                                    break;
-                                };
-
-                                if inner_line.level <= level {
-                                    break;
+                            if let Ok(change_date) = ChangeDate::parse(record) {
+                                // Only set if we actually got data
+                                if change_date.date.is_some() || !change_date.notes.is_empty() {
+                                    individual.change_date = Some(change_date);
                                 }
-
-                                if inner_line.level == level + 1 && inner_line.tag == "DATE" {
-                                    individual.change_date = Some(inner_line.value.to_string());
-                                }
-
-                                let _ = Line::parse(record);
                             }
                             parse = false;
                         }
@@ -2162,7 +2149,37 @@ mod tests {
         let mut record = buffer.as_str();
         let indi = Individual::parse(&mut record);
 
-        assert_eq!(indi.change_date.as_ref().unwrap(), "15 JAN 2024");
+        assert!(indi.change_date.is_some());
+        let cd = indi.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("15 JAN 2024".to_string()));
+        assert_eq!(cd.time, Some("14:30:00".to_string()));
+        assert_eq!(cd.notes.len(), 0);
+    }
+
+    #[test]
+    fn test_individual_change_date_with_note() {
+        let data = vec![
+            "0 @I1@ INDI",
+            "1 NAME Test /Person/",
+            "1 CHAN",
+            "2 DATE 15 JAN 2024",
+            "3 TIME 14:30:00",
+            "2 NOTE Record updated to fix name typo",
+        ];
+
+        let buffer = data.join("\n");
+        let mut record = buffer.as_str();
+        let indi = Individual::parse(&mut record);
+
+        assert!(indi.change_date.is_some());
+        let cd = indi.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("15 JAN 2024".to_string()));
+        assert_eq!(cd.time, Some("14:30:00".to_string()));
+        assert_eq!(cd.notes.len(), 1);
+        assert_eq!(
+            cd.notes[0].note,
+            Some("Record updated to fix name typo".to_string())
+        );
     }
 
     #[test]

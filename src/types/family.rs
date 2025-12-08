@@ -3,8 +3,8 @@ use std::str::FromStr;
 use crate::{
     parse,
     types::{
-        AdoptedBy, FamilyEventDetail, Line, Note, Object, Pedigree, SourceCitation, UserReference,
-        Xref,
+        AdoptedBy, ChangeDate, FamilyEventDetail, Line, Note, Object, Pedigree, SourceCitation,
+        UserReference, Xref,
     },
 };
 use winnow::prelude::*;
@@ -180,8 +180,8 @@ pub struct Family {
     /// Automated record ID
     pub automated_record_id: Option<String>,
 
-    /// Change date - stores the DATE value from CHAN/DATE
-    pub change_date: Option<String>,
+    /// Change date - full CHANGE_DATE structure with DATE, TIME, and NOTE
+    pub change_date: Option<ChangeDate>,
 
     // Legacy fields used for FAMC/FAMS child-to-family links
     // These are kept for backward compatibility with Individual parsing
@@ -351,19 +351,11 @@ impl Family {
                         consume = false;
                     }
                     "CHAN" => {
-                        // Basic parsing - extract DATE value and skip rest of structure
-                        let chan_level = line.level;
-                        let _ = Line::parse(record);
-
-                        // Look for DATE tag at next level
-                        while let Ok(peek) = Line::peek(record) {
-                            if peek.level <= chan_level {
-                                break;
+                        if let Ok(change_date) = ChangeDate::parse(record) {
+                            // Only set if we actually got data
+                            if change_date.date.is_some() || !change_date.notes.is_empty() {
+                                family.change_date = Some(change_date);
                             }
-                            if peek.tag == "DATE" && peek.level == chan_level + 1 {
-                                family.change_date = Some(peek.value.to_string());
-                            }
-                            let _ = Line::parse(record);
                         }
                         consume = false;
                     }
@@ -600,8 +592,38 @@ mod tests {
 
         let family = Family::parse(&mut record);
         assert_eq!(family.xref, Xref::new("@F2@".to_string()));
-        assert_eq!(family.change_date, Some("13 JUN 2000".to_string()));
+        assert!(family.change_date.is_some());
+        let cd = family.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("13 JUN 2000".to_string()));
+        assert_eq!(cd.time, Some("17:00:35".to_string()));
+        assert_eq!(cd.notes.len(), 0);
         assert_eq!(family.automated_record_id, Some("2".to_string()));
+    }
+
+    #[test]
+    fn parse_fam_record_with_change_date_and_note() {
+        let data = vec![
+            "0 @F2@ FAM",
+            "1 HUSB @I5@",
+            "1 CHAN",
+            "2 DATE 13 JUN 2000",
+            "3 TIME 17:00:35",
+            "2 NOTE Marriage certificate updated",
+        ]
+        .join("\n");
+        let mut record = data.as_str();
+
+        let family = Family::parse(&mut record);
+        assert_eq!(family.xref, Xref::new("@F2@".to_string()));
+        assert!(family.change_date.is_some());
+        let cd = family.change_date.as_ref().unwrap();
+        assert_eq!(cd.date, Some("13 JUN 2000".to_string()));
+        assert_eq!(cd.time, Some("17:00:35".to_string()));
+        assert_eq!(cd.notes.len(), 1);
+        assert_eq!(
+            cd.notes[0].note,
+            Some("Marriage certificate updated".to_string())
+        );
     }
 
     #[test]
