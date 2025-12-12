@@ -1513,3 +1513,533 @@ mod relationship_tests {
         assert_eq!(gedcom.describe_relationship(12, 12), "11th Cousin");
     }
 }
+
+#[cfg(test)]
+mod api_tests {
+    use super::*;
+    use std::fs;
+
+    /// Helper to create a test GEDCOM with family data for API testing
+    /// Returns a Gedcom with 6 individuals and 2 families
+    fn create_test_family_gedcom() -> Gedcom {
+        use crate::parse::{parse_gedcom, GedcomConfig};
+        use std::sync::atomic::{AtomicU64, Ordering};
+
+        // Use atomic counter to ensure unique filenames for parallel test execution
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let temp_file = format!("test_api_family_{}.ged", id);
+
+        let content = "\
+0 HEAD
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Doe/
+1 SEX M
+1 BIRT
+2 DATE 1 JAN 1900
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 SEX F
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Robert /Doe/
+1 SEX M
+1 BIRT
+2 DATE 15 JUN 1925
+1 FAMC @F1@
+1 FAMS @F2@
+0 @I4@ INDI
+1 NAME Mary /Jones/
+1 SEX F
+1 FAMS @F2@
+0 @I5@ INDI
+1 NAME Alice /Doe/
+1 SEX F
+1 BIRT
+2 DATE 10 MAR 1950
+1 FAMC @F2@
+0 @I6@ INDI
+1 NAME Bob /Doe/
+1 SEX M
+1 FAMC @F2@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I4@
+1 CHIL @I5@
+1 CHIL @I6@
+0 TRLR
+";
+
+        fs::write(&temp_file, content).expect("Failed to write test file");
+        let gedcom =
+            parse_gedcom(&temp_file, &GedcomConfig::new()).expect("Failed to parse test GEDCOM");
+        let _ = fs::remove_file(&temp_file);
+
+        gedcom
+    }
+
+    // ========================================================================
+    // Search and Query API Tests
+    // ========================================================================
+
+    #[test]
+    fn test_has_warnings() {
+        let mut gedcom = Gedcom::default();
+        assert!(!gedcom.has_warnings());
+
+        gedcom
+            .warnings
+            .push(crate::error::GedcomError::ValidationError {
+                record_type: "TEST".to_string(),
+                record_xref: None,
+                field: "FIELD".to_string(),
+                message: "Test warning".to_string(),
+            });
+
+        assert!(gedcom.has_warnings());
+    }
+
+    #[test]
+    fn test_find_individual_by_xref_found() {
+        let gedcom = create_test_family_gedcom();
+
+        let result = gedcom.find_individual_by_xref("@I1@");
+        assert!(result.is_some());
+
+        let individual = result.unwrap();
+        assert_eq!(individual.xref.as_ref().unwrap().as_str(), "@I1@");
+        assert!(!individual.names.is_empty());
+    }
+
+    #[test]
+    fn test_find_individual_by_xref_not_found() {
+        let gedcom = create_test_family_gedcom();
+
+        let result = gedcom.find_individual_by_xref("@I999@");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_individual_by_xref_all_individuals() {
+        let gedcom = create_test_family_gedcom();
+
+        // Verify all 6 individuals can be found
+        for xref in &["@I1@", "@I2@", "@I3@", "@I4@", "@I5@", "@I6@"] {
+            let result = gedcom.find_individual_by_xref(xref);
+            assert!(result.is_some(), "Should find individual {}", xref);
+            assert_eq!(result.unwrap().xref.as_ref().unwrap().as_str(), *xref);
+        }
+    }
+
+    #[test]
+    fn test_find_individuals_by_name_exact_match() {
+        let gedcom = create_test_family_gedcom();
+
+        let results = gedcom.find_individuals_by_name("John");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].xref.as_ref().unwrap().as_str(), "@I1@");
+    }
+
+    #[test]
+    fn test_find_individuals_by_name_case_insensitive() {
+        let gedcom = create_test_family_gedcom();
+
+        let results = gedcom.find_individuals_by_name("JOHN");
+        assert_eq!(results.len(), 1);
+
+        let results_lower = gedcom.find_individuals_by_name("john");
+        assert_eq!(results_lower.len(), 1);
+    }
+
+    #[test]
+    fn test_find_individuals_by_name_surname_match() {
+        let gedcom = create_test_family_gedcom();
+
+        let results = gedcom.find_individuals_by_name("Doe");
+        // Should match: John Doe, Robert Doe, Alice Doe, Bob Doe = 4
+        assert_eq!(results.len(), 4);
+    }
+
+    #[test]
+    fn test_find_individuals_by_name_partial_match() {
+        let gedcom = create_test_family_gedcom();
+
+        let results = gedcom.find_individuals_by_name("o");
+        // Should match: John, Robert, Bob, Jones = at least 4
+        assert!(results.len() >= 4);
+    }
+
+    #[test]
+    fn test_find_individuals_by_name_no_match() {
+        let gedcom = create_test_family_gedcom();
+
+        let results = gedcom.find_individuals_by_name("NonExistentName");
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_find_family_by_xref_found() {
+        let gedcom = create_test_family_gedcom();
+
+        let result = gedcom.find_family_by_xref("@F1@");
+        assert!(result.is_some());
+
+        let family = result.unwrap();
+        assert_eq!(family.xref.as_str(), "@F1@");
+    }
+
+    #[test]
+    fn test_find_family_by_xref_not_found() {
+        let gedcom = create_test_family_gedcom();
+
+        let result = gedcom.find_family_by_xref("@F999@");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_family_by_xref_all_families() {
+        let gedcom = create_test_family_gedcom();
+
+        for xref in &["@F1@", "@F2@"] {
+            let result = gedcom.find_family_by_xref(xref);
+            assert!(result.is_some(), "Should find family {}", xref);
+            assert_eq!(result.unwrap().xref.as_str(), *xref);
+        }
+    }
+
+    #[test]
+    fn test_find_individuals_by_event_date_birth_exact() {
+        let gedcom = create_test_family_gedcom();
+
+        let results = gedcom.find_individuals_by_event_date(EventType::Birth, "1 JAN 1900");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].xref.as_ref().unwrap().as_str(), "@I1@");
+    }
+
+    #[test]
+    fn test_find_individuals_by_event_date_partial() {
+        let gedcom = create_test_family_gedcom();
+
+        let results = gedcom.find_individuals_by_event_date(EventType::Birth, "1950");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].xref.as_ref().unwrap().as_str(), "@I5@");
+    }
+
+    #[test]
+    fn test_find_individuals_by_event_date_no_match() {
+        let gedcom = create_test_family_gedcom();
+
+        let results = gedcom.find_individuals_by_event_date(EventType::Birth, "2000");
+        assert_eq!(results.len(), 0);
+    }
+
+    // ========================================================================
+    // Relationship API Tests
+    // ========================================================================
+
+    #[test]
+    fn test_get_parents_with_parents() {
+        let gedcom = create_test_family_gedcom();
+
+        // I3 (Robert) has parents I1 and I2
+        let robert = gedcom.find_individual_by_xref("@I3@").unwrap();
+        let parents = gedcom.get_parents(robert);
+
+        assert_eq!(parents.len(), 1);
+        let (father, mother) = &parents[0];
+
+        assert!(father.is_some());
+        assert!(mother.is_some());
+        assert_eq!(father.unwrap().xref.as_ref().unwrap().as_str(), "@I1@");
+        assert_eq!(mother.unwrap().xref.as_ref().unwrap().as_str(), "@I2@");
+    }
+
+    #[test]
+    fn test_get_parents_no_parents() {
+        let gedcom = create_test_family_gedcom();
+
+        // I1 (John) has no parents
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+        let parents = gedcom.get_parents(john);
+
+        assert_eq!(parents.len(), 0);
+    }
+
+    #[test]
+    fn test_get_children_with_children() {
+        let gedcom = create_test_family_gedcom();
+
+        // I3 (Robert) has children I5 and I6
+        let robert = gedcom.find_individual_by_xref("@I3@").unwrap();
+        let children = gedcom.get_children(robert);
+
+        assert_eq!(children.len(), 2);
+
+        let child_xrefs: Vec<_> = children
+            .iter()
+            .map(|c| c.xref.as_ref().unwrap().as_str())
+            .collect();
+        assert!(child_xrefs.contains(&"@I5@"));
+        assert!(child_xrefs.contains(&"@I6@"));
+    }
+
+    #[test]
+    fn test_get_children_no_children() {
+        let gedcom = create_test_family_gedcom();
+
+        // I5 (Alice) has no children
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let children = gedcom.get_children(alice);
+
+        assert_eq!(children.len(), 0);
+    }
+
+    #[test]
+    fn test_get_spouses_with_spouse() {
+        let gedcom = create_test_family_gedcom();
+
+        // I1 (John) is married to I2 (Jane)
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+        let spouses = gedcom.get_spouses(john);
+
+        assert_eq!(spouses.len(), 1);
+        assert_eq!(spouses[0].xref.as_ref().unwrap().as_str(), "@I2@");
+    }
+
+    #[test]
+    fn test_get_spouses_no_spouse() {
+        let gedcom = create_test_family_gedcom();
+
+        // I5 (Alice) has no spouse
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let spouses = gedcom.get_spouses(alice);
+
+        assert_eq!(spouses.len(), 0);
+    }
+
+    #[test]
+    fn test_get_siblings_with_siblings() {
+        let gedcom = create_test_family_gedcom();
+
+        // I5 (Alice) has sibling I6 (Bob)
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let siblings = gedcom.get_siblings(alice);
+
+        assert_eq!(siblings.len(), 1);
+        assert_eq!(siblings[0].xref.as_ref().unwrap().as_str(), "@I6@");
+    }
+
+    #[test]
+    fn test_get_siblings_no_siblings() {
+        let gedcom = create_test_family_gedcom();
+
+        // I3 (Robert) is an only child
+        let robert = gedcom.find_individual_by_xref("@I3@").unwrap();
+        let siblings = gedcom.get_siblings(robert);
+
+        assert_eq!(siblings.len(), 0);
+    }
+
+    #[test]
+    fn test_get_full_siblings_same_parents() {
+        let gedcom = create_test_family_gedcom();
+
+        // I5 and I6 are full siblings (same parents)
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let full_siblings = gedcom.get_full_siblings(alice);
+
+        assert_eq!(full_siblings.len(), 1);
+        assert_eq!(full_siblings[0].xref.as_ref().unwrap().as_str(), "@I6@");
+    }
+
+    #[test]
+    fn test_get_full_siblings_no_siblings() {
+        let gedcom = create_test_family_gedcom();
+
+        let robert = gedcom.find_individual_by_xref("@I3@").unwrap();
+        let full_siblings = gedcom.get_full_siblings(robert);
+
+        assert_eq!(full_siblings.len(), 0);
+    }
+
+    #[test]
+    fn test_get_half_siblings_none() {
+        let gedcom = create_test_family_gedcom();
+
+        // I5 and I6 are full siblings, not half-siblings
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let half_siblings = gedcom.get_half_siblings(alice);
+
+        assert_eq!(half_siblings.len(), 0);
+    }
+
+    #[test]
+    fn test_get_ancestors_multiple_generations() {
+        let gedcom = create_test_family_gedcom();
+
+        // I5 (Alice) should have 4 ancestors: I3, I4, I1, I2
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let ancestors = gedcom.get_ancestors(alice, Some(10));
+
+        assert_eq!(ancestors.len(), 4);
+
+        let ancestor_xrefs: Vec<_> = ancestors
+            .iter()
+            .map(|a| a.xref.as_ref().unwrap().as_str())
+            .collect();
+
+        // Should include parents
+        assert!(ancestor_xrefs.contains(&"@I3@")); // Father
+        assert!(ancestor_xrefs.contains(&"@I4@")); // Mother
+
+        // Should include grandparents
+        assert!(ancestor_xrefs.contains(&"@I1@")); // Grandfather
+        assert!(ancestor_xrefs.contains(&"@I2@")); // Grandmother
+    }
+
+    #[test]
+    fn test_get_ancestors_with_max_generations() {
+        let gedcom = create_test_family_gedcom();
+
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let ancestors = gedcom.get_ancestors(alice, Some(1));
+
+        // Should only get parents, not grandparents
+        assert_eq!(ancestors.len(), 2);
+
+        let ancestor_xrefs: Vec<_> = ancestors
+            .iter()
+            .map(|a| a.xref.as_ref().unwrap().as_str())
+            .collect();
+
+        assert!(ancestor_xrefs.contains(&"@I3@"));
+        assert!(ancestor_xrefs.contains(&"@I4@"));
+    }
+
+    #[test]
+    fn test_get_ancestors_no_ancestors() {
+        let gedcom = create_test_family_gedcom();
+
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+        let ancestors = gedcom.get_ancestors(john, Some(10));
+
+        assert_eq!(ancestors.len(), 0);
+    }
+
+    #[test]
+    fn test_get_descendants_multiple_generations() {
+        let gedcom = create_test_family_gedcom();
+
+        // I1 (John) should have 3 descendants: I3, I5, I6
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+        let descendants = gedcom.get_descendants(john, Some(10));
+
+        assert_eq!(descendants.len(), 3);
+
+        let descendant_xrefs: Vec<_> = descendants
+            .iter()
+            .map(|d| d.xref.as_ref().unwrap().as_str())
+            .collect();
+
+        assert!(descendant_xrefs.contains(&"@I3@")); // Son
+        assert!(descendant_xrefs.contains(&"@I5@")); // Granddaughter
+        assert!(descendant_xrefs.contains(&"@I6@")); // Grandson
+    }
+
+    #[test]
+    fn test_get_descendants_with_max_generations() {
+        let gedcom = create_test_family_gedcom();
+
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+        let descendants = gedcom.get_descendants(john, Some(1));
+
+        // Should only get children, not grandchildren
+        assert_eq!(descendants.len(), 1);
+        assert_eq!(descendants[0].xref.as_ref().unwrap().as_str(), "@I3@");
+    }
+
+    #[test]
+    fn test_get_descendants_no_descendants() {
+        let gedcom = create_test_family_gedcom();
+
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let descendants = gedcom.get_descendants(alice, Some(10));
+
+        assert_eq!(descendants.len(), 0);
+    }
+
+    #[test]
+    fn test_find_relationship_path_parent_child() {
+        let gedcom = create_test_family_gedcom();
+
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+        let robert = gedcom.find_individual_by_xref("@I3@").unwrap();
+
+        let path = gedcom.find_relationship_path(john, robert);
+        assert!(path.is_some());
+
+        let path_vec = path.unwrap();
+        assert!(path_vec.len() >= 2);
+        assert_eq!(path_vec[0].xref.as_ref().unwrap().as_str(), "@I1@");
+        assert_eq!(
+            path_vec[path_vec.len() - 1].xref.as_ref().unwrap().as_str(),
+            "@I3@"
+        );
+    }
+
+    #[test]
+    fn test_find_relationship_path_self() {
+        let gedcom = create_test_family_gedcom();
+
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+
+        let path = gedcom.find_relationship_path(john, john);
+        assert!(path.is_some());
+
+        let path_vec = path.unwrap();
+        assert_eq!(path_vec.len(), 1);
+        assert_eq!(path_vec[0].xref.as_ref().unwrap().as_str(), "@I1@");
+    }
+
+    #[test]
+    fn test_find_relationship_self() {
+        let gedcom = create_test_family_gedcom();
+
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+
+        let result = gedcom.find_relationship(john, john);
+        assert_eq!(result.description, "Self");
+        assert_eq!(result.generations_to_mrca_1, Some(0));
+        assert_eq!(result.generations_to_mrca_2, Some(0));
+    }
+
+    #[test]
+    fn test_find_relationship_parent() {
+        let gedcom = create_test_family_gedcom();
+
+        let john = gedcom.find_individual_by_xref("@I1@").unwrap();
+        let robert = gedcom.find_individual_by_xref("@I3@").unwrap();
+
+        let result = gedcom.find_relationship(john, robert);
+        assert!(result.description.contains("Child") || result.description.contains("Son"));
+    }
+
+    #[test]
+    fn test_find_relationship_siblings() {
+        let gedcom = create_test_family_gedcom();
+
+        let alice = gedcom.find_individual_by_xref("@I5@").unwrap();
+        let bob = gedcom.find_individual_by_xref("@I6@").unwrap();
+
+        let result = gedcom.find_relationship(alice, bob);
+        assert_eq!(result.description, "Sibling");
+        assert_eq!(result.generations_to_mrca_1, Some(1));
+        assert_eq!(result.generations_to_mrca_2, Some(1));
+    }
+}
