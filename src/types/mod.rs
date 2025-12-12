@@ -1521,14 +1521,11 @@ mod api_tests {
 
     /// Helper to create a test GEDCOM with family data for API testing
     /// Returns a Gedcom with 6 individuals and 2 families
+    /// Uses tempfile crate to ensure proper cleanup even on test failure
     fn create_test_family_gedcom() -> Gedcom {
         use crate::parse::{parse_gedcom, GedcomConfig};
-        use std::sync::atomic::{AtomicU64, Ordering};
-
-        // Use atomic counter to ensure unique filenames for parallel test execution
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
-        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let temp_file = format!("test_api_family_{}.ged", id);
+        use std::io::Write;
+        use tempfile::NamedTempFile;
 
         let content = "\
 0 HEAD
@@ -1576,12 +1573,19 @@ mod api_tests {
 0 TRLR
 ";
 
-        fs::write(&temp_file, content).expect("Failed to write test file");
-        let gedcom =
-            parse_gedcom(&temp_file, &GedcomConfig::new()).expect("Failed to parse test GEDCOM");
-        let _ = fs::remove_file(&temp_file);
+        // Use NamedTempFile with .ged suffix for proper cleanup
+        let mut temp_file = NamedTempFile::new().expect("Failed to create temporary test file");
+        temp_file
+            .write_all(content.as_bytes())
+            .expect("Failed to write test data to temporary file");
 
-        gedcom
+        // Parse the GEDCOM from the temp file
+        // The file will be automatically cleaned up when temp_file is dropped
+        let path_str = temp_file
+            .path()
+            .to_str()
+            .expect("Failed to convert path to string");
+        parse_gedcom(path_str, &GedcomConfig::new()).expect("Failed to parse test GEDCOM")
     }
 
     // ========================================================================

@@ -797,19 +797,29 @@ mod tests {
     // Validation Unit Tests
     // ========================================================================
 
+    /// Helper function to parse GEDCOM content for validation tests
+    /// Uses tempfile crate to ensure proper cleanup even on test failure or panic
+    fn parse_test_gedcom(content: &str) -> Result<Gedcom> {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let mut temp_file = NamedTempFile::new().expect("Failed to create temporary test file");
+        temp_file
+            .write_all(content.as_bytes())
+            .expect("Failed to write test data");
+
+        let path_str = temp_file
+            .path()
+            .to_str()
+            .expect("Failed to convert path to string");
+        parse_gedcom(path_str, &GedcomConfig::new())
+    }
+
     /// Test validation detects individual without name
     #[test]
     fn test_validate_individual_empty_name() {
-        let temp_file = "test_validate_indi_empty_name.ged";
         let content = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 SEX M\n0 TRLR\n";
-
-        fs::write(temp_file, content).unwrap();
-
-        let config = GedcomConfig::new();
-        let result = parse_gedcom(temp_file, &config);
-
-        // Cleanup
-        let _ = fs::remove_file(temp_file);
+        let result = parse_test_gedcom(content);
 
         assert!(result.is_ok());
         let gedcom = result.unwrap();
@@ -871,16 +881,8 @@ mod tests {
     /// Test validation passes for individual with name
     #[test]
     fn test_validate_individual_with_name() {
-        let temp_file = "test_validate_indi_with_name.ged";
         let content = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME John /Doe/\n1 SEX M\n0 TRLR\n";
-
-        fs::write(temp_file, content).unwrap();
-
-        let config = GedcomConfig::new();
-        let result = parse_gedcom(temp_file, &config);
-
-        // Cleanup
-        let _ = fs::remove_file(temp_file);
+        let result = parse_test_gedcom(content);
 
         assert!(result.is_ok());
         let gedcom = result.unwrap();
