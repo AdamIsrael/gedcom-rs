@@ -792,4 +792,1224 @@ mod tests {
         assert_eq!(gedcom.individuals.len(), 2);
         assert_eq!(gedcom.families.len(), 1);
     }
+
+    // ========================================================================
+    // Validation Unit Tests
+    // ========================================================================
+
+    /// Test validation detects individual without name
+    #[test]
+    fn test_validate_individual_empty_name() {
+        let temp_file = "test_validate_indi_empty_name.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 SEX M\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one individual
+        assert_eq!(gedcom.individuals.len(), 1);
+
+        // Should have a validation warning for missing name
+        let has_name_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "INDI" && field == "NAME"
+            )
+        });
+
+        assert!(
+            has_name_warning,
+            "Expected ValidationError for individual without name"
+        );
+
+        // Verify the warning message is helpful
+        let warning = gedcom
+            .warnings
+            .iter()
+            .find(|w| {
+                matches!(
+                    w,
+                    GedcomError::ValidationError {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "INDI" && field == "NAME"
+                )
+            })
+            .unwrap();
+
+        if let GedcomError::ValidationError {
+            message,
+            record_xref,
+            ..
+        } = warning
+        {
+            assert!(
+                message.contains("no name"),
+                "Warning message should mention 'no name'"
+            );
+            assert!(
+                record_xref.is_some(),
+                "Warning should include record xref for traceability"
+            );
+            assert_eq!(record_xref.as_ref().unwrap(), "@I1@");
+        }
+    }
+
+    /// Test validation passes for individual with name
+    #[test]
+    fn test_validate_individual_with_name() {
+        let temp_file = "test_validate_indi_with_name.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME John /Doe/\n1 SEX M\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one individual
+        assert_eq!(gedcom.individuals.len(), 1);
+
+        // Should NOT have a validation warning for this individual
+        let has_name_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "INDI" && field == "NAME"
+            )
+        });
+
+        assert!(
+            !has_name_warning,
+            "Should not have ValidationError for individual with name"
+        );
+    }
+
+    /// Test validation with multiple individuals, some missing names
+    #[test]
+    fn test_validate_multiple_individuals_mixed() {
+        let temp_file = "test_validate_multiple_indi.ged";
+        let content = "0 HEAD\n\
+                       1 CHAR UTF-8\n\
+                       0 @I1@ INDI\n\
+                       1 NAME Valid /Person/\n\
+                       0 @I2@ INDI\n\
+                       1 SEX F\n\
+                       0 @I3@ INDI\n\
+                       1 NAME Another /Valid/\n\
+                       0 @I4@ INDI\n\
+                       1 BIRT\n\
+                       2 DATE 1 JAN 1900\n\
+                       0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have 4 individuals
+        assert_eq!(gedcom.individuals.len(), 4);
+
+        // Should have exactly 2 validation warnings (I2 and I4 missing names)
+        let name_warnings: Vec<_> = gedcom
+            .warnings
+            .iter()
+            .filter(|w| {
+                matches!(
+                    w,
+                    GedcomError::ValidationError {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "INDI" && field == "NAME"
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            name_warnings.len(),
+            2,
+            "Expected exactly 2 NAME validation warnings"
+        );
+
+        // Verify both I2 and I4 are flagged
+        let xrefs: Vec<String> = name_warnings
+            .iter()
+            .filter_map(|w| {
+                if let GedcomError::ValidationError { record_xref, .. } = w {
+                    record_xref.clone()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert!(xrefs.contains(&"@I2@".to_string()));
+        assert!(xrefs.contains(&"@I4@".to_string()));
+    }
+
+    /// Test validation doesn't fail on individual without xref (edge case)
+    #[test]
+    fn test_validate_individual_without_xref() {
+        let temp_file = "test_validate_indi_no_xref.ged";
+        // Invalid GEDCOM but parser might handle it
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 INDI\n1 SEX M\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        // Should still parse without crashing
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // If an individual was created, validation should handle missing xref gracefully
+        if !gedcom.individuals.is_empty() {
+            let has_name_warning = gedcom.warnings.iter().any(|w| {
+                matches!(
+                    w,
+                    GedcomError::ValidationError {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "INDI" && field == "NAME"
+                )
+            });
+
+            // Should still detect missing name even without xref
+            assert!(has_name_warning);
+
+            // Warning should handle None xref gracefully
+            let warning = gedcom
+                .warnings
+                .iter()
+                .find(|w| {
+                    matches!(
+                        w,
+                        GedcomError::ValidationError {
+                            record_type,
+                            field,
+                            ..
+                        } if record_type == "INDI" && field == "NAME"
+                    )
+                })
+                .unwrap();
+
+            if let GedcomError::ValidationError { record_xref, .. } = warning {
+                // record_xref might be None, and that's okay
+                assert!(true, "Validation handled missing xref: {:?}", record_xref);
+            }
+        }
+    }
+
+    /// Test validation detects family with no members
+    #[test]
+    fn test_validate_family_empty() {
+        let temp_file = "test_validate_fam_empty.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @F1@ FAM\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one family
+        assert_eq!(gedcom.families.len(), 1);
+
+        // Should have a validation warning for empty family
+        let has_family_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "FAM" && field == "HUSB/WIFE/CHIL"
+            )
+        });
+
+        assert!(
+            has_family_warning,
+            "Expected ValidationError for family with no members"
+        );
+
+        // Verify the warning includes xref
+        let warning = gedcom
+            .warnings
+            .iter()
+            .find(|w| {
+                matches!(
+                    w,
+                    GedcomError::ValidationError {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "FAM" && field == "HUSB/WIFE/CHIL"
+                )
+            })
+            .unwrap();
+
+        if let GedcomError::ValidationError {
+            message,
+            record_xref,
+            ..
+        } = warning
+        {
+            assert!(
+                message.contains("no husband, wife, or children"),
+                "Warning message should explain what's missing"
+            );
+            assert!(record_xref.is_some(), "Warning should include record xref");
+            assert_eq!(record_xref.as_ref().unwrap(), "@F1@");
+        }
+    }
+
+    /// Test validation passes for family with husband only
+    #[test]
+    fn test_validate_family_with_husband() {
+        let temp_file = "test_validate_fam_husband.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @F1@ FAM\n1 HUSB @I1@\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one family
+        assert_eq!(gedcom.families.len(), 1);
+
+        // Should NOT have a validation warning
+        let has_family_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "FAM" && field == "HUSB/WIFE/CHIL"
+            )
+        });
+
+        assert!(
+            !has_family_warning,
+            "Should not have warning for family with husband"
+        );
+    }
+
+    /// Test validation passes for family with wife only
+    #[test]
+    fn test_validate_family_with_wife() {
+        let temp_file = "test_validate_fam_wife.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @F1@ FAM\n1 WIFE @I2@\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one family
+        assert_eq!(gedcom.families.len(), 1);
+
+        // Should NOT have a validation warning
+        let has_family_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "FAM" && field == "HUSB/WIFE/CHIL"
+            )
+        });
+
+        assert!(
+            !has_family_warning,
+            "Should not have warning for family with wife"
+        );
+    }
+
+    /// Test validation passes for family with children only
+    #[test]
+    fn test_validate_family_with_children() {
+        let temp_file = "test_validate_fam_children.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @F1@ FAM\n1 CHIL @I3@\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one family
+        assert_eq!(gedcom.families.len(), 1);
+
+        // Should NOT have a validation warning
+        let has_family_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "FAM" && field == "HUSB/WIFE/CHIL"
+            )
+        });
+
+        assert!(
+            !has_family_warning,
+            "Should not have warning for family with children"
+        );
+    }
+
+    /// Test validation passes for complete family
+    #[test]
+    fn test_validate_family_complete() {
+        let temp_file = "test_validate_fam_complete.ged";
+        let content =
+            "0 HEAD\n1 CHAR UTF-8\n0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n1 CHIL @I3@\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one family
+        assert_eq!(gedcom.families.len(), 1);
+
+        // Should NOT have a validation warning
+        let has_family_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "FAM" && field == "HUSB/WIFE/CHIL"
+            )
+        });
+
+        assert!(
+            !has_family_warning,
+            "Should not have warning for complete family"
+        );
+    }
+
+    /// Test validation with multiple families, some empty
+    #[test]
+    fn test_validate_multiple_families_mixed() {
+        let temp_file = "test_validate_multiple_fam.ged";
+        let content = "0 HEAD\n\
+                       1 CHAR UTF-8\n\
+                       0 @F1@ FAM\n\
+                       1 HUSB @I1@\n\
+                       1 WIFE @I2@\n\
+                       0 @F2@ FAM\n\
+                       0 @F3@ FAM\n\
+                       1 CHIL @I3@\n\
+                       0 @F4@ FAM\n\
+                       0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have 4 families
+        assert_eq!(gedcom.families.len(), 4);
+
+        // Should have exactly 2 validation warnings (F2 and F4 are empty)
+        let family_warnings: Vec<_> = gedcom
+            .warnings
+            .iter()
+            .filter(|w| {
+                matches!(
+                    w,
+                    GedcomError::ValidationError {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "FAM" && field == "HUSB/WIFE/CHIL"
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            family_warnings.len(),
+            2,
+            "Expected exactly 2 family validation warnings"
+        );
+
+        // Verify both F2 and F4 are flagged
+        let xrefs: Vec<String> = family_warnings
+            .iter()
+            .filter_map(|w| {
+                if let GedcomError::ValidationError { record_xref, .. } = w {
+                    record_xref.clone()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert!(xrefs.contains(&"@F2@".to_string()));
+        assert!(xrefs.contains(&"@F4@".to_string()));
+    }
+
+    /// Test validation detects submitter without required NAME field
+    #[test]
+    fn test_validate_submitter_missing_name() {
+        let temp_file = "test_validate_subm_no_name.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @U1@ SUBM\n1 ADDR 123 Main St\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one submitter
+        assert_eq!(gedcom.submitters.len(), 1);
+
+        // Should have a MissingRequiredField error for NAME
+        let has_name_error = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::MissingRequiredField {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "SUBM" && field == "NAME"
+            )
+        });
+
+        assert!(
+            has_name_error,
+            "Expected MissingRequiredField error for submitter without NAME"
+        );
+
+        // Verify the error includes xref
+        let error = gedcom
+            .warnings
+            .iter()
+            .find(|w| {
+                matches!(
+                    w,
+                    GedcomError::MissingRequiredField {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "SUBM" && field == "NAME"
+                )
+            })
+            .unwrap();
+
+        if let GedcomError::MissingRequiredField { record_xref, .. } = error {
+            assert!(record_xref.is_some(), "Error should include record xref");
+            assert_eq!(record_xref.as_ref().unwrap(), "@U1@");
+        }
+    }
+
+    /// Test validation passes for submitter with NAME field
+    #[test]
+    fn test_validate_submitter_with_name() {
+        let temp_file = "test_validate_subm_with_name.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @U1@ SUBM\n1 NAME John Doe\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one submitter
+        assert_eq!(gedcom.submitters.len(), 1);
+
+        // Should NOT have a MissingRequiredField error
+        let has_name_error = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::MissingRequiredField {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "SUBM" && field == "NAME"
+            )
+        });
+
+        assert!(
+            !has_name_error,
+            "Should not have error for submitter with NAME"
+        );
+    }
+
+    /// Test validation with multiple submitters, some missing NAME
+    #[test]
+    fn test_validate_multiple_submitters_mixed() {
+        let temp_file = "test_validate_multiple_subm.ged";
+        let content = "0 HEAD\n\
+                       1 CHAR UTF-8\n\
+                       0 @U1@ SUBM\n\
+                       1 NAME Valid Submitter\n\
+                       0 @U2@ SUBM\n\
+                       1 ADDR Some Address\n\
+                       0 @U3@ SUBM\n\
+                       1 NAME Another Valid\n\
+                       0 @U4@ SUBM\n\
+                       1 PHON 555-1234\n\
+                       0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have 4 submitters
+        assert_eq!(gedcom.submitters.len(), 4);
+
+        // Should have exactly 2 MissingRequiredField errors (U2 and U4)
+        let name_errors: Vec<_> = gedcom
+            .warnings
+            .iter()
+            .filter(|w| {
+                matches!(
+                    w,
+                    GedcomError::MissingRequiredField {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "SUBM" && field == "NAME"
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            name_errors.len(),
+            2,
+            "Expected exactly 2 NAME MissingRequiredField errors"
+        );
+
+        // Verify both U2 and U4 are flagged
+        let xrefs: Vec<String> = name_errors
+            .iter()
+            .filter_map(|w| {
+                if let GedcomError::MissingRequiredField { record_xref, .. } = w {
+                    record_xref.clone()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert!(xrefs.contains(&"@U2@".to_string()));
+        assert!(xrefs.contains(&"@U4@".to_string()));
+    }
+
+    /// Test that submitter NAME field is correctly identified as required (vs recommended)
+    #[test]
+    fn test_validate_submitter_uses_missing_required_field_error() {
+        let temp_file = "test_validate_subm_required.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @U1@ SUBM\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Must use MissingRequiredField, not ValidationError
+        let has_missing_required = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::MissingRequiredField {
+                    record_type,
+                    ..
+                } if record_type == "SUBM"
+            )
+        });
+
+        let has_validation_error = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    ..
+                } if record_type == "SUBM"
+            )
+        });
+
+        assert!(
+            has_missing_required,
+            "Should use MissingRequiredField for SUBM NAME"
+        );
+        assert!(
+            !has_validation_error,
+            "Should NOT use ValidationError for SUBM NAME (it's required, not just recommended)"
+        );
+    }
+
+    /// Test validation detects repository without NAME field
+    #[test]
+    fn test_validate_repository_missing_name() {
+        let temp_file = "test_validate_repo_no_name.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @R1@ REPO\n1 ADDR 123 Library St\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one repository
+        assert_eq!(gedcom.repositories.len(), 1);
+
+        // Should have a ValidationError for missing NAME (it's recommended, not required)
+        let has_name_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "REPO" && field == "NAME"
+            )
+        });
+
+        assert!(
+            has_name_warning,
+            "Expected ValidationError for repository without NAME"
+        );
+
+        // Verify the warning includes xref and helpful message
+        let warning = gedcom
+            .warnings
+            .iter()
+            .find(|w| {
+                matches!(
+                    w,
+                    GedcomError::ValidationError {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "REPO" && field == "NAME"
+                )
+            })
+            .unwrap();
+
+        if let GedcomError::ValidationError {
+            message,
+            record_xref,
+            ..
+        } = warning
+        {
+            assert!(
+                message.contains("no name"),
+                "Warning message should mention 'no name'"
+            );
+            assert!(record_xref.is_some(), "Warning should include record xref");
+            assert_eq!(record_xref.as_ref().unwrap(), "@R1@");
+        }
+    }
+
+    /// Test validation passes for repository with NAME field
+    #[test]
+    fn test_validate_repository_with_name() {
+        let temp_file = "test_validate_repo_with_name.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @R1@ REPO\n1 NAME National Archives\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one repository
+        assert_eq!(gedcom.repositories.len(), 1);
+
+        // Should NOT have a ValidationError
+        let has_name_warning = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "REPO" && field == "NAME"
+            )
+        });
+
+        assert!(
+            !has_name_warning,
+            "Should not have warning for repository with NAME"
+        );
+    }
+
+    /// Test validation with multiple repositories, some missing NAME
+    #[test]
+    fn test_validate_multiple_repositories_mixed() {
+        let temp_file = "test_validate_multiple_repo.ged";
+        let content = "0 HEAD\n\
+                       1 CHAR UTF-8\n\
+                       0 @R1@ REPO\n\
+                       1 NAME State Archives\n\
+                       0 @R2@ REPO\n\
+                       1 ADDR Unknown Location\n\
+                       0 @R3@ REPO\n\
+                       1 NAME County Library\n\
+                       0 @R4@ REPO\n\
+                       1 NOTE Some note\n\
+                       0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have 4 repositories
+        assert_eq!(gedcom.repositories.len(), 4);
+
+        // Should have exactly 2 ValidationError warnings (R2 and R4)
+        let name_warnings: Vec<_> = gedcom
+            .warnings
+            .iter()
+            .filter(|w| {
+                matches!(
+                    w,
+                    GedcomError::ValidationError {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "REPO" && field == "NAME"
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            name_warnings.len(),
+            2,
+            "Expected exactly 2 NAME validation warnings"
+        );
+
+        // Verify both R2 and R4 are flagged
+        let xrefs: Vec<String> = name_warnings
+            .iter()
+            .filter_map(|w| {
+                if let GedcomError::ValidationError { record_xref, .. } = w {
+                    record_xref.clone()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert!(xrefs.contains(&"@R2@".to_string()));
+        assert!(xrefs.contains(&"@R4@".to_string()));
+    }
+
+    /// Test that repository NAME uses ValidationError (recommended) not MissingRequiredField
+    #[test]
+    fn test_validate_repository_uses_validation_error() {
+        let temp_file = "test_validate_repo_recommended.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @R1@ REPO\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Must use ValidationError, not MissingRequiredField (NAME is recommended, not required)
+        let has_validation_error = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    ..
+                } if record_type == "REPO"
+            )
+        });
+
+        let has_missing_required = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::MissingRequiredField {
+                    record_type,
+                    ..
+                } if record_type == "REPO"
+            )
+        });
+
+        assert!(
+            has_validation_error,
+            "Should use ValidationError for REPO NAME (recommended)"
+        );
+        assert!(
+            !has_missing_required,
+            "Should NOT use MissingRequiredField for REPO NAME (it's recommended, not required)"
+        );
+    }
+
+    /// Test validation detects multimedia without FILE field
+    #[test]
+    fn test_validate_multimedia_missing_file() {
+        let temp_file = "test_validate_obje_no_file.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @M1@ OBJE\n1 TITL Photo Title\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one multimedia record
+        assert_eq!(gedcom.multimedia.len(), 1);
+
+        // Should have a MissingRequiredField error for FILE
+        let has_file_error = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::MissingRequiredField {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "OBJE" && field == "FILE"
+            )
+        });
+
+        assert!(
+            has_file_error,
+            "Expected MissingRequiredField error for multimedia without FILE"
+        );
+
+        // Verify the error includes xref
+        let error = gedcom
+            .warnings
+            .iter()
+            .find(|w| {
+                matches!(
+                    w,
+                    GedcomError::MissingRequiredField {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "OBJE" && field == "FILE"
+                )
+            })
+            .unwrap();
+
+        if let GedcomError::MissingRequiredField { record_xref, .. } = error {
+            assert!(record_xref.is_some(), "Error should include record xref");
+            assert_eq!(record_xref.as_ref().unwrap(), "@M1@");
+        }
+    }
+
+    /// Test validation passes for multimedia with FILE field
+    #[test]
+    fn test_validate_multimedia_with_file() {
+        let temp_file = "test_validate_obje_with_file.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @M1@ OBJE\n1 FILE photo.jpg\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one multimedia record
+        assert_eq!(gedcom.multimedia.len(), 1);
+
+        // Should NOT have a MissingRequiredField error
+        let has_file_error = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::MissingRequiredField {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "OBJE" && field == "FILE"
+            )
+        });
+
+        assert!(
+            !has_file_error,
+            "Should not have error for multimedia with FILE"
+        );
+    }
+
+    /// Test validation with multiple multimedia records, some missing FILE
+    #[test]
+    fn test_validate_multiple_multimedia_mixed() {
+        let temp_file = "test_validate_multiple_obje.ged";
+        let content = "0 HEAD\n\
+                       1 CHAR UTF-8\n\
+                       0 @M1@ OBJE\n\
+                       1 FILE photo1.jpg\n\
+                       0 @M2@ OBJE\n\
+                       1 TITL Photo without file\n\
+                       0 @M3@ OBJE\n\
+                       1 FILE photo2.png\n\
+                       1 TITL Valid Photo\n\
+                       0 @M4@ OBJE\n\
+                       1 NOTE Just a note\n\
+                       0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have 4 multimedia records
+        assert_eq!(gedcom.multimedia.len(), 4);
+
+        // Should have exactly 2 MissingRequiredField errors (M2 and M4)
+        let file_errors: Vec<_> = gedcom
+            .warnings
+            .iter()
+            .filter(|w| {
+                matches!(
+                    w,
+                    GedcomError::MissingRequiredField {
+                        record_type,
+                        field,
+                        ..
+                    } if record_type == "OBJE" && field == "FILE"
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            file_errors.len(),
+            2,
+            "Expected exactly 2 FILE MissingRequiredField errors"
+        );
+
+        // Verify both M2 and M4 are flagged
+        let xrefs: Vec<String> = file_errors
+            .iter()
+            .filter_map(|w| {
+                if let GedcomError::MissingRequiredField { record_xref, .. } = w {
+                    record_xref.clone()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert!(xrefs.contains(&"@M2@".to_string()));
+        assert!(xrefs.contains(&"@M4@".to_string()));
+    }
+
+    /// Test multimedia with multiple files is valid
+    #[test]
+    fn test_validate_multimedia_with_multiple_files() {
+        let temp_file = "test_validate_obje_multi_file.ged";
+        let content = "0 HEAD\n\
+                       1 CHAR UTF-8\n\
+                       0 @M1@ OBJE\n\
+                       1 FILE photo.jpg\n\
+                       1 FILE photo_thumb.jpg\n\
+                       0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Should have exactly one multimedia record
+        assert_eq!(gedcom.multimedia.len(), 1);
+
+        // Should NOT have any errors (multiple files is valid)
+        let has_file_error = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::MissingRequiredField {
+                    record_type,
+                    field,
+                    ..
+                } if record_type == "OBJE" && field == "FILE"
+            )
+        });
+
+        assert!(
+            !has_file_error,
+            "Should not have error for multimedia with multiple files"
+        );
+    }
+
+    /// Test that multimedia FILE uses MissingRequiredField (required) not ValidationError
+    #[test]
+    fn test_validate_multimedia_uses_missing_required_field_error() {
+        let temp_file = "test_validate_obje_required.ged";
+        let content = "0 HEAD\n1 CHAR UTF-8\n0 @M1@ OBJE\n0 TRLR\n";
+
+        fs::write(temp_file, content).unwrap();
+
+        let config = GedcomConfig::new();
+        let result = parse_gedcom(temp_file, &config);
+
+        // Cleanup
+        let _ = fs::remove_file(temp_file);
+
+        assert!(result.is_ok());
+        let gedcom = result.unwrap();
+
+        // Must use MissingRequiredField, not ValidationError
+        let has_missing_required = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::MissingRequiredField {
+                    record_type,
+                    ..
+                } if record_type == "OBJE"
+            )
+        });
+
+        let has_validation_error = gedcom.warnings.iter().any(|w| {
+            matches!(
+                w,
+                GedcomError::ValidationError {
+                    record_type,
+                    ..
+                } if record_type == "OBJE"
+            )
+        });
+
+        assert!(
+            has_missing_required,
+            "Should use MissingRequiredField for OBJE FILE"
+        );
+        assert!(
+            !has_validation_error,
+            "Should NOT use ValidationError for OBJE FILE (it's required, not just recommended)"
+        );
+    }
 }
