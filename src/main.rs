@@ -74,12 +74,69 @@ fn main() {
 }
 
 fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
+    // Get terminal width, default to 80 if unable to detect
+    let term_width = term_size::dimensions().map(|(w, _)| w).unwrap_or(80);
+
+    // Use side-by-side layout if terminal is wide enough (>= 120 columns)
+    if term_width >= 120 {
+        print_summary_wide(gedcom, home_xref, verbose);
+    } else {
+        print_summary_narrow(gedcom, home_xref, verbose);
+    }
+}
+
+/// Print summary in narrow (single column) format
+fn print_summary_narrow(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
     println!("═══════════════════════════════════════════════════════════");
     println!("                  GEDCOM FILE SUMMARY");
     println!("═══════════════════════════════════════════════════════════");
     println!();
 
-    // Display file name/source from header
+    print_file_info(gedcom);
+    print_statistics_table(gedcom);
+    print_warnings(gedcom, verbose);
+
+    println!("───────────────────────────────────────────────────────────");
+    println!("                  HOME INDIVIDUAL");
+    println!("───────────────────────────────────────────────────────────");
+    println!();
+
+    print_home_individual(gedcom, home_xref);
+    println!("═══════════════════════════════════════════════════════════");
+}
+
+/// Print summary in wide (two column) format
+fn print_summary_wide(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
+    println!("═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════");
+    println!("                  GEDCOM FILE SUMMARY                     │                    HOME INDIVIDUAL");
+    println!("═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════");
+    println!();
+
+    // Collect left column content
+    let mut left_lines = Vec::new();
+    collect_file_info(gedcom, &mut left_lines);
+    collect_statistics(gedcom, &mut left_lines);
+    collect_warnings(gedcom, verbose, &mut left_lines);
+
+    // Collect right column content
+    let mut right_lines = Vec::new();
+    collect_home_individual(gedcom, home_xref, &mut right_lines);
+
+    // Print side by side
+    let max_lines = left_lines.len().max(right_lines.len());
+    for i in 0..max_lines {
+        let left = left_lines.get(i).map(|s| s.as_str()).unwrap_or("");
+        let right = right_lines.get(i).map(|s| s.as_str()).unwrap_or("");
+
+        // Left column is 58 chars wide, right column starts at position 60
+        println!("{:<58} │ {}", left, right);
+    }
+
+    println!("═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════");
+}
+
+/// Print file information (narrow mode)
+fn print_file_info(gedcom: &Gedcom) {
     if let Some(ref source) = gedcom.header.source {
         println!("Source System: {}", source.source);
         if let Some(ref name) = source.name {
@@ -91,7 +148,6 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
         println!();
     }
 
-    // Display GEDCOM version
     if let Some(ref gedc) = gedcom.header.gedcom_version {
         if let Some(ref version) = gedc.version {
             println!("GEDCOM Version: {}", version);
@@ -101,9 +157,57 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
         }
         println!();
     }
+}
 
-    // Build statistics table
-    let stats = vec![
+/// Collect file information into lines (wide mode)
+fn collect_file_info(gedcom: &Gedcom, lines: &mut Vec<String>) {
+    if let Some(ref source) = gedcom.header.source {
+        lines.push(format!("Source System: {}", source.source));
+        if let Some(ref name) = source.name {
+            lines.push(format!("Source Name:   {}", name));
+        }
+        if let Some(ref version) = source.version {
+            lines.push(format!("Version:       {}", version));
+        }
+        lines.push(String::new());
+    }
+
+    if let Some(ref gedc) = gedcom.header.gedcom_version {
+        if let Some(ref version) = gedc.version {
+            lines.push(format!("GEDCOM Version: {}", version));
+        }
+        if let Some(ref form) = gedc.form {
+            lines.push(format!("GEDCOM Form:    {:?}", form));
+        }
+        lines.push(String::new());
+    }
+}
+
+/// Print statistics table (narrow mode)
+fn print_statistics_table(gedcom: &Gedcom) {
+    let stats = build_stats_vec(gedcom);
+    let mut table = Table::new(stats);
+    table.with(Style::modern());
+    println!("{}", table);
+    println!();
+}
+
+/// Collect statistics into lines (wide mode)
+fn collect_statistics(gedcom: &Gedcom, lines: &mut Vec<String>) {
+    let stats = build_stats_vec(gedcom);
+    let mut table = Table::new(stats);
+    table.with(Style::modern());
+
+    // Split table into lines
+    for line in table.to_string().lines() {
+        lines.push(line.to_string());
+    }
+    lines.push(String::new());
+}
+
+/// Build statistics vector
+fn build_stats_vec(gedcom: &Gedcom) -> Vec<StatRow> {
+    vec![
         StatRow {
             record_type: "Individuals".to_string(),
             count: gedcom.individuals.len(),
@@ -132,14 +236,11 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
             record_type: "Submitters".to_string(),
             count: gedcom.submitters.len(),
         },
-    ];
+    ]
+}
 
-    let mut table = Table::new(stats);
-    table.with(Style::modern());
-    println!("{}", table);
-    println!();
-
-    // Display warnings if any
+/// Print warnings (narrow mode)
+fn print_warnings(gedcom: &Gedcom, verbose: bool) {
     if gedcom.has_warnings() {
         println!("⚠ Warnings: {}", gedcom.warnings.len());
         if verbose {
@@ -151,8 +252,25 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
         }
         println!();
     }
+}
 
-    // Home individual analysis
+/// Collect warnings into lines (wide mode)
+fn collect_warnings(gedcom: &Gedcom, verbose: bool, lines: &mut Vec<String>) {
+    if gedcom.has_warnings() {
+        lines.push(format!("⚠ Warnings: {}", gedcom.warnings.len()));
+        if verbose {
+            lines.push(String::new());
+            lines.push("Warning Details:".to_string());
+            for warning in &gedcom.warnings {
+                lines.push(format!("  • {}", warning));
+            }
+        }
+        lines.push(String::new());
+    }
+}
+
+/// Print home individual information (narrow mode)
+fn print_home_individual(gedcom: &Gedcom, home_xref: Option<&str>) {
     let home_individual = if let Some(xref) = home_xref {
         gedcom.find_individual_by_xref(xref)
     } else {
@@ -160,11 +278,6 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
     };
 
     if let Some(individual) = home_individual {
-        println!("───────────────────────────────────────────────────────────");
-        println!("                  HOME INDIVIDUAL");
-        println!("───────────────────────────────────────────────────────────");
-        println!();
-
         // Display name
         if let Some(name) = individual.names.first() {
             if let Some(ref name_value) = name.name.value {
@@ -178,12 +291,10 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
             }
         }
 
-        // Display XREF
         if let Some(ref xref) = individual.xref {
             println!("XREF: {}", xref.as_str());
         }
 
-        // Display birth info
         if let Some(birth) = individual.birth.first() {
             if let Some(ref date) = birth.event.detail.date {
                 println!("Birth Date: {}", date);
@@ -195,7 +306,6 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
             }
         }
 
-        // Display death info
         if let Some(death) = individual.death.first() {
             if let Some(ref event) = death.event {
                 if let Some(ref date) = event.date {
@@ -211,7 +321,6 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
 
         println!();
 
-        // Calculate genealogy statistics
         let max_ancestor_gens = calculate_max_generations_ancestors(gedcom, individual);
         let max_descendant_gens = calculate_max_generations_descendants(gedcom, individual);
 
@@ -224,7 +333,6 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
         );
         println!();
 
-        // Display immediate family counts
         let parents = gedcom.get_parents(individual);
         let children = gedcom.get_children(individual);
         let siblings = gedcom.get_siblings(individual);
@@ -237,7 +345,6 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
         println!("  Children:  {}", children.len());
         println!();
 
-        // Extended family counts
         let ancestors = gedcom.get_ancestors(individual, Some(10));
         let descendants = gedcom.get_descendants(individual, Some(10));
 
@@ -249,8 +356,98 @@ fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
         println!("No individuals found in GEDCOM file.");
         println!();
     }
+}
 
-    println!("═══════════════════════════════════════════════════════════");
+/// Collect home individual information into lines (wide mode)
+fn collect_home_individual(gedcom: &Gedcom, home_xref: Option<&str>, lines: &mut Vec<String>) {
+    let home_individual = if let Some(xref) = home_xref {
+        gedcom.find_individual_by_xref(xref)
+    } else {
+        gedcom.individuals.first()
+    };
+
+    if let Some(individual) = home_individual {
+        if let Some(name) = individual.names.first() {
+            if let Some(ref name_value) = name.name.value {
+                lines.push(format!("Name: {}", name_value));
+            }
+            if let Some(ref given) = name.name.given {
+                lines.push(format!("Given Name: {}", given));
+            }
+            if let Some(ref surname) = name.name.surname {
+                lines.push(format!("Surname: {}", surname));
+            }
+        }
+
+        if let Some(ref xref) = individual.xref {
+            lines.push(format!("XREF: {}", xref.as_str()));
+        }
+
+        if let Some(birth) = individual.birth.first() {
+            if let Some(ref date) = birth.event.detail.date {
+                lines.push(format!("Birth Date: {}", date));
+            }
+            if let Some(ref place) = birth.event.detail.place {
+                if let Some(ref place_name) = place.name {
+                    lines.push(format!("Birth Place: {}", place_name));
+                }
+            }
+        }
+
+        if let Some(death) = individual.death.first() {
+            if let Some(ref event) = death.event {
+                if let Some(ref date) = event.date {
+                    lines.push(format!("Death Date: {}", date));
+                }
+                if let Some(ref place) = event.place {
+                    if let Some(ref place_name) = place.name {
+                        lines.push(format!("Death Place: {}", place_name));
+                    }
+                }
+            }
+        }
+
+        lines.push(String::new());
+
+        let max_ancestor_gens = calculate_max_generations_ancestors(gedcom, individual);
+        let max_descendant_gens = calculate_max_generations_descendants(gedcom, individual);
+
+        lines.push("Genealogy Depth:".to_string());
+        lines.push(format!("  Ancestors:   {} generations", max_ancestor_gens));
+        lines.push(format!(
+            "  Descendants: {} generations",
+            max_descendant_gens
+        ));
+        lines.push(format!(
+            "  Total:       {} generations",
+            max_ancestor_gens + max_descendant_gens
+        ));
+        lines.push(String::new());
+
+        let parents = gedcom.get_parents(individual);
+        let children = gedcom.get_children(individual);
+        let siblings = gedcom.get_siblings(individual);
+        let spouses = gedcom.get_spouses(individual);
+
+        lines.push("Immediate Family:".to_string());
+        lines.push(format!(
+            "  Parents:   {}",
+            if parents.is_empty() { 0 } else { 2 }
+        ));
+        lines.push(format!("  Siblings:  {}", siblings.len()));
+        lines.push(format!("  Spouses:   {}", spouses.len()));
+        lines.push(format!("  Children:  {}", children.len()));
+        lines.push(String::new());
+
+        let ancestors = gedcom.get_ancestors(individual, Some(10));
+        let descendants = gedcom.get_descendants(individual, Some(10));
+
+        lines.push("Extended Family:".to_string());
+        lines.push(format!("  Ancestors:   {}", ancestors.len()));
+        lines.push(format!("  Descendants: {}", descendants.len()));
+    } else {
+        lines.push("No individuals found.".to_string());
+    }
 }
 
 /// Calculate maximum number of ancestor generations from the given individual
@@ -540,12 +737,10 @@ mod tests {
         let gedcom = parse_gedcom("./data/complete.ged", &GedcomConfig::new()).unwrap();
 
         if let Some(individual) = gedcom.individuals.first() {
-            let ancestor_gens = calculate_max_generations_ancestors(&gedcom, individual);
-            let descendant_gens = calculate_max_generations_descendants(&gedcom, individual);
+            let _ancestor_gens = calculate_max_generations_ancestors(&gedcom, individual);
+            let _descendant_gens = calculate_max_generations_descendants(&gedcom, individual);
 
             // Just verify the functions run without panicking
-            assert!(ancestor_gens >= 0);
-            assert!(descendant_gens >= 0);
         }
     }
 }
