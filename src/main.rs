@@ -153,7 +153,9 @@ fn print_file_info(gedcom: &Gedcom) {
             println!("GEDCOM Version: {}", version);
         }
         if let Some(ref form) = gedc.form {
-            println!("GEDCOM Form:    {:?}", form);
+            if let Some(ref name) = form.name {
+                println!("GEDCOM Form:    {}", name);
+            }
         }
         println!();
     }
@@ -177,7 +179,9 @@ fn collect_file_info(gedcom: &Gedcom, lines: &mut Vec<String>) {
             lines.push(format!("GEDCOM Version: {}", version));
         }
         if let Some(ref form) = gedc.form {
-            lines.push(format!("GEDCOM Form:    {:?}", form));
+            if let Some(ref name) = form.name {
+                lines.push(format!("GEDCOM Form:    {}", name));
+            }
         }
         lines.push(String::new());
     }
