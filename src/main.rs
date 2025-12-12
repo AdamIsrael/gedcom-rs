@@ -6,6 +6,10 @@ use gedcom_rs::types::Gedcom;
 use std::process;
 use tabled::{settings::Style, Table, Tabled};
 
+// Constants for terminal layout
+const DEFAULT_TERMINAL_WIDTH: usize = 80;
+const WIDE_LAYOUT_THRESHOLD: usize = 120;
+
 /// GEDCOM 5.5.1 Parser and Analyzer
 #[derive(Parser, Debug)]
 #[command(name = "gedcom-rs")]
@@ -23,10 +27,6 @@ struct Args {
     /// Dump the entire GEDCOM structure (debug output)
     #[arg(short, long)]
     dump: bool,
-
-    /// Show summary statistics (default behavior)
-    #[arg(short, long, default_value_t = true)]
-    summary: bool,
 
     /// XREF of the individual to use as the "home" person for genealogy analysis
     #[arg(long, value_name = "XREF")]
@@ -61,24 +61,23 @@ fn main() {
         }
     };
 
-    // Handle --dump flag
+    // Handle --dump flag (debug output)
     if args.dump {
         println!("{:#?}", gedcom);
-        return;
-    }
-
-    // Default behavior: show summary
-    if args.summary {
+    } else {
+        // Default behavior: show summary
         print_summary(&gedcom, args.home_xref.as_deref(), args.verbose);
     }
 }
 
 fn print_summary(gedcom: &Gedcom, home_xref: Option<&str>, verbose: bool) {
-    // Get terminal width, default to 80 if unable to detect
-    let term_width = term_size::dimensions().map(|(w, _)| w).unwrap_or(80);
+    // Get terminal width, default to DEFAULT_TERMINAL_WIDTH if unable to detect
+    let term_width = term_size::dimensions()
+        .map(|(w, _)| w)
+        .unwrap_or(DEFAULT_TERMINAL_WIDTH);
 
-    // Use side-by-side layout if terminal is wide enough (>= 120 columns)
-    if term_width >= 120 {
+    // Use side-by-side layout if terminal is wide enough
+    if term_width >= WIDE_LAYOUT_THRESHOLD {
         print_summary_wide(gedcom, home_xref, verbose);
     } else {
         print_summary_narrow(gedcom, home_xref, verbose);
@@ -342,8 +341,14 @@ fn print_home_individual(gedcom: &Gedcom, home_xref: Option<&str>) {
         let siblings = gedcom.get_siblings(individual);
         let spouses = gedcom.get_spouses(individual);
 
+        // Count actual non-None parents
+        let parent_count = parents
+            .iter()
+            .map(|(f, m)| f.is_some() as usize + m.is_some() as usize)
+            .sum::<usize>();
+
         println!("Immediate Family:");
-        println!("  Parents:   {}", if parents.is_empty() { 0 } else { 2 });
+        println!("  Parents:   {}", parent_count);
         println!("  Siblings:  {}", siblings.len());
         println!("  Spouses:   {}", spouses.len());
         println!("  Children:  {}", children.len());
@@ -433,11 +438,14 @@ fn collect_home_individual(gedcom: &Gedcom, home_xref: Option<&str>, lines: &mut
         let siblings = gedcom.get_siblings(individual);
         let spouses = gedcom.get_spouses(individual);
 
+        // Count actual non-None parents
+        let parent_count = parents
+            .iter()
+            .map(|(f, m)| f.is_some() as usize + m.is_some() as usize)
+            .sum::<usize>();
+
         lines.push("Immediate Family:".to_string());
-        lines.push(format!(
-            "  Parents:   {}",
-            if parents.is_empty() { 0 } else { 2 }
-        ));
+        lines.push(format!("  Parents:   {}", parent_count));
         lines.push(format!("  Siblings:  {}", siblings.len()));
         lines.push(format!("  Spouses:   {}", spouses.len()));
         lines.push(format!("  Children:  {}", children.len()));
