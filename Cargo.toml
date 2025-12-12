@@ -30,6 +30,7 @@ encoding_rs = "0.8"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
+tempfile = "3.13"
 
 [[bench]]
 name = "parse_gedcom"
