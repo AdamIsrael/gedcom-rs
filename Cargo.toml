@@ -27,6 +27,8 @@ panic = "warn"
 smallvec = "1.10.0"
 winnow = "0.5.40"
 encoding_rs = "0.8"
+clap = { version = "4.5", features = ["derive"] }
+tabled = "0.16"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
