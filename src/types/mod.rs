@@ -1517,7 +1517,6 @@ mod relationship_tests {
 #[cfg(test)]
 mod api_tests {
     use super::*;
-    use std::fs;
 
     /// Helper to create a test GEDCOM with family data for API testing
     /// Returns a Gedcom with 6 individuals and 2 families
